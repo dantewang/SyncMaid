@@ -12,9 +12,180 @@
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
+        <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Window.Resources>
+        <!-- Colors for regular action button -->
+        <SolidColorBrush x:Key="ActionButtonBackground" Color="#0d6efd" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundHover" Color="#0b5ed7" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundPressed" Color="#0a58ca" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundDisabled" Color="#8bb9fe" />
 
+        <!-- Colors for danger button -->
+        <SolidColorBrush x:Key="DangerButtonBackground" Color="#dc3545" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundHover" Color="#bb2d3b" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundPressed" Color="#a52834" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundDisabled" Color="#f1aeb5" />
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="{StaticResource ActionButtonBackground}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Action Button States -->
+        <Style Selector="Button.action:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundHover}" />
+            <Setter Property="TextBlock.Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.action:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundPressed}" />
+        </Style>
+
+        <Style Selector="Button.action:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundDisabled}" />
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{StaticResource DangerButtonBackground}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Danger Button States -->
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundHover}" />
+            <Setter Property="TextBlock.Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundPressed}" />
+        </Style>
+
+        <Style Selector="Button.danger:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundDisabled}" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- Toolbar -->
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="10">
+            <Button Name="NewButton">
+                <TextBlock Text="New" Margin="4,0,0,0" VerticalAlignment="Center" />
+            </Button>
+        </StackPanel>
+
+        <!-- Main TreeView -->
+        <TreeView Margin="8" ItemsSource="{Binding Nodes}">
+            <TreeView.ItemTemplate>
+                <!-- Task Node Template -->
+                <TreeDataTemplate DataType="{x:Type vm:TaskNodeViewModel}" ItemsSource="{Binding Children}">
+                    <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
+                        <StackPanel DockPanel.Dock="Right"
+                                    Orientation="Horizontal"
+                                    Margin="8,0,0,0">
+                            <Button Classes="action"
+                                    Command="{Binding EditCommand}"
+                                    Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <!--<PathIcon Data="{StaticResource edit_regular}"
+                                             Width="16" Height="16" />-->
+                                    <TextBlock Text="Edit"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="danger"
+                                    Command="{Binding DeleteCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <!--<PathIcon Data="{StaticResource delete_regular}"
+                                             Width="16" Height="16" />-->
+                                    <TextBlock Text="Delete"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Text="{Binding Path}"
+                                       FontFamily="Consolas" />
+                        </StackPanel>
+                    </DockPanel>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+
+            <TreeView.DataTemplates>
+                <DataTemplate DataType="{x:Type vm:DestinationNodeViewModel}">
+                    <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
+                        <StackPanel DockPanel.Dock="Right"
+                                    Orientation="Horizontal"
+                                    Margin="8,0,0,0">
+                            <Button Classes="action"
+                                    Command="{Binding ExecuteCommand}"
+                                    Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <!--<PathIcon Data="{StaticResource play_regular}"
+                                             Width="16" Height="16" />-->
+                                    <TextBlock Text="Execute"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="action"
+                                    Command="{Binding EditCommand}"
+                                    Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <!--<PathIcon Data="{StaticResource edit_regular}"
+                                             Width="16" Height="16" />-->
+                                    <TextBlock Text="Edit"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="danger"
+                                    Command="{Binding DeleteCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <!--<PathIcon Data="{StaticResource delete_regular}"
+                                             Width="16" Height="16" />-->
+                                    <TextBlock Text="Delete"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Text="{Binding Path}"
+                                       FontFamily="Consolas" />
+                        </StackPanel>
+                    </DockPanel>
+                </DataTemplate>
+            </TreeView.DataTemplates>
+        </TreeView>
+    </DockPanel>
 </Window>
