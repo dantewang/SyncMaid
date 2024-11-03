@@ -17,16 +17,16 @@
 
     <Window.Resources>
         <!-- Colors for regular action button -->
-        <SolidColorBrush x:Key="ActionButtonBackground" Color="#0d6efd" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundHover" Color="#0b5ed7" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundPressed" Color="#0a58ca" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundDisabled" Color="#8bb9fe" />
+        <SolidColorBrush x:Key="ActionButtonBackground" Color="#39C5BB" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundHover" Color="#06B0A4" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundPressed" Color="#288C85" />
+        <SolidColorBrush x:Key="ActionButtonBackgroundDisabled" Color="#90E1DB" />
 
         <!-- Colors for danger button -->
-        <SolidColorBrush x:Key="DangerButtonBackground" Color="#dc3545" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundHover" Color="#bb2d3b" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundPressed" Color="#a52834" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundDisabled" Color="#f1aeb5" />
+        <SolidColorBrush x:Key="DangerButtonBackground" Color="#C53943" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundHover" Color="#B00613" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundPressed" Color="#8C282F" />
+        <SolidColorBrush x:Key="DangerButtonBackgroundDisabled" Color="#E19096" />
     </Window.Resources>
 
     <Window.Styles>
