@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System;
 using System.Collections.ObjectModel;
@@ -25,10 +25,10 @@ public class TaskNodeViewModel : ViewModelBase
         // Convert model's destinations to ViewModels
         foreach (var dest in task.Destinations)
             Children.Add(new DestinationNodeViewModel(dest,
-                ExecuteLeaf,
                 EditLeaf,
                 DeleteLeaf));
 
+        ExecuteCommand = ReactiveCommand.Create(Execute);
         EditCommand = ReactiveCommand.Create(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
     }
@@ -37,13 +37,17 @@ public class TaskNodeViewModel : ViewModelBase
     public string Path => _task.Path;
     public ObservableCollection<DestinationNodeViewModel> Children { get; }
 
+    public ICommand ExecuteCommand { get; }
     public ICommand EditCommand { get; }
     public ICommand DeleteCommand { get; }
 
-    private void ExecuteLeaf(DestinationNodeViewModel destinationNodeViewModel)
+    private void Execute()
     {
-        // Implement leaf execution logic
-        Debug.WriteLine($"Executing leaf: {destinationNodeViewModel.Name}, Path: {destinationNodeViewModel.Path}");
+        // Execute sync for all destinations
+        foreach (var destination in Children)
+        {
+            Debug.WriteLine($"Executing sync from {Path} to destination: {destination.Name}, Path: {destination.Path}");
+        }
     }
 
     private void EditLeaf(DestinationNodeViewModel destinationNodeViewModel)

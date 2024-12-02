@@ -109,11 +109,18 @@
                                     Orientation="Horizontal"
                                     Margin="8,0,0,0">
                             <Button Classes="action"
+                                    Command="{Binding ExecuteCommand}"
+                                    Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Execute"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="action"
                                     Command="{Binding EditCommand}"
                                     Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal">
-                                    <!--<PathIcon Data="{StaticResource edit_regular}"
-                                             Width="16" Height="16" />-->
                                     <TextBlock Text="Edit"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center" />
@@ -122,8 +129,6 @@
                             <Button Classes="danger"
                                     Command="{Binding DeleteCommand}">
                                 <StackPanel Orientation="Horizontal">
-                                    <!--<PathIcon Data="{StaticResource delete_regular}"
-                                             Width="16" Height="16" />-->
                                     <TextBlock Text="Delete"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center" />
@@ -146,22 +151,9 @@
                                     Orientation="Horizontal"
                                     Margin="8,0,0,0">
                             <Button Classes="action"
-                                    Command="{Binding ExecuteCommand}"
-                                    Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <!--<PathIcon Data="{StaticResource play_regular}"
-                                             Width="16" Height="16" />-->
-                                    <TextBlock Text="Execute"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="action"
                                     Command="{Binding EditCommand}"
                                     Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal">
-                                    <!--<PathIcon Data="{StaticResource edit_regular}"
-                                             Width="16" Height="16" />-->
                                     <TextBlock Text="Edit"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center" />
@@ -170,8 +162,6 @@
                             <Button Classes="danger"
                                     Command="{Binding DeleteCommand}">
                                 <StackPanel Orientation="Horizontal">
-                                    <!--<PathIcon Data="{StaticResource delete_regular}"
-                                             Width="16" Height="16" />-->
                                     <TextBlock Text="Delete"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center" />

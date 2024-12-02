@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System;
 using System.Windows.Input;
@@ -12,13 +12,11 @@ namespace SyncMaid.ViewModels;
 public class DestinationNodeViewModel : ViewModelBase
 {
     public DestinationNodeViewModel(DestinationModel destination,
-        Action<DestinationNodeViewModel> onExecute,
         Action<DestinationNodeViewModel> onEdit,
         Action<DestinationNodeViewModel> onDelete)
     {
         Model = destination;
 
-        ExecuteCommand = ReactiveCommand.Create(() => onExecute(this));
         EditCommand = ReactiveCommand.Create(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
     }
@@ -26,7 +24,6 @@ public class DestinationNodeViewModel : ViewModelBase
     public string Name => Model.Name;
     public string Path => Model.Path;
 
-    public ICommand ExecuteCommand { get; }
     public ICommand EditCommand { get; }
     public ICommand DeleteCommand { get; }
 
