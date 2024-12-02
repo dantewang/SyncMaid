@@ -1,6 +1,7 @@
 #region
 
 using System;
+using System.Reactive;
 using System.Windows.Input;
 using ReactiveUI;
 using SyncMaid.Models;
@@ -11,29 +12,35 @@ namespace SyncMaid.ViewModels;
 
 public class DestinationNodeViewModel : ViewModelBase
 {
+    private DestinationModel _model;
+
     public DestinationNodeViewModel(DestinationModel destination,
         Action<DestinationNodeViewModel> onEdit,
         Action<DestinationNodeViewModel> onDelete)
     {
-        Model = destination;
+        _model = destination;
 
         EditCommand = ReactiveCommand.Create(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
+
+        // Set up property changed notifications
+        this.WhenAnyValue(x => x._model.Name)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(Name)));
+        this.WhenAnyValue(x => x._model.Path)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(Path)));
     }
 
-    public string Name => Model.Name;
-    public string Path => Model.Path;
+    public string Name => _model.Name;
+    public string Path => _model.Path;
 
-    public ICommand EditCommand { get; }
-    public ICommand DeleteCommand { get; }
+    public ReactiveCommand<Unit, Unit> EditCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
 
-    // Reference to the underlying model when needed
-    public DestinationModel Model { get; }
+    public DestinationModel Model => _model;
 
     public void UpdateNameAndPath(string newName, string newPath)
     {
-        Model.Name = newName;
-        Model.Path = newPath;
+        _model = _model.WithUpdatedProperties(newName, newPath);
         this.RaisePropertyChanged(nameof(Name));
         this.RaisePropertyChanged(nameof(Path));
     }

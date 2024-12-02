@@ -1,13 +1,15 @@
-﻿namespace SyncMaid.Models;
+namespace SyncMaid.Models;
 
-public class DestinationModel
+public class DestinationModel(string name, string path)
 {
-    public DestinationModel(string name, string path)
-    {
-        Name = name;
-        Path = path;
-    }
+    public string Name { get; } = name;
+    public string Path { get; } = path;
 
-    public string Name { get; set; }
-    public string Path { get; set; }
+    public DestinationModel WithUpdatedProperties(string? name = null, string? path = null)
+    {
+        return new DestinationModel(
+            name ?? Name,
+            path ?? Path
+        );
+    }
 }

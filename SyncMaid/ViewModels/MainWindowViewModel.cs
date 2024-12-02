@@ -1,8 +1,13 @@
+#region
+
 using System;
 using System.Collections.ObjectModel;
+using System.Reactive;
 using System.Windows.Input;
 using ReactiveUI;
 using SyncMaid.Models;
+
+#endregion
 
 namespace SyncMaid.ViewModels;
 
@@ -12,12 +17,12 @@ public class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        Nodes = new ObservableCollection<TaskNodeViewModel>();
+        Nodes = [];
         AddTaskCommand = ReactiveCommand.Create(AddTask);
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
-    public ICommand AddTaskCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddTaskCommand { get; }
 
     private void AddTask()
     {

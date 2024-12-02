@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
+using System.Reactive;
+using System.Reactive.Linq;
 using System.Windows.Input;
+using DynamicData;
 using ReactiveUI;
 using SyncMaid.Models;
 
@@ -13,15 +15,15 @@ namespace SyncMaid.ViewModels;
 
 public class TaskNodeViewModel : ViewModelBase
 {
-    private readonly TaskModel _task;
     private static readonly Random _random = new();
+    private TaskModel _task;
 
     public TaskNodeViewModel(TaskModel task,
         Action<TaskNodeViewModel> onEdit,
         Action<TaskNodeViewModel> onDelete)
     {
         _task = task;
-        Children = new ObservableCollection<DestinationNodeViewModel>();
+        Children = [];
 
         // Convert model's destinations to ViewModels
         foreach (var dest in task.Destinations)
@@ -29,27 +31,36 @@ public class TaskNodeViewModel : ViewModelBase
                 EditLeaf,
                 DeleteLeaf));
 
-        ExecuteCommand = ReactiveCommand.Create(Execute);
+        var canExecute = this.WhenAnyValue(x => x.Children.Count)
+            .Select(count => count > 0);
+
+        ExecuteCommand = ReactiveCommand.Create(Execute, canExecute);
         EditCommand = ReactiveCommand.Create(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
         AddDestinationCommand = ReactiveCommand.Create(AddDestination);
+
+        // Set up property changed notifications for Name and Path
+        this.WhenAnyValue(x => x._task.Name)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(Name)));
+        this.WhenAnyValue(x => x._task.Path)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(Path)));
     }
 
     public string Name => _task.Name;
     public string Path => _task.Path;
     public ObservableCollection<DestinationNodeViewModel> Children { get; }
 
-    public ICommand ExecuteCommand { get; }
-    public ICommand EditCommand { get; }
-    public ICommand DeleteCommand { get; }
-    public ICommand AddDestinationCommand { get; }
+    public ReactiveCommand<Unit, Unit> ExecuteCommand { get; }
+    public ReactiveCommand<Unit, Unit> EditCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddDestinationCommand { get; }
 
     private void Execute()
     {
         // Execute sync for all destinations
         foreach (var destination in Children)
         {
-            Debug.WriteLine($"Executing sync from {Path} to destination: {destination.Name}, Path: {destination.Path}");
+            Console.WriteLine($"Executing sync from {Path} to destination: {destination.Name}, Path: {destination.Path}");
         }
     }
 
@@ -68,8 +79,7 @@ public class TaskNodeViewModel : ViewModelBase
 
     public void UpdateNameAndPath(string newName, string newPath)
     {
-        _task.Name = newName;
-        _task.Path = newPath;
+        _task = _task.WithUpdatedProperties(newName, newPath);
         this.RaisePropertyChanged(nameof(Name));
         this.RaisePropertyChanged(nameof(Path));
     }
