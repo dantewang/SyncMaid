@@ -14,13 +14,14 @@ namespace SyncMaid.ViewModels;
 public class TaskNodeViewModel : ViewModelBase
 {
     private readonly TaskModel _task;
+    private static readonly Random _random = new();
 
     public TaskNodeViewModel(TaskModel task,
         Action<TaskNodeViewModel> onEdit,
         Action<TaskNodeViewModel> onDelete)
     {
         _task = task;
-        Children = [];
+        Children = new ObservableCollection<DestinationNodeViewModel>();
 
         // Convert model's destinations to ViewModels
         foreach (var dest in task.Destinations)
@@ -31,6 +32,7 @@ public class TaskNodeViewModel : ViewModelBase
         ExecuteCommand = ReactiveCommand.Create(Execute);
         EditCommand = ReactiveCommand.Create(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
+        AddDestinationCommand = ReactiveCommand.Create(AddDestination);
     }
 
     public string Name => _task.Name;
@@ -40,6 +42,7 @@ public class TaskNodeViewModel : ViewModelBase
     public ICommand ExecuteCommand { get; }
     public ICommand EditCommand { get; }
     public ICommand DeleteCommand { get; }
+    public ICommand AddDestinationCommand { get; }
 
     private void Execute()
     {
@@ -50,15 +53,37 @@ public class TaskNodeViewModel : ViewModelBase
         }
     }
 
+    private void AddDestination()
+    {
+        var randomName = $"Destination {_random.Next(1, 1000)}";
+        var randomPath = $@"D:\Random\Path\{_random.Next(1, 1000)}";
+        
+        var destModel = new DestinationModel(randomName, randomPath);
+        _task.Destinations.Add(destModel);
+        
+        Children.Add(new DestinationNodeViewModel(destModel,
+            EditLeaf,
+            DeleteLeaf));
+    }
+
+    public void UpdateNameAndPath(string newName, string newPath)
+    {
+        _task.Name = newName;
+        _task.Path = newPath;
+        this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(Path));
+    }
+
     private void EditLeaf(DestinationNodeViewModel destinationNodeViewModel)
     {
-        // Implement leaf edit logic
-        Debug.WriteLine($"Editing leaf: {destinationNodeViewModel.Name}");
+        var randomName = $"Destination {_random.Next(1, 1000)}";
+        var randomPath = $@"D:\Random\Path\{_random.Next(1, 1000)}";
+        destinationNodeViewModel.UpdateNameAndPath(randomName, randomPath);
     }
 
     private void DeleteLeaf(DestinationNodeViewModel destinationNodeViewModel)
     {
-        // Find the parent and remove the leaf node
-        Debug.WriteLine($"Deleting leaf: {destinationNodeViewModel.Name}");
+        _task.Destinations.Remove(destinationNodeViewModel.Model);
+        Children.Remove(destinationNodeViewModel);
     }
 }

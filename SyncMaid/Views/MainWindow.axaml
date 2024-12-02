@@ -93,9 +93,11 @@
 
     <DockPanel>
         <!-- Toolbar -->
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="10">
-            <Button Name="NewButton">
-                <TextBlock Text="New" Margin="4,0,0,0" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="10" Margin="8,4">
+            <Button Name="NewButton" 
+                    Classes="action"
+                    Command="{Binding AddTaskCommand}">
+                <TextBlock Text="New Task" Margin="4,0,0,0" VerticalAlignment="Center" />
             </Button>
         </StackPanel>
 
@@ -113,6 +115,15 @@
                                     Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Execute"
+                                               Margin="4,0,0,0"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="action"
+                                    Command="{Binding AddDestinationCommand}"
+                                    Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Add Destination"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center" />
                                 </StackPanel>

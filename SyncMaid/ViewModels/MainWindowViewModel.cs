@@ -1,61 +1,44 @@
-﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
+using System;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using ReactiveUI;
 using SyncMaid.Models;
 
 namespace SyncMaid.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    private static readonly Random _random = new();
+
     public MainWindowViewModel()
     {
-        Nodes = [];
-
-        var task1 = new TaskModel("Task 1", @"D:\My Files\");
-
-        task1.Destinations.Add(new DestinationModel("Destination 1", @"E:\Backups\My Phone Photos"));
-        task1.Destinations.Add(new DestinationModel("Destination 2", @"\\nas-1\backups\photos"));
-
-        var root1 = new TaskNodeViewModel(
-            task1,
-            EditRoot,
-            DeleteRoot);
-
-        Nodes.Add(root1);
+        Nodes = new ObservableCollection<TaskNodeViewModel>();
+        AddTaskCommand = ReactiveCommand.Create(AddTask);
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
+    public ICommand AddTaskCommand { get; }
 
-    private void EditRoot(TaskNodeViewModel taskNodeViewModel)
+    private void AddTask()
     {
-        // Implement root edit logic
-        Debug.WriteLine($"Editing root: {taskNodeViewModel.Name}");
+        var randomName = $"Task {_random.Next(1, 1000)}";
+        var randomPath = $@"C:\Random\Source\{_random.Next(1, 1000)}";
+        
+        var task = new TaskModel(randomName, randomPath);
+        var taskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
+        
+        Nodes.Add(taskNode);
     }
 
-    private void DeleteRoot(TaskNodeViewModel taskNodeViewModel)
+    private void EditTask(TaskNodeViewModel taskNodeViewModel)
+    {
+        var randomName = $"Task {_random.Next(1, 1000)}";
+        var randomPath = $@"C:\Random\Source\{_random.Next(1, 1000)}";
+        taskNodeViewModel.UpdateNameAndPath(randomName, randomPath);
+    }
+
+    private void DeleteTask(TaskNodeViewModel taskNodeViewModel)
     {
         Nodes.Remove(taskNodeViewModel);
     }
-
-    private void ExecuteLeaf(DestinationNodeViewModel destinationNodeViewModel)
-    {
-        // Implement leaf execution logic
-        Debug.WriteLine($"Executing leaf: {destinationNodeViewModel.Name}, Path: {destinationNodeViewModel.Path}");
-    }
-
-    private void EditLeaf(DestinationNodeViewModel destinationNodeViewModel)
-    {
-        // Implement leaf edit logic
-        Debug.WriteLine($"Editing leaf: {destinationNodeViewModel.Name}");
-    }
-
-    private void DeleteLeaf(DestinationNodeViewModel destinationNodeViewModel)
-    {
-        // Find the parent and remove the leaf node
-        foreach (var root in Nodes)
-            if (root.Children.Remove(destinationNodeViewModel))
-                break;
-    }
-#pragma warning disable CA1822 // Mark members as static
-
-#pragma warning restore CA1822 // Mark members as static
 }

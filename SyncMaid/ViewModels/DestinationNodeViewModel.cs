@@ -29,4 +29,12 @@ public class DestinationNodeViewModel : ViewModelBase
 
     // Reference to the underlying model when needed
     public DestinationModel Model { get; }
+
+    public void UpdateNameAndPath(string newName, string newPath)
+    {
+        Model.Name = newName;
+        Model.Path = newPath;
+        this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(Path));
+    }
 }
