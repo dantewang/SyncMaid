@@ -7,21 +7,50 @@ using System.Collections.ObjectModel;
 
 namespace SyncMaid.Models;
 
-public class TaskModel(string name, string path, ObservableCollection<DestinationModel> destinations)
+public enum TaskTriggerType
 {
-    public TaskModel(string name, string path) : this(name, path, [])
+    Manual,
+    Scheduled,
+    Monitoring
+}
+
+public class TaskModel
+{
+    public TaskModel(string name, string path, TaskTriggerType triggerType = TaskTriggerType.Manual, string? cronExpression = null)
     {
+        Name = name;
+        Path = path;
+        TriggerType = triggerType;
+        CronExpression = cronExpression;
+        Destinations = new ObservableCollection<DestinationModel>();
     }
 
-    public string Name { get; } = name;
-    public string Path { get; } = path;
-    public ObservableCollection<DestinationModel> Destinations { get; } = destinations;
+    public TaskModel(string name, string path, TaskTriggerType triggerType, string? cronExpression, ObservableCollection<DestinationModel> destinations)
+    {
+        Name = name;
+        Path = path;
+        TriggerType = triggerType;
+        CronExpression = cronExpression;
+        Destinations = destinations;
+    }
 
-    public TaskModel WithUpdatedProperties(string? name = null, string? path = null)
+    public string Name { get; }
+    public string Path { get; }
+    public TaskTriggerType TriggerType { get; }
+    public string? CronExpression { get; }
+    public ObservableCollection<DestinationModel> Destinations { get; }
+
+    public TaskModel WithUpdatedProperties(
+        string? name = null, 
+        string? path = null, 
+        TaskTriggerType? triggerType = null,
+        string? cronExpression = null)
     {
         return new TaskModel(
             name ?? Name,
             path ?? Path,
+            triggerType ?? TriggerType,
+            cronExpression ?? CronExpression,
             Destinations
         );
     }

@@ -2,6 +2,7 @@
 
 using System;
 using System.Reactive;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using ReactiveUI;
 using SyncMaid.Models;
@@ -12,36 +13,34 @@ namespace SyncMaid.ViewModels;
 
 public class DestinationNodeViewModel : ViewModelBase
 {
-    private DestinationModel _model;
+    internal readonly DestinationModel Model;
 
-    public DestinationNodeViewModel(DestinationModel destination,
-        Action<DestinationNodeViewModel> onEdit,
+    public DestinationNodeViewModel(DestinationModel model,
+        Func<DestinationNodeViewModel, Task> onEdit,
         Action<DestinationNodeViewModel> onDelete)
     {
-        _model = destination;
+        Model = model;
 
-        EditCommand = ReactiveCommand.Create(() => onEdit(this));
+        ExecuteCommand = ReactiveCommand.Create(Execute);
+        EditCommand = ReactiveCommand.CreateFromTask(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
 
-        // Set up property changed notifications
-        this.WhenAnyValue(x => x._model.Name)
+        // Set up property changed notifications for Name and Path
+        this.WhenAnyValue(x => x.Model.Name)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(Name)));
-        this.WhenAnyValue(x => x._model.Path)
+        this.WhenAnyValue(x => x.Model.Path)
             .Subscribe(_ => this.RaisePropertyChanged(nameof(Path)));
     }
 
-    public string Name => _model.Name;
-    public string Path => _model.Path;
+    public string Name => Model.Name;
+    public string Path => Model.Path;
 
+    public ReactiveCommand<Unit, Unit> ExecuteCommand { get; }
     public ReactiveCommand<Unit, Unit> EditCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
 
-    public DestinationModel Model => _model;
-
-    public void UpdateNameAndPath(string newName, string newPath)
+    private void Execute()
     {
-        _model = _model.WithUpdatedProperties(newName, newPath);
-        this.RaisePropertyChanged(nameof(Name));
-        this.RaisePropertyChanged(nameof(Path));
+        Console.WriteLine($"Executing sync to destination: {Name}, Path: {Path}");
     }
 }

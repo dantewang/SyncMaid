@@ -3,9 +3,12 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Controls;
 using ReactiveUI;
 using SyncMaid.Models;
+using SyncMaid.Views;
 
 #endregion
 
@@ -13,37 +16,55 @@ namespace SyncMaid.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private static readonly Random _random = new();
+    private Window? _window;
 
     public MainWindowViewModel()
     {
-        Nodes = [];
-        AddTaskCommand = ReactiveCommand.Create(AddTask);
+        Nodes = new ObservableCollection<TaskNodeViewModel>();
+        AddTaskCommand = ReactiveCommand.CreateFromTask(AddTask);
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
     public ReactiveCommand<Unit, Unit> AddTaskCommand { get; }
 
-    private void AddTask()
+    private async Task AddTask()
     {
-        var randomName = $"Task {_random.Next(1, 1000)}";
-        var randomPath = $@"C:\Random\Source\{_random.Next(1, 1000)}";
-        
-        var task = new TaskModel(randomName, randomPath);
-        var taskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
-        
-        Nodes.Add(taskNode);
+        if (_window == null) return;
+
+        var task = await TaskEditorWindow.ShowDialog(_window);
+        if (task != null)
+        {
+            var taskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
+            taskNode.SetHostWindow(_window);
+            Nodes.Add(taskNode);
+        }
     }
 
-    private void EditTask(TaskNodeViewModel taskNodeViewModel)
+    private async Task EditTask(TaskNodeViewModel taskNodeViewModel)
     {
-        var randomName = $"Task {_random.Next(1, 1000)}";
-        var randomPath = $@"C:\Random\Source\{_random.Next(1, 1000)}";
-        taskNodeViewModel.UpdateNameAndPath(randomName, randomPath);
+        if (_window == null) return;
+
+        var task = await TaskEditorWindow.ShowDialog(_window, taskNodeViewModel._task);
+        if (task != null)
+        {
+            var index = Nodes.IndexOf(taskNodeViewModel);
+            var newTaskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
+            newTaskNode.SetHostWindow(_window);
+            Nodes[index] = newTaskNode;
+        }
     }
 
     private void DeleteTask(TaskNodeViewModel taskNodeViewModel)
     {
         Nodes.Remove(taskNodeViewModel);
+    }
+
+    public void SetHostWindow(Window window)
+    {
+        _window = window;
+        foreach (var task in Nodes)
+        {
+            task.SetHostWindow(window);
+        }
     }
 }

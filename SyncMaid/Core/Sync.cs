@@ -1,10 +1,24 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using SyncMaid.Core.Location;
 
 namespace SyncMaid.Core;
 
 public class Sync
 {
+    private readonly List<DestinationLocation> _destinationLocations;
+    private readonly SourceLocation _sourceLocation;
+
+    public Sync(SourceLocation sourceLocation)
+    {
+        _sourceLocation = sourceLocation;
+        _destinationLocations = new List<DestinationLocation>();
+    }
+
+    public void AddDestination(DestinationLocation destination)
+    {
+        _destinationLocations.Add(destination);
+    }
+
     public void Execute()
     {
         _ensureReadable(_sourceLocation);
@@ -31,7 +45,4 @@ public class Sync
     {
         throw new System.NotImplementedException();
     }
-
-    private List<DestinationLocation> _destinationLocations;
-    private SourceLocation _sourceLocation;
 }

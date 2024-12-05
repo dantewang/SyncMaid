@@ -4,10 +4,13 @@ using System;
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Controls;
 using DynamicData;
 using ReactiveUI;
 using SyncMaid.Models;
+using SyncMaid.Views;
 
 #endregion
 
@@ -15,15 +18,15 @@ namespace SyncMaid.ViewModels;
 
 public class TaskNodeViewModel : ViewModelBase
 {
-    private static readonly Random _random = new();
-    private TaskModel _task;
+    private Window? _window;
+    internal readonly TaskModel _task;
 
     public TaskNodeViewModel(TaskModel task,
-        Action<TaskNodeViewModel> onEdit,
+        Func<TaskNodeViewModel, Task> onEdit,
         Action<TaskNodeViewModel> onDelete)
     {
         _task = task;
-        Children = [];
+        Children = new ObservableCollection<DestinationNodeViewModel>();
 
         // Convert model's destinations to ViewModels
         foreach (var dest in task.Destinations)
@@ -35,9 +38,9 @@ public class TaskNodeViewModel : ViewModelBase
             .Select(count => count > 0);
 
         ExecuteCommand = ReactiveCommand.Create(Execute, canExecute);
-        EditCommand = ReactiveCommand.Create(() => onEdit(this));
+        EditCommand = ReactiveCommand.CreateFromTask(() => onEdit(this));
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
-        AddDestinationCommand = ReactiveCommand.Create(AddDestination);
+        AddDestinationCommand = ReactiveCommand.CreateFromTask(AddDestination);
 
         // Set up property changed notifications for Name and Path
         this.WhenAnyValue(x => x._task.Name)
@@ -55,6 +58,11 @@ public class TaskNodeViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
     public ReactiveCommand<Unit, Unit> AddDestinationCommand { get; }
 
+    public void SetHostWindow(Window window)
+    {
+        _window = window;
+    }
+
     private void Execute()
     {
         // Execute sync for all destinations
@@ -64,36 +72,53 @@ public class TaskNodeViewModel : ViewModelBase
         }
     }
 
-    private void AddDestination()
+    private async Task AddDestination()
     {
-        var randomName = $"Destination {_random.Next(1, 1000)}";
-        var randomPath = $@"D:\Random\Path\{_random.Next(1, 1000)}";
-        
-        var destModel = new DestinationModel(randomName, randomPath);
-        _task.Destinations.Add(destModel);
-        
-        Children.Add(new DestinationNodeViewModel(destModel,
-            EditLeaf,
-            DeleteLeaf));
+        if (_window == null) return;
+
+        var destination = await DestinationEditorWindow.ShowDialog(_window);
+        if (destination != null)
+        {
+            _task.Destinations.Add(destination);
+            Children.Add(new DestinationNodeViewModel(destination,
+                EditLeaf,
+                DeleteLeaf));
+        }
     }
 
-    public void UpdateNameAndPath(string newName, string newPath)
+    private async Task EditLeaf(DestinationNodeViewModel destinationNodeViewModel)
     {
-        _task = _task.WithUpdatedProperties(newName, newPath);
-        this.RaisePropertyChanged(nameof(Name));
-        this.RaisePropertyChanged(nameof(Path));
-    }
+        if (_window == null) return;
 
-    private void EditLeaf(DestinationNodeViewModel destinationNodeViewModel)
-    {
-        var randomName = $"Destination {_random.Next(1, 1000)}";
-        var randomPath = $@"D:\Random\Path\{_random.Next(1, 1000)}";
-        destinationNodeViewModel.UpdateNameAndPath(randomName, randomPath);
+        var destination = await DestinationEditorWindow.ShowDialog(_window,
+            new DestinationModel(
+                destinationNodeViewModel.Name,
+                destinationNodeViewModel.Path,
+                destinationNodeViewModel.Model.SyncAll,
+                destinationNodeViewModel.Model.Strategy,
+                destinationNodeViewModel.Model.Filters));
+
+        if (destination != null)
+        {
+            var index = Children.IndexOf(destinationNodeViewModel);
+            var newDestNode = new DestinationNodeViewModel(destination,
+                EditLeaf,
+                DeleteLeaf);
+            Children[index] = newDestNode;
+
+            var modelIndex = _task.Destinations.IndexOf(destinationNodeViewModel.Model);
+            _task.Destinations[modelIndex] = destination;
+        }
     }
 
     private void DeleteLeaf(DestinationNodeViewModel destinationNodeViewModel)
     {
         _task.Destinations.Remove(destinationNodeViewModel.Model);
         Children.Remove(destinationNodeViewModel);
+    }
+
+    public void SetWindow(Window window)
+    {
+        _window = window;
     }
 }
