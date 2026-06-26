@@ -1,18 +1,31 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using CommunityToolkit.Mvvm.Input;
-using SyncMaid.Views;
+using SyncMaid.Core.Model;
+using SyncMaid.Core.Sync;
+using SyncMaid.Core.Persistence;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private Window? _window;
+    private readonly IDialogService _dialogs;
+    private readonly ITaskStore _store;
+    private readonly SyncEngine _engine;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(IDialogService dialogs, ITaskStore store, SyncEngine engine)
     {
+        _dialogs = dialogs;
+        _store = store;
+        _engine = engine;
+
         Nodes = new ObservableCollection<TaskNodeViewModel>();
+        foreach (var task in _store.Load())
+        {
+            Nodes.Add(CreateNode(task));
+        }
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
@@ -20,42 +33,34 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task AddTask()
     {
-        if (_window == null) return;
-
-        var task = await TaskEditorWindow.ShowDialog(_window);
+        var task = await _dialogs.EditTaskAsync(null);
         if (task != null)
         {
-            var taskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
-            taskNode.SetHostWindow(_window);
-            Nodes.Add(taskNode);
+            Nodes.Add(CreateNode(task));
+            Persist();
         }
     }
 
-    private async Task EditTask(TaskNodeViewModel taskNodeViewModel)
+    private async Task EditTask(TaskNodeViewModel node)
     {
-        if (_window == null) return;
-
-        var task = await TaskEditorWindow.ShowDialog(_window, taskNodeViewModel.Task);
-        if (task != null)
+        var edited = await _dialogs.EditTaskAsync(node.Task);
+        if (edited != null)
         {
-            var index = Nodes.IndexOf(taskNodeViewModel);
-            var newTaskNode = new TaskNodeViewModel(task, EditTask, DeleteTask);
-            newTaskNode.SetHostWindow(_window);
-            Nodes[index] = newTaskNode;
+            // The editor only edits the task's own fields; carry over its destinations.
+            var merged = edited with { Destinations = node.Task.Destinations };
+            Nodes[Nodes.IndexOf(node)] = CreateNode(merged);
+            Persist();
         }
     }
 
-    private void DeleteTask(TaskNodeViewModel taskNodeViewModel)
+    private void DeleteTask(TaskNodeViewModel node)
     {
-        Nodes.Remove(taskNodeViewModel);
+        Nodes.Remove(node);
+        Persist();
     }
 
-    public void SetHostWindow(Window window)
-    {
-        _window = window;
-        foreach (var task in Nodes)
-        {
-            task.SetHostWindow(window);
-        }
-    }
+    private TaskNodeViewModel CreateNode(SyncTask task) =>
+        new(task, _dialogs, _engine, EditTask, DeleteTask, Persist);
+
+    private void Persist() => _store.Save(Nodes.Select(node => node.Task).ToList());
 }

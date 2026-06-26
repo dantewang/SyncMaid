@@ -3,7 +3,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SyncMaid.ViewModels"
-        xmlns:models="using:SyncMaid.Models"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
         x:Class="SyncMaid.Views.DestinationEditorWindow"
         x:DataType="vm:DestinationEditorViewModel"
@@ -11,10 +10,6 @@
         Title="Destination Editor"
         Width="500" Height="600"
         WindowStartupLocation="CenterOwner">
-
-    <Design.DataContext>
-        <vm:DestinationEditorViewModel />
-    </Design.DataContext>
 
     <Window.Styles>
         <Style Selector="TextBlock.label">
@@ -91,9 +86,9 @@
                                 <TextBox Text="{Binding NewFilterPattern}"
                                          Width="200"
                                          Margin="0,0,10,4"
-                                         PlaceholderText="Enter pattern (e.g., *.jpg or ^photos/.*)" />
-                                <ComboBox ItemsSource="{Binding FilterTypes}"
-                                          SelectedItem="{Binding SelectedFilterType}"
+                                         PlaceholderText="e.g. photos/2024 or jpg" />
+                                <ComboBox ItemsSource="{Binding FilterKinds}"
+                                          SelectedItem="{Binding SelectedFilterKind}"
                                           Width="100"
                                           Margin="0,0,10,4" />
                                 <Button Content="Add"
@@ -106,17 +101,14 @@
                                     MinHeight="150"
                                     MaxHeight="200">
                                 <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="models:FilterRule">
+                                    <DataTemplate x:DataType="vm:FilterRuleViewModel">
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right"
                                                     Command="{Binding $parent[ListBox].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
                                                     CommandParameter="{Binding}"
                                                     Content="Remove" />
-                                            <TextBlock Text="{Binding Pattern}"
+                                            <TextBlock Text="{Binding Description}"
                                                       VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding Type}"
-                                                       Margin="10,0"
-                                                       VerticalAlignment="Center" />
                                         </DockPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>

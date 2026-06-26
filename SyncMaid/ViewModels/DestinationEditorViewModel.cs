@@ -1,14 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SyncMaid.Models;
+using SyncMaid.Core.Filtering;
+using SyncMaid.Core.Model;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
+/// <summary>
+/// Edits a single destination: its path, sync strategy, and filter rules. "Sync all"
+/// maps to a single <see cref="AllFilesFilter"/>; otherwise the user builds a list of
+/// path/extension rules. Raises <see cref="CloseRequested"/> instead of touching the
+/// window.
+/// </summary>
 public partial class DestinationEditorViewModel : ViewModelBase
 {
     [ObservableProperty]
@@ -24,50 +32,61 @@ public partial class DestinationEditorViewModel : ViewModelBase
     private bool _syncAll = true;
 
     [ObservableProperty]
-    private SyncStrategy _selectedStrategy = SyncStrategy.Sync;
+    private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddFilterCommand))]
     private string _newFilterPattern = string.Empty;
 
     [ObservableProperty]
-    private FilterType _selectedFilterType = FilterType.Wildcard;
+    private FilterKind _selectedFilterKind = FilterKind.Path;
 
-    private Window? _hostWindow;
+    private readonly IFolderPickerService _folderPicker;
 
-    public DestinationEditorViewModel(DestinationModel? existingDestination = null)
+    public DestinationEditorViewModel(IFolderPickerService folderPicker, Destination? existing = null)
     {
-        if (existingDestination != null)
-        {
-            _name = existingDestination.Name;
-            _path = existingDestination.Path;
-            _syncAll = existingDestination.SyncAll;
-            _selectedStrategy = existingDestination.Strategy;
-            Filters = new ObservableCollection<FilterRule>(existingDestination.Filters);
-        }
-        else
-        {
-            Filters = new ObservableCollection<FilterRule>();
-        }
-
-        // OK validity depends on whether any filters exist when not syncing all.
-        Filters.CollectionChanged += (_, _) => OKCommand.NotifyCanExecuteChanged();
-
+        _folderPicker = folderPicker;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
-        FilterTypes = Enum.GetValues<FilterType>();
+        FilterKinds = Enum.GetValues<FilterKind>();
+        Filters = new ObservableCollection<FilterRuleViewModel>();
+
+        if (existing != null)
+        {
+            _name = existing.Name;
+            _path = existing.Path;
+            _selectedStrategy = existing.Strategy;
+
+            // A lone AllFilesFilter is "sync all"; anything else is an explicit filter list.
+            var isSyncAll = existing.Filters is [AllFilesFilter];
+            _syncAll = isSyncAll;
+            if (!isSyncAll)
+            {
+                foreach (var rule in existing.Filters)
+                {
+                    Filters.Add(new FilterRuleViewModel(rule));
+                }
+            }
+        }
+
+        // OK validity depends on having at least one filter when not syncing all.
+        Filters.CollectionChanged += (_, _) => OKCommand.NotifyCanExecuteChanged();
     }
 
-    public SyncStrategy[] SyncStrategies { get; }
-    public FilterType[] FilterTypes { get; }
-    public ObservableCollection<FilterRule> Filters { get; }
+    /// <summary>Raised when the dialog should close: the destination, or null if cancelled.</summary>
+    public event Action<Destination?>? CloseRequested;
 
-    public void SetHostWindow(Window window) => _hostWindow = window;
+    public SyncStrategy[] SyncStrategies { get; }
+    public FilterKind[] FilterKinds { get; }
+    public ObservableCollection<FilterRuleViewModel> Filters { get; }
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
     {
-        var destination = new DestinationModel(Name, Path, SyncAll, SelectedStrategy, Filters);
-        _hostWindow?.Close(destination);
+        IReadOnlyList<FilterRule> filters = SyncAll
+            ? [new AllFilesFilter()]
+            : Filters.Select(filter => filter.Rule).ToList();
+
+        CloseRequested?.Invoke(new Destination(Name, Path, filters, SelectedStrategy));
     }
 
     private bool CanOk() =>
@@ -76,34 +95,33 @@ public partial class DestinationEditorViewModel : ViewModelBase
         && (SyncAll || Filters.Count > 0);
 
     [RelayCommand]
-    private void Cancel() => _hostWindow?.Close();
+    private void Cancel() => CloseRequested?.Invoke(null);
 
     [RelayCommand]
     private async Task Browse()
     {
-        if (_hostWindow == null) return;
-
-        var folders = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        var folder = await _folderPicker.PickFolderAsync("Select Destination Folder");
+        if (folder != null)
         {
-            Title = "Select Destination Folder",
-            AllowMultiple = false,
-        });
-
-        if (folders.Count > 0)
-        {
-            Path = folders[0].Path.LocalPath;
+            Path = folder;
         }
     }
 
     [RelayCommand(CanExecute = nameof(CanAddFilter))]
     private void AddFilter()
     {
-        Filters.Add(new FilterRule(NewFilterPattern, SelectedFilterType));
+        FilterRule rule = SelectedFilterKind switch
+        {
+            FilterKind.Extension => new ExtensionFilter(NewFilterPattern),
+            _ => new PathFilter(NewFilterPattern),
+        };
+
+        Filters.Add(new FilterRuleViewModel(rule));
         NewFilterPattern = string.Empty;
     }
 
     private bool CanAddFilter() => !string.IsNullOrWhiteSpace(NewFilterPattern);
 
     [RelayCommand]
-    private void RemoveFilter(FilterRule filter) => Filters.Remove(filter);
+    private void RemoveFilter(FilterRuleViewModel filter) => Filters.Remove(filter);
 }

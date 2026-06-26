@@ -1,13 +1,18 @@
 using System;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SyncMaid.Models;
+using SyncMaid.Core.Model;
+using SyncMaid.Core.Triggers;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
+/// <summary>
+/// Edits a task's own fields (name, source, trigger). Destinations are managed by the
+/// task node, not here. Raises <see cref="CloseRequested"/> with the result (or null on
+/// cancel) instead of touching the window, so it stays view-free and testable.
+/// </summary>
 public partial class TaskEditorViewModel : ViewModelBase
 {
     [ObservableProperty]
@@ -27,61 +32,62 @@ public partial class TaskEditorViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _cronExpression = string.Empty;
 
-    private Window? _hostWindow;
+    private readonly IFolderPickerService _folderPicker;
 
-    public TaskEditorViewModel(TaskModel? existingTask = null)
+    public TaskEditorViewModel(IFolderPickerService folderPicker, SyncTask? existing = null)
     {
-        if (existingTask != null)
-        {
-            _name = existingTask.Name;
-            _path = existingTask.Path;
-            _selectedTriggerType = existingTask.TriggerType;
-            _cronExpression = existingTask.CronExpression ?? string.Empty;
-        }
-
+        _folderPicker = folderPicker;
         TriggerTypes = Enum.GetValues<TaskTriggerType>();
+
+        if (existing != null)
+        {
+            _name = existing.Name;
+            _path = existing.SourcePath;
+            (_selectedTriggerType, _cronExpression) = FromTrigger(existing.Trigger);
+        }
     }
+
+    /// <summary>Raised when the dialog should close: the new task, or null if cancelled.</summary>
+    public event Action<SyncTask?>? CloseRequested;
 
     public TaskTriggerType[] TriggerTypes { get; }
 
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
 
-    public void SetHostWindow(Window window) => _hostWindow = window;
-
     [RelayCommand(CanExecute = nameof(CanOk))]
-    private void OK()
-    {
-        var task = new TaskModel(
-            Name,
-            Path,
-            SelectedTriggerType,
-            IsScheduledTrigger ? CronExpression : null);
-
-        _hostWindow?.Close(task);
-    }
+    private void OK() =>
+        // Destinations are merged in by the caller; a fresh task carries none.
+        CloseRequested?.Invoke(new SyncTask(Name, Path, ToTrigger(), []));
 
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
-        && (SelectedTriggerType != TaskTriggerType.Scheduled || !string.IsNullOrWhiteSpace(CronExpression));
+        && (SelectedTriggerType != TaskTriggerType.Scheduled || CronSchedule.IsValid(CronExpression));
 
     [RelayCommand]
-    private void Cancel() => _hostWindow?.Close();
+    private void Cancel() => CloseRequested?.Invoke(null);
 
     [RelayCommand]
     private async Task Browse()
     {
-        if (_hostWindow == null) return;
-
-        var folders = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        var folder = await _folderPicker.PickFolderAsync("Select Source Folder");
+        if (folder != null)
         {
-            Title = "Select Source Folder",
-            AllowMultiple = false,
-        });
-
-        if (folders.Count > 0)
-        {
-            Path = folders[0].Path.LocalPath;
+            Path = folder;
         }
     }
+
+    private Trigger ToTrigger() => SelectedTriggerType switch
+    {
+        TaskTriggerType.Scheduled => new ScheduledTrigger(CronExpression),
+        TaskTriggerType.Watch => new WatchTrigger(),
+        _ => new ManualTrigger(),
+    };
+
+    private static (TaskTriggerType Type, string Cron) FromTrigger(Trigger trigger) => trigger switch
+    {
+        ScheduledTrigger scheduled => (TaskTriggerType.Scheduled, scheduled.CronExpression),
+        WatchTrigger => (TaskTriggerType.Watch, string.Empty),
+        _ => (TaskTriggerType.Manual, string.Empty),
+    };
 }

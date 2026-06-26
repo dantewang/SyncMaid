@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using SyncMaid.Models;
+using SyncMaid.Core.Model;
 
 namespace SyncMaid.ViewModels;
 
@@ -11,20 +11,20 @@ public partial class DestinationNodeViewModel : ViewModelBase
     private readonly Action<DestinationNodeViewModel> _onDelete;
 
     public DestinationNodeViewModel(
-        DestinationModel model,
+        Destination destination,
         Func<DestinationNodeViewModel, Task> onEdit,
         Action<DestinationNodeViewModel> onDelete)
     {
-        Model = model;
+        Destination = destination;
         _onEdit = onEdit;
         _onDelete = onDelete;
     }
 
-    internal DestinationModel Model { get; }
+    /// <summary>The wrapped immutable destination.</summary>
+    public Destination Destination { get; }
 
-    // From the immutable model; editing replaces the node, so no notification needed.
-    public string Name => Model.Name;
-    public string Path => Model.Path;
+    public string Name => Destination.Name;
+    public string Path => Destination.Path;
 
     [RelayCommand]
     private Task Edit() => _onEdit(this);

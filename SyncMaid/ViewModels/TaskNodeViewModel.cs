@@ -1,27 +1,36 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using CommunityToolkit.Mvvm.Input;
-using SyncMaid.Models;
-using SyncMaid.Views;
+using SyncMaid.Core.Model;
+using SyncMaid.Core.Sync;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
 public partial class TaskNodeViewModel : ViewModelBase
 {
+    private readonly IDialogService _dialogs;
+    private readonly SyncEngine _engine;
     private readonly Func<TaskNodeViewModel, Task> _onEdit;
     private readonly Action<TaskNodeViewModel> _onDelete;
-    private Window? _window;
+    private readonly Action _onChanged;
 
     public TaskNodeViewModel(
-        TaskModel task,
+        SyncTask task,
+        IDialogService dialogs,
+        SyncEngine engine,
         Func<TaskNodeViewModel, Task> onEdit,
-        Action<TaskNodeViewModel> onDelete)
+        Action<TaskNodeViewModel> onDelete,
+        Action onChanged)
     {
         Task = task;
+        _dialogs = dialogs;
+        _engine = engine;
         _onEdit = onEdit;
         _onDelete = onDelete;
+        _onChanged = onChanged;
 
         Children = new ObservableCollection<DestinationNodeViewModel>();
         foreach (var destination in task.Destinations)
@@ -29,31 +38,21 @@ public partial class TaskNodeViewModel : ViewModelBase
             Children.Add(new DestinationNodeViewModel(destination, EditLeaf, DeleteLeaf));
         }
 
-        // Execute is only enabled with at least one destination; re-evaluate whenever
-        // the children change (this is the bug the old WhenAnyValue(Count) didn't catch).
+        // Execute is enabled only with at least one destination; re-evaluate on change.
         Children.CollectionChanged += (_, _) => ExecuteCommand.NotifyCanExecuteChanged();
     }
 
-    internal TaskModel Task { get; }
+    /// <summary>The current task. Replaced (immutably) whenever its destinations change.</summary>
+    public SyncTask Task { get; private set; }
 
-    // Name/Path come from the immutable model; editing replaces the whole node, so no
-    // change notification is needed here.
+    // From the immutable task; the node is replaced on edit, so no notification needed.
     public string Name => Task.Name;
-    public string Path => Task.Path;
+    public string Path => Task.SourcePath;
 
     public ObservableCollection<DestinationNodeViewModel> Children { get; }
 
-    public void SetHostWindow(Window window) => _window = window;
-
     [RelayCommand(CanExecute = nameof(CanExecute))]
-    private void Execute()
-    {
-        // Placeholder until the engine is wired in (Phase 5).
-        foreach (var destination in Children)
-        {
-            Console.WriteLine($"Executing sync from {Path} to {destination.Name} ({destination.Path})");
-        }
-    }
+    private Task Execute() => _engine.ExecuteAsync(Task);
 
     private bool CanExecute() => Children.Count > 0;
 
@@ -66,34 +65,34 @@ public partial class TaskNodeViewModel : ViewModelBase
     [RelayCommand]
     private async Task AddDestination()
     {
-        if (_window == null) return;
-
-        var destination = await DestinationEditorWindow.ShowDialog(_window);
+        var destination = await _dialogs.EditDestinationAsync(null);
         if (destination != null)
         {
-            Task.Destinations.Add(destination);
             Children.Add(new DestinationNodeViewModel(destination, EditLeaf, DeleteLeaf));
+            RebuildAndPersist();
         }
     }
 
     private async Task EditLeaf(DestinationNodeViewModel node)
     {
-        if (_window == null) return;
-
-        var edited = await DestinationEditorWindow.ShowDialog(_window, node.Model);
+        var edited = await _dialogs.EditDestinationAsync(node.Destination);
         if (edited != null)
         {
-            var index = Children.IndexOf(node);
-            Children[index] = new DestinationNodeViewModel(edited, EditLeaf, DeleteLeaf);
-
-            var modelIndex = Task.Destinations.IndexOf(node.Model);
-            Task.Destinations[modelIndex] = edited;
+            Children[Children.IndexOf(node)] = new DestinationNodeViewModel(edited, EditLeaf, DeleteLeaf);
+            RebuildAndPersist();
         }
     }
 
     private void DeleteLeaf(DestinationNodeViewModel node)
     {
-        Task.Destinations.Remove(node.Model);
         Children.Remove(node);
+        RebuildAndPersist();
+    }
+
+    // Destinations are immutable on the task, so rebuild it from the child nodes.
+    private void RebuildAndPersist()
+    {
+        Task = Task with { Destinations = Children.Select(child => child.Destination).ToList() };
+        _onChanged();
     }
 }

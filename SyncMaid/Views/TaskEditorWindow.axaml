@@ -11,10 +11,6 @@
         Width="450" Height="350"
         WindowStartupLocation="CenterOwner">
 
-    <Design.DataContext>
-        <vm:TaskEditorViewModel />
-    </Design.DataContext>
-
     <Window.Styles>
         <Style Selector="TextBlock.label">
             <Setter Property="VerticalAlignment" Value="Center" />
