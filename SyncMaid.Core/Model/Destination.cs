@@ -13,6 +13,12 @@ public sealed record Destination(
     SyncStrategy Strategy)
 {
     /// <summary>
+    /// Stable identity, generated once and preserved across edits (via <c>with</c>) so
+    /// the destination's sync status survives renames. Persisted with the task.
+    /// </summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+
+    /// <summary>
     /// True when the source file at <paramref name="relativePath"/> should be synced
     /// to this destination. A file is included when it matches any rule; with no rules,
     /// nothing is selected. Rules are evaluated in order to keep behavior predictable

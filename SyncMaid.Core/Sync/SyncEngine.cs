@@ -17,16 +17,17 @@ public sealed class SyncEngine : ISyncEngine
     public SyncEngine(IFileSystem fileSystem) => _fileSystem = fileSystem;
 
     /// <summary>
-    /// Executes <paramref name="task"/> against every destination, in order. Honors
-    /// <paramref name="cancellationToken"/> between operations and reports a
-    /// <see cref="SyncProgress"/> before applying each operation.
+    /// Executes <paramref name="task"/> against every destination, in order, returning
+    /// each destination's outcome. A failure in one destination is captured as a failed
+    /// status and does not stop the others. Honors <paramref name="cancellationToken"/>
+    /// between operations and reports <see cref="SyncProgress"/> before each operation.
     /// </summary>
     /// <remarks>
     /// The work is synchronous filesystem I/O; we wrap it on a background thread via
-    /// <see cref="Task.Run(Action, CancellationToken)"/> so callers (e.g. a UI) stay
-    /// responsive and can await completion.
+    /// <see cref="Task.Run{TResult}(Func{TResult}, CancellationToken)"/> so callers
+    /// (e.g. a UI) stay responsive and can await completion.
     /// </remarks>
-    public Task ExecuteAsync(
+    public Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
         SyncTask task,
         CancellationToken cancellationToken = default,
         IProgress<SyncProgress>? progress = null)
@@ -34,12 +35,29 @@ public sealed class SyncEngine : ISyncEngine
         return Task.Run(() => Execute(task, cancellationToken, progress), cancellationToken);
     }
 
-    private void Execute(SyncTask task, CancellationToken cancellationToken, IProgress<SyncProgress>? progress)
+    private IReadOnlyList<DestinationSyncStatus> Execute(
+        SyncTask task,
+        CancellationToken cancellationToken,
+        IProgress<SyncProgress>? progress)
     {
+        var statuses = new List<DestinationSyncStatus>(task.Destinations.Count);
         foreach (var destination in task.Destinations)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            statuses.Add(ExecuteDestination(task, destination, cancellationToken, progress));
+        }
 
+        return statuses;
+    }
+
+    private DestinationSyncStatus ExecuteDestination(
+        SyncTask task,
+        Destination destination,
+        CancellationToken cancellationToken,
+        IProgress<SyncProgress>? progress)
+    {
+        try
+        {
             var filtered = _fileSystem
                 .EnumerateFiles(task.SourcePath)
                 .Where(destination.Includes)
@@ -47,6 +65,7 @@ public sealed class SyncEngine : ISyncEngine
 
             var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, destination, filtered);
 
+            var filesCopied = 0;
             for (var i = 0; i < plan.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -54,7 +73,24 @@ public sealed class SyncEngine : ISyncEngine
                 var operation = plan[i];
                 progress?.Report(new SyncProgress(destination, operation, i, plan.Count));
                 SyncApplier.Apply(_fileSystem, operation);
+
+                if (operation is CopyOperation or MoveOperation)
+                {
+                    filesCopied++;
+                }
             }
+
+            return new DestinationSyncStatus(
+                destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, filesCopied, Error: null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // cancellation is not a destination failure; let it propagate.
+        }
+        catch (Exception exception)
+        {
+            return new DestinationSyncStatus(
+                destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, FilesCopied: 0, exception.Message);
         }
     }
 }

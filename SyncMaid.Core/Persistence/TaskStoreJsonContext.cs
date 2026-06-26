@@ -14,4 +14,5 @@ namespace SyncMaid.Core.Persistence;
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(List<SyncTask>))]
+[JsonSerializable(typeof(List<DestinationSyncStatus>))]
 internal sealed partial class TaskStoreJsonContext : JsonSerializerContext;

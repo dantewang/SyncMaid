@@ -10,4 +10,11 @@ public sealed record SyncTask(
     string Name,
     string SourcePath,
     Trigger Trigger,
-    IReadOnlyList<Destination> Destinations);
+    IReadOnlyList<Destination> Destinations)
+{
+    /// <summary>
+    /// Stable identity, generated once and preserved across edits (via <c>with</c>) so
+    /// external state keyed by the task survives renames. Persisted with the task.
+    /// </summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+}

@@ -9,10 +9,11 @@ namespace SyncMaid.Core.Sync;
 public interface ISyncEngine
 {
     /// <summary>
-    /// Executes <paramref name="task"/> against every destination, honoring
-    /// <paramref name="cancellationToken"/> and reporting <paramref name="progress"/>.
+    /// Executes <paramref name="task"/> against every destination, returning each
+    /// destination's outcome. Honors <paramref name="cancellationToken"/> and reports
+    /// <paramref name="progress"/> as operations are applied.
     /// </summary>
-    Task ExecuteAsync(
+    Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
         SyncTask task,
         CancellationToken cancellationToken = default,
         IProgress<SyncProgress>? progress = null);
