@@ -7,6 +7,10 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <!-- BuiltInComInteropSupport was required before Avalonia 12.0 for accessibility APIs; no longer needed. -->
         <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+        <!-- Publish as native AOT (verified warning-free). Turns on the trim/AOT analyzers
+             for normal builds too, so regressions surface early. Native publish needs the
+             MSVC C++ toolchain (e.g. from a VS Developer Command Prompt). -->
+        <PublishAot>true</PublishAot>
     </PropertyGroup>
 
     <ItemGroup>
