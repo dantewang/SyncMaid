@@ -42,6 +42,7 @@ public partial class DestinationEditorViewModel : ViewModelBase
     private FilterKind _selectedFilterKind = FilterKind.Path;
 
     private readonly IFolderPickerService _folderPicker;
+    private readonly Guid _id;
 
     public DestinationEditorViewModel(IFolderPickerService folderPicker, Destination? existing = null)
     {
@@ -52,6 +53,7 @@ public partial class DestinationEditorViewModel : ViewModelBase
 
         if (existing != null)
         {
+            _id = existing.Id;   // preserve identity so status stays linked across edits
             _name = existing.Name;
             _path = existing.Path;
             _selectedStrategy = existing.Strategy;
@@ -66,6 +68,10 @@ public partial class DestinationEditorViewModel : ViewModelBase
                     Filters.Add(new FilterRuleViewModel(rule));
                 }
             }
+        }
+        else
+        {
+            _id = Guid.NewGuid();
         }
 
         // OK validity depends on having at least one filter when not syncing all.
@@ -86,7 +92,7 @@ public partial class DestinationEditorViewModel : ViewModelBase
             ? [new AllFilesFilter()]
             : Filters.Select(filter => filter.Rule).ToList();
 
-        CloseRequested?.Invoke(new Destination(Name, Path, filters, SelectedStrategy));
+        CloseRequested?.Invoke(new Destination(Name, Path, filters, SelectedStrategy) { Id = _id });
     }
 
     private bool CanOk() =>

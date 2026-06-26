@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using SyncMaid.UiTests.Fakes;
@@ -18,15 +20,20 @@ public class TaskNodeViewModelTests
         FakeDialogService? dialogs = null,
         FakeSyncEngine? engine = null,
         FakeTriggerSourceFactory? triggers = null,
-        System.Action? onChanged = null) =>
+        Action? onChanged = null,
+        Action<IReadOnlyList<DestinationSyncStatus>>? onStatuses = null,
+        IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null) =>
         new(
             task,
+            statuses ?? new Dictionary<Guid, DestinationSyncStatus>(),
             dialogs ?? new FakeDialogService(),
             engine ?? new FakeSyncEngine(),
             triggers ?? new FakeTriggerSourceFactory(),
+            new FakeUiDispatcher(),
             _ => Task.CompletedTask,
             _ => { },
-            onChanged ?? (() => { }));
+            onChanged ?? (() => { }),
+            onStatuses ?? (_ => { }));
 
     [Fact]
     public void Execute_is_disabled_without_destinations()
@@ -83,6 +90,37 @@ public class TaskNodeViewModelTests
         source.Raise();   // a late event after dispose must not run anything
 
         Assert.True(source.Disposed);
+    }
+
+    [Fact]
+    public void Running_then_completing_updates_destination_status_and_reports_it()
+    {
+        var dest = Dest("D");
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]);
+        var engine = new FakeSyncEngine();   // returns Success per destination by default
+        IReadOnlyList<DestinationSyncStatus>? reported = null;
+        var node = New(task, engine: engine, onStatuses: s => reported = s);
+
+        node.ExecuteCommand.Execute(null);
+
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
+        Assert.Equal(SyncOutcome.Success, node.HealthOutcome);
+        Assert.NotNull(reported);
+        Assert.Equal(dest.Id, reported!.Single().DestinationId);
+    }
+
+    [Fact]
+    public void Loaded_status_is_shown_on_the_destination()
+    {
+        var dest = Dest("D");
+        var status = new DestinationSyncStatus(dest.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0, "boom");
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]),
+            statuses: new Dictionary<Guid, DestinationSyncStatus> { [dest.Id] = status });
+
+        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+        Assert.Contains("boom", node.Children[0].StatusText);
+        Assert.Equal("1 of 1 failed", node.HealthText);
     }
 
     [Fact]

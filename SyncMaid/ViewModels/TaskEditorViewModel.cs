@@ -33,6 +33,7 @@ public partial class TaskEditorViewModel : ViewModelBase
     private string _cronExpression = string.Empty;
 
     private readonly IFolderPickerService _folderPicker;
+    private readonly Guid _id;
 
     public TaskEditorViewModel(IFolderPickerService folderPicker, SyncTask? existing = null)
     {
@@ -41,9 +42,14 @@ public partial class TaskEditorViewModel : ViewModelBase
 
         if (existing != null)
         {
+            _id = existing.Id;   // preserve identity so status stays linked across edits
             _name = existing.Name;
             _path = existing.SourcePath;
             (_selectedTriggerType, _cronExpression) = FromTrigger(existing.Trigger);
+        }
+        else
+        {
+            _id = Guid.NewGuid();
         }
     }
 
@@ -57,7 +63,7 @@ public partial class TaskEditorViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK() =>
         // Destinations are merged in by the caller; a fresh task carries none.
-        CloseRequested?.Invoke(new SyncTask(Name, Path, ToTrigger(), []));
+        CloseRequested?.Invoke(new SyncTask(Name, Path, ToTrigger(), []) { Id = _id });
 
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)

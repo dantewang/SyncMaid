@@ -12,6 +12,19 @@ public class DestinationEditorViewModelTests
         new(new FakeFolderPickerService(folder), existing);
 
     [Fact]
+    public void Editing_preserves_the_destination_id()
+    {
+        var existing = new Destination("d", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var vm = New(existing: existing);
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(existing.Id, result!.Id);
+    }
+
+    [Fact]
     public void SyncAll_OK_builds_a_single_all_files_filter()
     {
         var vm = New();

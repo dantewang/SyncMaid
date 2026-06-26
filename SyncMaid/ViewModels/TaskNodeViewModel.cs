@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
@@ -16,38 +18,54 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly IDialogService _dialogs;
     private readonly ISyncEngine _engine;
     private readonly ITriggerSourceFactory _triggerFactory;
+    private readonly IUiDispatcher _dispatcher;
     private readonly Func<TaskNodeViewModel, Task> _onEdit;
     private readonly Action<TaskNodeViewModel> _onDelete;
     private readonly Action _onChanged;
+    private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
 
     private ITriggerSource? _triggerSource;
     private int _running;   // 0 = idle, 1 = a sync is in progress (manual or triggered)
 
+    [ObservableProperty]
+    private bool _isExpanded = true;
+
     public TaskNodeViewModel(
         SyncTask task,
+        IReadOnlyDictionary<Guid, DestinationSyncStatus> statuses,
         IDialogService dialogs,
         ISyncEngine engine,
         ITriggerSourceFactory triggerFactory,
+        IUiDispatcher dispatcher,
         Func<TaskNodeViewModel, Task> onEdit,
         Action<TaskNodeViewModel> onDelete,
-        Action onChanged)
+        Action onChanged,
+        Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated)
     {
         Task = task;
         _dialogs = dialogs;
         _engine = engine;
         _triggerFactory = triggerFactory;
+        _dispatcher = dispatcher;
         _onEdit = onEdit;
         _onDelete = onDelete;
         _onChanged = onChanged;
+        _onStatusesUpdated = onStatusesUpdated;
 
         Children = new ObservableCollection<DestinationNodeViewModel>();
         foreach (var destination in task.Destinations)
         {
-            Children.Add(new DestinationNodeViewModel(destination, EditLeaf, DeleteLeaf));
+            var status = statuses.TryGetValue(destination.Id, out var saved)
+                ? saved
+                : DestinationSyncStatus.Never(destination.Id);
+            Children.Add(NewChild(destination, status));
         }
 
-        // Execute is enabled only with at least one destination; re-evaluate on change.
-        Children.CollectionChanged += (_, _) => ExecuteCommand.NotifyCanExecuteChanged();
+        Children.CollectionChanged += (_, _) =>
+        {
+            ExecuteCommand.NotifyCanExecuteChanged();
+            RefreshHealth();
+        };
 
         StartTrigger();
     }
@@ -59,7 +77,42 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     public string Name => Task.Name;
     public string Path => Task.SourcePath;
 
+    public string TriggerText => Task.Trigger switch
+    {
+        ManualTrigger => "Manual",
+        WatchTrigger => "Watching",
+        ScheduledTrigger scheduled => $"Scheduled · {scheduled.CronExpression}",
+        _ => "Manual",
+    };
+
     public ObservableCollection<DestinationNodeViewModel> Children { get; }
+
+    /// <summary>At-a-glance health shown on the (possibly collapsed) card header.</summary>
+    public SyncOutcome HealthOutcome
+    {
+        get
+        {
+            if (Children.Count == 0) return SyncOutcome.Never;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return SyncOutcome.Running;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Failed)) return SyncOutcome.Failed;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return SyncOutcome.Success;
+            return SyncOutcome.Never;
+        }
+    }
+
+    public string HealthText
+    {
+        get
+        {
+            if (Children.Count == 0) return "No destinations";
+            if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return "Syncing…";
+            var failed = Children.Count(c => c.Outcome == SyncOutcome.Failed);
+            if (failed > 0) return $"{failed} of {Children.Count} failed";
+            if (Children.All(c => c.Outcome == SyncOutcome.Success)) return "All synced";
+            if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return "Partly synced";
+            return "Never run";
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanExecute))]
     private Task Execute() => RunAsync();
@@ -78,7 +131,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         var destination = await _dialogs.EditDestinationAsync(null);
         if (destination != null)
         {
-            Children.Add(new DestinationNodeViewModel(destination, EditLeaf, DeleteLeaf));
+            Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
             RebuildAndPersist();
         }
     }
@@ -88,7 +141,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         var edited = await _dialogs.EditDestinationAsync(node.Destination);
         if (edited != null)
         {
-            Children[Children.IndexOf(node)] = new DestinationNodeViewModel(edited, EditLeaf, DeleteLeaf);
+            // Id is preserved by the editor, so the existing status still applies.
+            Children[Children.IndexOf(node)] = NewChild(edited, node.Status);
             RebuildAndPersist();
         }
     }
@@ -99,11 +153,20 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         RebuildAndPersist();
     }
 
+    private DestinationNodeViewModel NewChild(Destination destination, DestinationSyncStatus status) =>
+        new(destination, status, EditLeaf, DeleteLeaf);
+
     // Destinations are immutable on the task, so rebuild it from the child nodes.
     private void RebuildAndPersist()
     {
         Task = Task with { Destinations = Children.Select(child => child.Destination).ToList() };
         _onChanged();
+    }
+
+    private void RefreshHealth()
+    {
+        OnPropertyChanged(nameof(HealthOutcome));
+        OnPropertyChanged(nameof(HealthText));
     }
 
     // Wires the task's trigger (scheduled/watch) to run the sync automatically. Manual
@@ -125,8 +188,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private async void OnTriggerFired(object? sender, EventArgs e) => await RunAsync();
 
-    // Single entry point for both manual and triggered runs; skips if one is already
-    // in flight so overlapping triggers don't run concurrent syncs of the same task.
+    // Single entry point for both manual and triggered runs; skips if one is already in
+    // flight so overlapping triggers don't run concurrent syncs of the same task. VM
+    // mutations are marshaled to the UI thread since triggers fire on background threads.
     private async Task RunAsync()
     {
         if (Interlocked.Exchange(ref _running, 1) == 1)
@@ -136,7 +200,29 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
         try
         {
-            await _engine.ExecuteAsync(Task);
+            _dispatcher.Post(() =>
+            {
+                foreach (var child in Children)
+                {
+                    child.MarkRunning();
+                }
+
+                RefreshHealth();
+            });
+
+            var statuses = await _engine.ExecuteAsync(Task);
+
+            _dispatcher.Post(() =>
+            {
+                foreach (var status in statuses)
+                {
+                    ChildById(status.DestinationId)?.SetStatus(status);
+                }
+
+                RefreshHealth();
+            });
+
+            _onStatusesUpdated(statuses);
         }
         catch
         {
@@ -147,6 +233,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             Interlocked.Exchange(ref _running, 0);
         }
     }
+
+    private DestinationNodeViewModel? ChildById(Guid id) => Children.FirstOrDefault(c => c.Id == id);
 
     public void Dispose()
     {

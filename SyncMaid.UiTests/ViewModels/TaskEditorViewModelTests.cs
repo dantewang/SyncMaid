@@ -11,6 +11,33 @@ public class TaskEditorViewModelTests
         new(new FakeFolderPickerService(folder), existing);
 
     [Fact]
+    public void Editing_preserves_the_task_id()
+    {
+        var existing = new SyncTask("n", @"C:\s", new ManualTrigger(), []);
+        var vm = New(existing: existing);
+        SyncTask? result = null;
+        vm.CloseRequested += t => result = t;
+
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(existing.Id, result!.Id);
+    }
+
+    [Fact]
+    public void A_new_task_gets_a_fresh_id()
+    {
+        var vm = New();
+        vm.Name = "x";
+        vm.Path = @"C:\y";
+        SyncTask? result = null;
+        vm.CloseRequested += t => result = t;
+
+        vm.OKCommand.Execute(null);
+
+        Assert.NotEqual(System.Guid.Empty, result!.Id);
+    }
+
+    [Fact]
     public void OK_is_disabled_until_name_and_path_are_set()
     {
         var vm = New();

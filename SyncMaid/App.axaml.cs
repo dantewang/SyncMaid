@@ -39,24 +39,29 @@ public partial class App : Application
     // reflection-based activation) so the graph stays AOT/trim-safe.
     private static ServiceProvider ConfigureServices()
     {
-        var configPath = Path.Combine(
+        var configDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SyncMaid",
-            "tasks.json");
+            "SyncMaid");
+        var configPath = Path.Combine(configDir, "tasks.json");
+        var statusPath = Path.Combine(configDir, "status.json");
 
         var services = new ServiceCollection();
 
         services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
+        services.AddSingleton<IStatusStore>(sp => new JsonStatusStore(sp.GetRequiredService<IFileSystem>(), statusPath));
         services.AddSingleton<ISyncEngine>(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<ITriggerSourceFactory>(_ => new TriggerSourceFactory());
+        services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(sp.GetRequiredService<IFolderPickerService>()));
         services.AddSingleton(sp => new MainWindowViewModel(
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ITaskStore>(),
+            sp.GetRequiredService<IStatusStore>(),
             sp.GetRequiredService<ISyncEngine>(),
-            sp.GetRequiredService<ITriggerSourceFactory>()));
+            sp.GetRequiredService<ITriggerSourceFactory>(),
+            sp.GetRequiredService<IUiDispatcher>()));
 
         return services.BuildServiceProvider();
     }

@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using SyncMaid.UiTests.Fakes;
+using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
 using SyncMaid.ViewModels;
@@ -15,12 +16,15 @@ public class MainWindowViewModelTests
     private static MainWindowViewModel New(
         FakeDialogService? dialogs = null,
         RecordingTaskStore? store = null,
-        FakeTriggerSourceFactory? triggers = null) =>
+        FakeTriggerSourceFactory? triggers = null,
+        RecordingStatusStore? statusStore = null) =>
         new(
             dialogs ?? new FakeDialogService(),
             store ?? new RecordingTaskStore(),
+            statusStore ?? new RecordingStatusStore(),
             new FakeSyncEngine(),
-            triggers ?? new FakeTriggerSourceFactory());
+            triggers ?? new FakeTriggerSourceFactory(),
+            new FakeUiDispatcher());
 
     [Fact]
     public void Loads_existing_tasks_from_the_store_on_construction()
@@ -84,6 +88,61 @@ public class MainWindowViewModelTests
 
         Assert.Empty(vm.Nodes);
         Assert.True(source.Disposed);
+    }
+
+    [Fact]
+    public void Loads_saved_status_and_shows_it_on_the_destination()
+    {
+        var dest = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]);
+        var statusStore = new RecordingStatusStore(new Dictionary<System.Guid, DestinationSyncStatus>
+        {
+            [dest.Id] = new(dest.Id, SyncOutcome.Success, System.DateTimeOffset.UtcNow, 7, null),
+        });
+
+        var vm = New(store: new RecordingTaskStore([task]), statusStore: statusStore);
+
+        var child = vm.Nodes[0].Children[0];
+        Assert.Equal(SyncOutcome.Success, child.Outcome);
+        Assert.Contains("7 files", child.StatusText);
+    }
+
+    [Fact]
+    public void Running_a_task_persists_status_to_the_status_store()
+    {
+        var dest = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]);
+        var statusStore = new RecordingStatusStore();
+        var vm = New(store: new RecordingTaskStore([task]), statusStore: statusStore);
+
+        vm.Nodes[0].ExecuteCommand.Execute(null);
+
+        Assert.True(statusStore.SaveCount > 0);
+        Assert.True(statusStore.Saved.ContainsKey(dest.Id));
+    }
+
+    [Fact]
+    public void Toggle_expand_all_collapses_every_node_and_updates_the_label()
+    {
+        var vm = New(store: new RecordingTaskStore([Task("A"), Task("B")]));
+        Assert.True(vm.AllExpanded);
+
+        vm.ToggleExpandAllCommand.Execute(null);
+
+        Assert.False(vm.AllExpanded);
+        Assert.All(vm.Nodes, n => Assert.False(n.IsExpanded));
+        Assert.Equal("Expand all", vm.ExpandCollapseLabel);
+    }
+
+    [Fact]
+    public void Toggle_sidebar_flips_visibility()
+    {
+        var vm = New();
+        Assert.True(vm.IsSidebarVisible);
+
+        vm.ToggleSidebarCommand.Execute(null);
+
+        Assert.False(vm.IsSidebarVisible);
     }
 
     [Fact]
