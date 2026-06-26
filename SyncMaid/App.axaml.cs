@@ -47,13 +47,13 @@ public partial class App : Application
 
         services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
-        services.AddSingleton(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
+        services.AddSingleton<ISyncEngine>(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(sp.GetRequiredService<IFolderPickerService>()));
         services.AddSingleton(sp => new MainWindowViewModel(
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ITaskStore>(),
-            sp.GetRequiredService<SyncEngine>()));
+            sp.GetRequiredService<ISyncEngine>()));
 
         return services.BuildServiceProvider();
     }

@@ -10,7 +10,7 @@ namespace SyncMaid.Core.Sync;
 /// <see cref="SyncPlanner"/> and <see cref="SyncApplier"/> so this type only
 /// orchestrates: enumerate → filter → plan → apply, with cancellation and progress.
 /// </summary>
-public sealed class SyncEngine
+public sealed class SyncEngine : ISyncEngine
 {
     private readonly IFileSystem _fileSystem;
 

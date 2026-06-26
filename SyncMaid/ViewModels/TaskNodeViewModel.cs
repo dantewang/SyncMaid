@@ -12,7 +12,7 @@ namespace SyncMaid.ViewModels;
 public partial class TaskNodeViewModel : ViewModelBase
 {
     private readonly IDialogService _dialogs;
-    private readonly SyncEngine _engine;
+    private readonly ISyncEngine _engine;
     private readonly Func<TaskNodeViewModel, Task> _onEdit;
     private readonly Action<TaskNodeViewModel> _onDelete;
     private readonly Action _onChanged;
@@ -20,7 +20,7 @@ public partial class TaskNodeViewModel : ViewModelBase
     public TaskNodeViewModel(
         SyncTask task,
         IDialogService dialogs,
-        SyncEngine engine,
+        ISyncEngine engine,
         Func<TaskNodeViewModel, Task> onEdit,
         Action<TaskNodeViewModel> onDelete,
         Action onChanged)

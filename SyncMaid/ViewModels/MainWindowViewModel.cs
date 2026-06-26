@@ -13,9 +13,9 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IDialogService _dialogs;
     private readonly ITaskStore _store;
-    private readonly SyncEngine _engine;
+    private readonly ISyncEngine _engine;
 
-    public MainWindowViewModel(IDialogService dialogs, ITaskStore store, SyncEngine engine)
+    public MainWindowViewModel(IDialogService dialogs, ITaskStore store, ISyncEngine engine)
     {
         _dialogs = dialogs;
         _store = store;

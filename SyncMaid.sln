@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncMaid.Core", "SyncMaid.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncMaid.Core.Tests", "SyncMaid.Core.Tests\SyncMaid.Core.Tests.csproj", "{29F18BE9-E635-417F-8B42-B2BBB2AE8AD8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncMaid.App.Tests", "SyncMaid.App.Tests\SyncMaid.App.Tests.csproj", "{C111D48A-11F6-4186-9A8A-D0FE092F320A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,18 @@ Global
 		{29F18BE9-E635-417F-8B42-B2BBB2AE8AD8}.Release|x64.Build.0 = Release|Any CPU
 		{29F18BE9-E635-417F-8B42-B2BBB2AE8AD8}.Release|x86.ActiveCfg = Release|Any CPU
 		{29F18BE9-E635-417F-8B42-B2BBB2AE8AD8}.Release|x86.Build.0 = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|x64.Build.0 = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Debug|x86.Build.0 = Debug|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|x64.ActiveCfg = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|x64.Build.0 = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|x86.ActiveCfg = Release|Any CPU
+		{C111D48A-11F6-4186-9A8A-D0FE092F320A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
