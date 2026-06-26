@@ -14,8 +14,13 @@ public class MainWindowViewModelTests
 
     private static MainWindowViewModel New(
         FakeDialogService? dialogs = null,
-        RecordingTaskStore? store = null) =>
-        new(dialogs ?? new FakeDialogService(), store ?? new RecordingTaskStore(), new FakeSyncEngine());
+        RecordingTaskStore? store = null,
+        FakeTriggerSourceFactory? triggers = null) =>
+        new(
+            dialogs ?? new FakeDialogService(),
+            store ?? new RecordingTaskStore(),
+            new FakeSyncEngine(),
+            triggers ?? new FakeTriggerSourceFactory());
 
     [Fact]
     public void Loads_existing_tasks_from_the_store_on_construction()
@@ -55,6 +60,30 @@ public class MainWindowViewModelTests
 
         Assert.Empty(vm.Nodes);
         Assert.Equal(0, store.SaveCount);
+    }
+
+    [Fact]
+    public void Loading_tasks_starts_a_trigger_for_each()
+    {
+        var triggers = new FakeTriggerSourceFactory();
+
+        New(store: new RecordingTaskStore([Task("A"), Task("B")]), triggers: triggers);
+
+        Assert.Equal(2, triggers.Created.Count);
+        Assert.All(triggers.Created, source => Assert.True(source.Started));
+    }
+
+    [Fact]
+    public void Deleting_a_task_disposes_its_trigger()
+    {
+        var triggers = new FakeTriggerSourceFactory();
+        var vm = New(store: new RecordingTaskStore([Task("A")]), triggers: triggers);
+        var source = triggers.Created.Single();
+
+        vm.Nodes[0].DeleteCommand.Execute(null);
+
+        Assert.Empty(vm.Nodes);
+        Assert.True(source.Disposed);
     }
 
     [Fact]

@@ -7,9 +7,10 @@ public class TriggerSourceFactoryTests
     [Fact]
     public void Create_maps_each_trigger_to_its_source_type()
     {
-        using var manual = TriggerSourceFactory.Create(new ManualTrigger(), @"C:\src");
-        using var scheduled = TriggerSourceFactory.Create(new ScheduledTrigger("*/5 * * * *"), @"C:\src");
-        using var watch = TriggerSourceFactory.Create(new WatchTrigger(), @"C:\src");
+        var factory = new TriggerSourceFactory();
+        using var manual = factory.Create(new ManualTrigger(), @"C:\src");
+        using var scheduled = factory.Create(new ScheduledTrigger("*/5 * * * *"), @"C:\src");
+        using var watch = factory.Create(new WatchTrigger(), @"C:\src");
 
         Assert.IsType<ManualTriggerSource>(manual);
         Assert.IsType<ScheduledTriggerSource>(scheduled);

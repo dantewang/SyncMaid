@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Persistence;
 using SyncMaid.Core.Sync;
+using SyncMaid.Core.Triggers;
 using SyncMaid.Services;
 using SyncMaid.ViewModels;
 using SyncMaid.Views;
@@ -48,12 +49,14 @@ public partial class App : Application
         services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
         services.AddSingleton<ISyncEngine>(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
+        services.AddSingleton<ITriggerSourceFactory>(_ => new TriggerSourceFactory());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(sp.GetRequiredService<IFolderPickerService>()));
         services.AddSingleton(sp => new MainWindowViewModel(
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ITaskStore>(),
-            sp.GetRequiredService<ISyncEngine>()));
+            sp.GetRequiredService<ISyncEngine>(),
+            sp.GetRequiredService<ITriggerSourceFactory>()));
 
         return services.BuildServiceProvider();
     }

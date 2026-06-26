@@ -63,7 +63,8 @@ public class EditorWindowHeadlessTests
     public void MainWindow_renders_the_tasks_from_the_view_model()
     {
         var store = new RecordingTaskStore([new SyncTask("Photos", @"C:\p", new ManualTrigger(), [])]);
-        var viewModel = new MainWindowViewModel(new FakeDialogService(), store, new FakeSyncEngine());
+        var viewModel = new MainWindowViewModel(
+            new FakeDialogService(), store, new FakeSyncEngine(), new FakeTriggerSourceFactory());
         var window = new MainWindow { DataContext = viewModel };
         window.Show();
         Dispatcher.UIThread.RunJobs();

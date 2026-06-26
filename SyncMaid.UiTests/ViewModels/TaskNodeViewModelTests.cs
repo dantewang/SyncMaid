@@ -17,11 +17,13 @@ public class TaskNodeViewModelTests
         SyncTask task,
         FakeDialogService? dialogs = null,
         FakeSyncEngine? engine = null,
+        FakeTriggerSourceFactory? triggers = null,
         System.Action? onChanged = null) =>
         new(
             task,
             dialogs ?? new FakeDialogService(),
             engine ?? new FakeSyncEngine(),
+            triggers ?? new FakeTriggerSourceFactory(),
             _ => Task.CompletedTask,
             _ => { },
             onChanged ?? (() => { }));
@@ -44,6 +46,43 @@ public class TaskNodeViewModelTests
         node.ExecuteCommand.Execute(null);
 
         Assert.Same(task, Assert.Single(engine.Executed));
+    }
+
+    [Fact]
+    public void A_trigger_source_is_created_and_started_for_the_task()
+    {
+        var triggers = new FakeTriggerSourceFactory();
+
+        New(new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]), triggers: triggers);
+
+        Assert.True(Assert.Single(triggers.Created).Started);
+    }
+
+    [Fact]
+    public void When_the_trigger_fires_the_sync_runs_automatically()
+    {
+        // The regression: a watch/scheduled trigger must run the engine without a manual click.
+        var engine = new FakeSyncEngine();
+        var triggers = new FakeTriggerSourceFactory();
+        var task = new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]);
+        New(task, engine: engine, triggers: triggers);
+
+        triggers.Created.Single().Raise();
+
+        Assert.Same(task, Assert.Single(engine.Executed));
+    }
+
+    [Fact]
+    public void Disposing_the_node_stops_and_disposes_its_trigger_source()
+    {
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(new SyncTask("A", @"C:\a", new WatchTrigger(), []), triggers: triggers);
+        var source = triggers.Created.Single();
+
+        node.Dispose();
+        source.Raise();   // a late event after dispose must not run anything
+
+        Assert.True(source.Disposed);
     }
 
     [Fact]
