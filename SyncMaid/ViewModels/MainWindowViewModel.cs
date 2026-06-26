@@ -1,32 +1,23 @@
-#region
-
-using System;
 using System.Collections.ObjectModel;
-using System.Reactive;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia.Controls;
-using ReactiveUI;
-using SyncMaid.Models;
+using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Views;
-
-#endregion
 
 namespace SyncMaid.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase
 {
     private Window? _window;
 
     public MainWindowViewModel()
     {
         Nodes = new ObservableCollection<TaskNodeViewModel>();
-        AddTaskCommand = ReactiveCommand.CreateFromTask(AddTask);
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
-    public ReactiveCommand<Unit, Unit> AddTaskCommand { get; }
 
+    [RelayCommand]
     private async Task AddTask()
     {
         if (_window == null) return;
@@ -44,7 +35,7 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (_window == null) return;
 
-        var task = await TaskEditorWindow.ShowDialog(_window, taskNodeViewModel._task);
+        var task = await TaskEditorWindow.ShowDialog(_window, taskNodeViewModel.Task);
         if (task != null)
         {
             var index = Nodes.IndexOf(taskNodeViewModel);

@@ -1,23 +1,38 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Models;
 
 namespace SyncMaid.ViewModels;
 
-public class DestinationEditorViewModel : ViewModelBase
+public partial class DestinationEditorViewModel : ViewModelBase
 {
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _name = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _path = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private bool _syncAll = true;
+
+    [ObservableProperty]
     private SyncStrategy _selectedStrategy = SyncStrategy.Sync;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddFilterCommand))]
     private string _newFilterPattern = string.Empty;
+
+    [ObservableProperty]
     private FilterType _selectedFilterType = FilterType.Wildcard;
+
     private Window? _hostWindow;
 
     public DestinationEditorViewModel(DestinationModel? existingDestination = null)
@@ -35,131 +50,60 @@ public class DestinationEditorViewModel : ViewModelBase
             Filters = new ObservableCollection<FilterRule>();
         }
 
-        var canOK = this.WhenAnyValue(
-            x => x.Name,
-            x => x.Path,
-            x => x.SyncAll,
-            x => x.Filters.Count,
-            (name, path, syncAll, filterCount) =>
-                !string.IsNullOrWhiteSpace(name) &&
-                !string.IsNullOrWhiteSpace(path) &&
-                (syncAll || filterCount > 0));
-
-        var canAddFilter = this.WhenAnyValue(
-            x => x.NewFilterPattern,
-            pattern => !string.IsNullOrWhiteSpace(pattern));
-
-        OKCommand = ReactiveCommand.Create(OK, canOK);
-        CancelCommand = ReactiveCommand.Create(Cancel);
-        BrowseCommand = ReactiveCommand.CreateFromTask(Browse);
-        AddFilterCommand = ReactiveCommand.Create(AddFilter, canAddFilter);
-        RemoveFilterCommand = ReactiveCommand.Create<FilterRule>(RemoveFilter);
+        // OK validity depends on whether any filters exist when not syncing all.
+        Filters.CollectionChanged += (_, _) => OKCommand.NotifyCanExecuteChanged();
 
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         FilterTypes = Enum.GetValues<FilterType>();
     }
 
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
-
-    public string Path
-    {
-        get => _path;
-        set => this.RaiseAndSetIfChanged(ref _path, value);
-    }
-
-    public bool SyncAll
-    {
-        get => _syncAll;
-        set => this.RaiseAndSetIfChanged(ref _syncAll, value);
-    }
-
     public SyncStrategy[] SyncStrategies { get; }
     public FilterType[] FilterTypes { get; }
-
-    public SyncStrategy SelectedStrategy
-    {
-        get => _selectedStrategy;
-        set => this.RaiseAndSetIfChanged(ref _selectedStrategy, value);
-    }
-
-    public string NewFilterPattern
-    {
-        get => _newFilterPattern;
-        set => this.RaiseAndSetIfChanged(ref _newFilterPattern, value);
-    }
-
-    public FilterType SelectedFilterType
-    {
-        get => _selectedFilterType;
-        set => this.RaiseAndSetIfChanged(ref _selectedFilterType, value);
-    }
-
     public ObservableCollection<FilterRule> Filters { get; }
 
-    public ReactiveCommand<Unit, Unit> OKCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
-    public ReactiveCommand<Unit, Unit> AddFilterCommand { get; }
-    public ReactiveCommand<FilterRule, Unit> RemoveFilterCommand { get; }
+    public void SetHostWindow(Window window) => _hostWindow = window;
 
+    [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
     {
-        var destination = new DestinationModel(
-            Name,
-            Path,
-            SyncAll,
-            SelectedStrategy,
-            Filters);
-
-        if (_hostWindow != null)
-        {
-            _hostWindow.Close(destination);
-        }
+        var destination = new DestinationModel(Name, Path, SyncAll, SelectedStrategy, Filters);
+        _hostWindow?.Close(destination);
     }
 
-    private void Cancel()
-    {
-        if (_hostWindow != null)
-        {
-            _hostWindow.Close();
-        }
-    }
+    private bool CanOk() =>
+        !string.IsNullOrWhiteSpace(Name)
+        && !string.IsNullOrWhiteSpace(Path)
+        && (SyncAll || Filters.Count > 0);
 
+    [RelayCommand]
+    private void Cancel() => _hostWindow?.Close();
+
+    [RelayCommand]
     private async Task Browse()
     {
-        if (_hostWindow != null)
-        {
-            var dialog = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Select Destination Folder",
-                AllowMultiple = false
-            });
+        if (_hostWindow == null) return;
 
-            if (dialog.Count > 0)
-            {
-                Path = dialog[0].Path.LocalPath;
-            }
+        var folders = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Destination Folder",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count > 0)
+        {
+            Path = folders[0].Path.LocalPath;
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanAddFilter))]
     private void AddFilter()
     {
-        var filter = new FilterRule(NewFilterPattern, SelectedFilterType);
-        Filters.Add(filter);
+        Filters.Add(new FilterRule(NewFilterPattern, SelectedFilterType));
         NewFilterPattern = string.Empty;
     }
 
-    private void RemoveFilter(FilterRule filter)
-    {
-        Filters.Remove(filter);
-    }
+    private bool CanAddFilter() => !string.IsNullOrWhiteSpace(NewFilterPattern);
 
-    public void SetHostWindow(Window window)
-    {
-        _hostWindow = window;
-    }
+    [RelayCommand]
+    private void RemoveFilter(FilterRule filter) => Filters.Remove(filter);
 }

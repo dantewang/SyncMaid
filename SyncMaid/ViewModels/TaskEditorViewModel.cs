@@ -1,20 +1,32 @@
 using System;
-using System.Reactive;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Models;
 
 namespace SyncMaid.ViewModels;
 
-public class TaskEditorViewModel : ViewModelBase
+public partial class TaskEditorViewModel : ViewModelBase
 {
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _name = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _path = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
+    [NotifyPropertyChangedFor(nameof(IsScheduledTrigger))]
     private TaskTriggerType _selectedTriggerType = TaskTriggerType.Manual;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private string _cronExpression = string.Empty;
+
     private Window? _hostWindow;
 
     public TaskEditorViewModel(TaskModel? existingTask = null)
@@ -27,55 +39,16 @@ public class TaskEditorViewModel : ViewModelBase
             _cronExpression = existingTask.CronExpression ?? string.Empty;
         }
 
-        var canOK = this.WhenAnyValue(
-            x => x.Name,
-            x => x.Path,
-            x => x.SelectedTriggerType,
-            x => x.CronExpression,
-            (name, path, trigger, cron) =>
-                !string.IsNullOrWhiteSpace(name) &&
-                !string.IsNullOrWhiteSpace(path) &&
-                (trigger != TaskTriggerType.Scheduled || !string.IsNullOrWhiteSpace(cron)));
-
-        OKCommand = ReactiveCommand.Create(OK, canOK);
-        CancelCommand = ReactiveCommand.Create(Cancel);
-        BrowseCommand = ReactiveCommand.CreateFromTask(Browse);
-
         TriggerTypes = Enum.GetValues<TaskTriggerType>();
-    }
-
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
-
-    public string Path
-    {
-        get => _path;
-        set => this.RaiseAndSetIfChanged(ref _path, value);
     }
 
     public TaskTriggerType[] TriggerTypes { get; }
 
-    public TaskTriggerType SelectedTriggerType
-    {
-        get => _selectedTriggerType;
-        set => this.RaiseAndSetIfChanged(ref _selectedTriggerType, value);
-    }
-
-    public string CronExpression
-    {
-        get => _cronExpression;
-        set => this.RaiseAndSetIfChanged(ref _cronExpression, value);
-    }
-
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
 
-    public ReactiveCommand<Unit, Unit> OKCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseCommand { get; }
+    public void SetHostWindow(Window window) => _hostWindow = window;
 
+    [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
     {
         var task = new TaskModel(
@@ -84,39 +57,31 @@ public class TaskEditorViewModel : ViewModelBase
             SelectedTriggerType,
             IsScheduledTrigger ? CronExpression : null);
 
-        if (_hostWindow != null)
-        {
-            _hostWindow.Close(task);
-        }
+        _hostWindow?.Close(task);
     }
 
-    private void Cancel()
-    {
-        if (_hostWindow != null)
-        {
-            _hostWindow.Close();
-        }
-    }
+    private bool CanOk() =>
+        !string.IsNullOrWhiteSpace(Name)
+        && !string.IsNullOrWhiteSpace(Path)
+        && (SelectedTriggerType != TaskTriggerType.Scheduled || !string.IsNullOrWhiteSpace(CronExpression));
 
+    [RelayCommand]
+    private void Cancel() => _hostWindow?.Close();
+
+    [RelayCommand]
     private async Task Browse()
     {
-        if (_hostWindow != null)
+        if (_hostWindow == null) return;
+
+        var folders = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            var dialog = await _hostWindow.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Select Source Folder",
-                AllowMultiple = false
-            });
+            Title = "Select Source Folder",
+            AllowMultiple = false,
+        });
 
-            if (dialog.Count > 0)
-            {
-                Path = dialog[0].Path.LocalPath;
-            }
+        if (folders.Count > 0)
+        {
+            Path = folders[0].Path.LocalPath;
         }
-    }
-
-    public void SetHostWindow(Window window)
-    {
-        _hostWindow = window;
     }
 }

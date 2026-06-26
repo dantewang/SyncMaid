@@ -1,46 +1,34 @@
-#region
-
 using System;
-using System.Reactive;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using ReactiveUI;
+using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Models;
-
-#endregion
 
 namespace SyncMaid.ViewModels;
 
-public class DestinationNodeViewModel : ViewModelBase
+public partial class DestinationNodeViewModel : ViewModelBase
 {
-    internal readonly DestinationModel Model;
+    private readonly Func<DestinationNodeViewModel, Task> _onEdit;
+    private readonly Action<DestinationNodeViewModel> _onDelete;
 
-    public DestinationNodeViewModel(DestinationModel model,
+    public DestinationNodeViewModel(
+        DestinationModel model,
         Func<DestinationNodeViewModel, Task> onEdit,
         Action<DestinationNodeViewModel> onDelete)
     {
         Model = model;
-
-        ExecuteCommand = ReactiveCommand.Create(Execute);
-        EditCommand = ReactiveCommand.CreateFromTask(() => onEdit(this));
-        DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
-
-        // Set up property changed notifications for Name and Path
-        this.WhenAnyValue(x => x.Model.Name)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(Name)));
-        this.WhenAnyValue(x => x.Model.Path)
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(Path)));
+        _onEdit = onEdit;
+        _onDelete = onDelete;
     }
 
+    internal DestinationModel Model { get; }
+
+    // From the immutable model; editing replaces the node, so no notification needed.
     public string Name => Model.Name;
     public string Path => Model.Path;
 
-    public ReactiveCommand<Unit, Unit> ExecuteCommand { get; }
-    public ReactiveCommand<Unit, Unit> EditCommand { get; }
-    public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
+    [RelayCommand]
+    private Task Edit() => _onEdit(this);
 
-    private void Execute()
-    {
-        Console.WriteLine($"Executing sync to destination: {Name}, Path: {Path}");
-    }
+    [RelayCommand]
+    private void Delete() => _onDelete(this);
 }
