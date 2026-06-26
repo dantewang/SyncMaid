@@ -7,6 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
         x:Class="SyncMaid.Views.DestinationEditorWindow"
         x:DataType="vm:DestinationEditorViewModel"
+        x:CompileBindings="True"
         Title="Destination Editor"
         Width="500" Height="600"
         WindowStartupLocation="CenterOwner">
@@ -90,7 +91,7 @@
                                 <TextBox Text="{Binding NewFilterPattern}"
                                          Width="200"
                                          Margin="0,0,10,4"
-                                         Watermark="Enter pattern (e.g., *.jpg or ^photos/.*)" />
+                                         PlaceholderText="Enter pattern (e.g., *.jpg or ^photos/.*)" />
                                 <ComboBox ItemsSource="{Binding FilterTypes}"
                                           SelectedItem="{Binding SelectedFilterType}"
                                           Width="100"

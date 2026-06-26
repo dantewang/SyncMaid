@@ -6,6 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="350"
         x:Class="SyncMaid.Views.TaskEditorWindow"
         x:DataType="vm:TaskEditorViewModel"
+        x:CompileBindings="True"
         Title="Task Editor"
         Width="450" Height="350"
         WindowStartupLocation="CenterOwner">
@@ -66,7 +67,7 @@
                 <TextBlock Text="Cron Expression:" Classes="label" />
                 <TextBox Text="{Binding CronExpression}" 
                          Width="250"
-                         Watermark="*/5 * * * * (every 5 minutes)" />
+                         PlaceholderText="*/5 * * * * (every 5 minutes)" />
             </StackPanel>
         </StackPanel>
     </DockPanel>
