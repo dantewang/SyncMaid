@@ -1,9 +1,17 @@
+using System.Text.Json.Serialization;
+
 namespace SyncMaid.Core.Triggers;
 
 /// <summary>
 /// How a sync task is initiated. Closed hierarchy mirroring the design doc's
-/// trigger types; the matching runner for each lives in the engine layer.
+/// trigger types; the matching runner for each lives in the engine layer. The
+/// JSON discriminators let the source-generated serializer persist the concrete
+/// type without reflection.
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
+[JsonDerivedType(typeof(ManualTrigger), "manual")]
+[JsonDerivedType(typeof(ScheduledTrigger), "scheduled")]
+[JsonDerivedType(typeof(WatchTrigger), "watch")]
 public abstract record Trigger;
 
 /// <summary>The task runs only when the user asks it to.</summary>

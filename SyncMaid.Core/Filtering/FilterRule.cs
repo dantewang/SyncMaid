@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SyncMaid.Core.Filtering;
 
 /// <summary>
@@ -6,8 +8,14 @@ namespace SyncMaid.Core.Filtering;
 /// </summary>
 /// <remarks>
 /// Closed hierarchy: callers pattern-match the concrete types exhaustively,
-/// so no reflection is involved and the model stays AOT/trim-safe.
+/// so no reflection is involved and the model stays AOT/trim-safe. The JSON
+/// discriminators below let the source-generated serializer persist the concrete
+/// type without reflection.
 /// </remarks>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
+[JsonDerivedType(typeof(AllFilesFilter), "all")]
+[JsonDerivedType(typeof(PathFilter), "path")]
+[JsonDerivedType(typeof(ExtensionFilter), "extension")]
 public abstract record FilterRule
 {
     /// <summary>Returns <c>true</c> when <paramref name="relativePath"/> is selected by this rule.</summary>
