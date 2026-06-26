@@ -3,67 +3,73 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SyncMaid.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="350"
+        xmlns:conv="using:SyncMaid.Converters"
+        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="380"
         x:Class="SyncMaid.Views.TaskEditorWindow"
         x:DataType="vm:TaskEditorViewModel"
         x:CompileBindings="True"
-        Title="Task Editor"
-        Width="450" Height="350"
+        Title="Task editor"
+        Width="460" Height="380"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="MutedBrush" Color="#7A7A76" />
+    </Window.Resources>
 
     <Window.Styles>
         <Style Selector="TextBlock.label">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Width" Value="120" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
-        <Style Selector="StackPanel.field">
-            <Setter Property="Orientation" Value="Horizontal" />
-            <Setter Property="Margin" Value="0,4" />
+        <Style Selector="TextBlock.hint">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
     </Window.Styles>
 
     <DockPanel Margin="20">
-        <StackPanel DockPanel.Dock="Bottom" 
-                    Orientation="Horizontal" 
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right"
-                    Spacing="10">
-            <Button Content="OK"
-                    Command="{Binding OKCommand}"
-                    IsDefault="True"
-                    Width="70" />
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    IsCancel="True"
-                    Width="70" />
+                    Spacing="10"
+                    Margin="0,16,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Width="80" />
+            <Button Content="Save task" Command="{Binding OKCommand}" IsDefault="True" Width="100" />
         </StackPanel>
 
-        <StackPanel>
-            <StackPanel Classes="field">
-                <TextBlock Text="Name:" Classes="label" />
-                <TextBox Text="{Binding Name}" Width="250" />
+        <StackPanel Spacing="14">
+            <StackPanel>
+                <TextBlock Text="Name" Classes="label" />
+                <TextBox Text="{Binding Name}" />
             </StackPanel>
 
-            <StackPanel Classes="field">
-                <TextBlock Text="Source Path:" Classes="label" />
-                <TextBox Text="{Binding Path}" Width="200" />
-                <Button Content="Browse..."
-                        Command="{Binding BrowseCommand}"
-                        Margin="4,0,0,0" />
+            <StackPanel>
+                <TextBlock Text="Source folder" Classes="label" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding Path}" FontFamily="Consolas, monospace" />
+                    <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseCommand}" Margin="8,0,0,0" />
+                </Grid>
             </StackPanel>
 
-            <StackPanel Classes="field" Margin="0,10">
-                <TextBlock Text="Trigger:" Classes="label" />
-                <ComboBox ItemsSource="{Binding TriggerTypes}"
-                          SelectedItem="{Binding SelectedTriggerType}"
-                          Width="150" />
+            <StackPanel>
+                <TextBlock Text="Trigger" Classes="label" />
+                <StackPanel Orientation="Horizontal" Spacing="18">
+                    <RadioButton GroupName="trigger" Content="Manual"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Manual}}" />
+                    <RadioButton GroupName="trigger" Content="Scheduled"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Scheduled}}" />
+                    <RadioButton GroupName="trigger" Content="Watch"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Watch}}" />
+                </StackPanel>
             </StackPanel>
 
-            <StackPanel Classes="field" 
-                        IsVisible="{Binding IsScheduledTrigger}">
-                <TextBlock Text="Cron Expression:" Classes="label" />
-                <TextBox Text="{Binding CronExpression}" 
-                         Width="250"
-                         PlaceholderText="*/5 * * * * (every 5 minutes)" />
+            <StackPanel IsVisible="{Binding IsScheduledTrigger}">
+                <TextBlock Text="Cron expression" Classes="label" />
+                <TextBox Text="{Binding CronExpression}" FontFamily="Consolas, monospace"
+                         PlaceholderText="*/5 * * * *" />
+                <TextBlock Text="{Binding CronPreview}" Classes="hint" />
             </StackPanel>
         </StackPanel>
     </DockPanel>

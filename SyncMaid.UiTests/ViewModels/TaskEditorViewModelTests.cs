@@ -24,6 +24,19 @@ public class TaskEditorViewModelTests
     }
 
     [Fact]
+    public void Cron_preview_reports_validity_and_next_run()
+    {
+        var vm = New();
+        vm.SelectedTriggerType = TaskTriggerType.Scheduled;
+
+        vm.CronExpression = "nonsense";
+        Assert.Contains("valid", vm.CronPreview);   // "Enter a valid cron expression…"
+
+        vm.CronExpression = "*/5 * * * *";
+        Assert.Contains("Next run", vm.CronPreview);
+    }
+
+    [Fact]
     public void A_new_task_gets_a_fresh_id()
     {
         var vm = New();

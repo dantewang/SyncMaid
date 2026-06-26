@@ -1,27 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SyncMaid.ViewModels"
+        xmlns:conv="using:SyncMaid.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
         x:Class="SyncMaid.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="True"
+        Width="900" Height="600"
         Icon="/Assets/avalonia-logo.ico"
         Title="SyncMaid">
 
     <Window.Resources>
-        <!-- Colors for regular action button -->
         <SolidColorBrush x:Key="ActionButtonBackground" Color="#39C5BB" />
         <SolidColorBrush x:Key="ActionButtonBackgroundHover" Color="#06B0A4" />
         <SolidColorBrush x:Key="ActionButtonBackgroundPressed" Color="#288C85" />
         <SolidColorBrush x:Key="ActionButtonBackgroundDisabled" Color="#90E1DB" />
-
-        <!-- Colors for danger button -->
         <SolidColorBrush x:Key="DangerButtonBackground" Color="#C53943" />
         <SolidColorBrush x:Key="DangerButtonBackgroundHover" Color="#B00613" />
         <SolidColorBrush x:Key="DangerButtonBackgroundPressed" Color="#8C282F" />
         <SolidColorBrush x:Key="DangerButtonBackgroundDisabled" Color="#E19096" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#7A7A76" />
+        <SolidColorBrush x:Key="HairlineBrush" Color="#22000000" />
     </Window.Resources>
 
     <Window.Styles>
@@ -29,28 +30,21 @@
             <Setter Property="Background" Value="{StaticResource ActionButtonBackground}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.2" />
-                </Transitions>
+                <Transitions><BrushTransition Property="Background" Duration="0:0:0.2" /></Transitions>
             </Setter>
         </Style>
-
-        <!-- Action Button States -->
         <Style Selector="Button.action:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundHover}" />
             <Setter Property="TextBlock.Foreground" Value="White" />
         </Style>
-
         <Style Selector="Button.action:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundPressed}" />
         </Style>
-
         <Style Selector="Button.action:disabled /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundDisabled}" />
         </Style>
@@ -59,129 +53,152 @@
             <Setter Property="Background" Value="{StaticResource DangerButtonBackground}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.2" />
-                </Transitions>
+                <Transitions><BrushTransition Property="Background" Duration="0:0:0.2" /></Transitions>
             </Setter>
         </Style>
-
-        <!-- Danger Button States -->
         <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundHover}" />
             <Setter Property="TextBlock.Foreground" Value="White" />
         </Style>
-
         <Style Selector="Button.danger:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundPressed}" />
         </Style>
 
-        <Style Selector="Button.danger:disabled /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundDisabled}" />
+        <Style Selector="TextBlock.path">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontFamily" Value="Consolas, monospace" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <Style Selector="Border.badge">
+            <Setter Property="BorderBrush" Value="{StaticResource MutedBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.badge > TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="ClipToBounds" Value="True" />
         </Style>
     </Window.Styles>
 
     <DockPanel>
-        <!-- Toolbar -->
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Spacing="10" Margin="8,4">
-            <Button Name="NewButton" 
-                    Classes="action"
-                    Command="{Binding AddTaskCommand}">
-                <TextBlock Text="New Task" Margin="4,0,0,0" VerticalAlignment="Center" />
-            </Button>
-        </StackPanel>
+        <!-- Sidebar: compact task list -->
+        <Border DockPanel.Dock="Left" Width="200" IsVisible="{Binding IsSidebarVisible}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="6">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,4,2,8">
+                    <TextBlock Grid.Column="0" Text="Tasks" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Command="{Binding ToggleSidebarCommand}" Padding="6,2"
+                            ToolTip.Tip="Hide sidebar" Content="‹" />
+                </Grid>
+                <ListBox ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}"
+                         Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TaskNodeViewModel">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
 
-        <!-- Main TreeView -->
-        <TreeView Margin="8" ItemsSource="{Binding Nodes}">
-            <TreeView.ItemTemplate>
-                <!-- Task Node Template -->
-                <TreeDataTemplate DataType="{x:Type vm:TaskNodeViewModel}" ItemsSource="{Binding Children}">
-                    <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
-                        <StackPanel DockPanel.Dock="Right"
-                                    Orientation="Horizontal"
-                                    Margin="8,0,0,0">
-                            <Button Classes="action"
-                                    Command="{Binding ExecuteCommand}"
-                                    Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Execute"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="action"
-                                    Command="{Binding AddDestinationCommand}"
-                                    Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Add Destination"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="action"
-                                    Command="{Binding EditCommand}"
-                                    Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Edit"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="danger"
-                                    Command="{Binding DeleteCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Delete"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                        <StackPanel>
-                            <TextBlock Text="{Binding Name}" />
-                            <TextBlock Text="{Binding Path}"
-                                       FontFamily="Consolas" />
-                        </StackPanel>
-                    </DockPanel>
-                </TreeDataTemplate>
-            </TreeView.ItemTemplate>
+        <!-- Rail shown when the sidebar is hidden -->
+        <Border DockPanel.Dock="Left" Width="36" IsVisible="{Binding !IsSidebarVisible}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+            <Button Command="{Binding ToggleSidebarCommand}" Content="›" Padding="6,2"
+                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0"
+                    ToolTip.Tip="Show sidebar" />
+        </Border>
 
-            <TreeView.DataTemplates>
-                <DataTemplate DataType="{x:Type vm:DestinationNodeViewModel}">
-                    <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
-                        <StackPanel DockPanel.Dock="Right"
-                                    Orientation="Horizontal"
-                                    Margin="8,0,0,0">
-                            <Button Classes="action"
-                                    Command="{Binding EditCommand}"
-                                    Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Edit"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="danger"
-                                    Command="{Binding DeleteCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Delete"
-                                               Margin="4,0,0,0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                        <StackPanel>
-                            <TextBlock Text="{Binding Name}" />
-                            <TextBlock Text="{Binding Path}"
-                                       FontFamily="Consolas" />
-                        </StackPanel>
-                    </DockPanel>
-                </DataTemplate>
-            </TreeView.DataTemplates>
-        </TreeView>
+        <!-- Main area -->
+        <DockPanel Margin="14,10">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,10">
+                <TextBlock Grid.Column="0" Text="Sync tasks" FontSize="18" FontWeight="Medium" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Command="{Binding ToggleExpandAllCommand}" Content="{Binding ExpandCollapseLabel}"
+                        Margin="0,0,8,0" Padding="10,5" />
+                <Button Grid.Column="3" Classes="action" Command="{Binding AddTaskCommand}" Padding="12,6">
+                    <TextBlock Text="New task" />
+                </Button>
+            </Grid>
+
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Nodes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TaskNodeViewModel">
+                            <Border Classes="card">
+                                <Expander IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch">
+                                    <Expander.Header>
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
+                                                    <Border Classes="badge"><TextBlock Text="{Binding TriggerText}" /></Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Path}" Classes="path" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding HealthText}" VerticalAlignment="Center"
+                                                           Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <Button Classes="action" Command="{Binding ExecuteCommand}"><TextBlock Text="Execute" /></Button>
+                                                    <Button Classes="action" Command="{Binding AddDestinationCommand}"><TextBlock Text="Add destination" /></Button>
+                                                    <Button Classes="action" Command="{Binding EditCommand}"><TextBlock Text="Edit" /></Button>
+                                                    <Button Classes="danger" Command="{Binding DeleteCommand}"><TextBlock Text="Delete" /></Button>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Expander.Header>
+
+                                    <ItemsControl ItemsSource="{Binding Children}" Margin="6,2,6,6">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:DestinationNodeViewModel">
+                                                <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,9">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <Ellipse Grid.Column="0" Width="9" Height="9" VerticalAlignment="Center" Margin="2,0,12,0"
+                                                                 Fill="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                                                <Border Classes="badge"><TextBlock Text="{Binding StrategyText}" /></Border>
+                                                                <Border Classes="badge"><TextBlock Text="{Binding FilterText}" /></Border>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding Path}" Classes="path" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                                                                       Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                            <Button Classes="action" Command="{Binding EditCommand}"><TextBlock Text="Edit" /></Button>
+                                                            <Button Classes="danger" Command="{Binding DeleteCommand}"><TextBlock Text="Delete" /></Button>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
     </DockPanel>
 </Window>

@@ -3,117 +3,118 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SyncMaid.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
+        xmlns:conv="using:SyncMaid.Converters"
+        xmlns:model="using:SyncMaid.Core.Model"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="640"
         x:Class="SyncMaid.Views.DestinationEditorWindow"
         x:DataType="vm:DestinationEditorViewModel"
         x:CompileBindings="True"
-        Title="Destination Editor"
-        Width="500" Height="600"
+        Title="Destination editor"
+        Width="500" Height="640"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="MutedBrush" Color="#7A7A76" />
+        <SolidColorBrush x:Key="HairlineBrush" Color="#33000000" />
+    </Window.Resources>
 
     <Window.Styles>
         <Style Selector="TextBlock.label">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Width" Value="120" />
-            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
-        <Style Selector="StackPanel.field">
-            <Setter Property="Orientation" Value="Horizontal" />
-            <Setter Property="Margin" Value="0,4" />
-        </Style>
-        <Style Selector="Button">
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="MinWidth" Value="70" />
+        <Style Selector="TextBlock.desc">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
     </Window.Styles>
 
     <DockPanel>
-        <StackPanel DockPanel.Dock="Bottom" 
-                    Orientation="Horizontal" 
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="10"
-                    Margin="20,10,20,20">
-            <Button Content="OK"
-                    Command="{Binding OKCommand}"
-                    IsDefault="True" />
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    IsCancel="True" />
+                    Margin="20,12,20,18">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Width="80" />
+            <Button Content="Save destination" Command="{Binding OKCommand}" IsDefault="True" Width="140" />
         </StackPanel>
 
         <ScrollViewer Margin="20,20,20,0">
-            <StackPanel Spacing="10" Margin="0,0,15,0">
-                <StackPanel Classes="field">
-                    <TextBlock Text="Name:" Classes="label" />
-                    <TextBox Text="{Binding Name}" Width="250" />
+            <StackPanel Spacing="16" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="Name" Classes="label" />
+                    <TextBox Text="{Binding Name}" />
                 </StackPanel>
 
-                <StackPanel Classes="field">
-                    <TextBlock Text="Destination Path:" Classes="label" />
-                    <TextBox Text="{Binding Path}" Width="200" />
-                    <Button Content="Browse..."
-                            Command="{Binding BrowseCommand}"
-                            Margin="4,0,0,0" />
+                <StackPanel>
+                    <TextBlock Text="Destination folder" Classes="label" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding Path}" FontFamily="Consolas, monospace" />
+                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseCommand}" Margin="8,0,0,0" />
+                    </Grid>
                 </StackPanel>
 
-                <StackPanel Classes="field" Margin="0,10">
-                    <TextBlock Text="Sync Strategy:" Classes="label" />
-                    <ComboBox ItemsSource="{Binding SyncStrategies}"
-                              SelectedItem="{Binding SelectedStrategy}"
-                              Width="150" />
-                </StackPanel>
-
-                <StackPanel Classes="field" Margin="0,10">
-                    <TextBlock Text="File Filter:" Classes="label" />
-                    <StackPanel>
-                        <RadioButton Content="Sync All Files"
-                                    IsChecked="{Binding SyncAll}" />
-                        <RadioButton Content="Use Filters"
-                                    IsChecked="{Binding !SyncAll}" />
+                <StackPanel>
+                    <TextBlock Text="Sync strategy" Classes="label" />
+                    <StackPanel Spacing="6">
+                        <RadioButton GroupName="strategy"
+                                     IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Mirror}}">
+                            <StackPanel>
+                                <TextBlock Text="Mirror" FontWeight="Medium" />
+                                <TextBlock Text="Keep the destination identical — copies new and changed files, deletes extras." Classes="desc" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="strategy"
+                                     IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.AddOnly}}">
+                            <StackPanel>
+                                <TextBlock Text="Add-only" FontWeight="Medium" />
+                                <TextBlock Text="Copy new and changed files; never delete from the destination." Classes="desc" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="strategy"
+                                     IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Move}}">
+                            <StackPanel>
+                                <TextBlock Text="Move" FontWeight="Medium" />
+                                <TextBlock Text="Move matching files to the destination, removing them from the source." Classes="desc" />
+                            </StackPanel>
+                        </RadioButton>
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel IsVisible="{Binding !SyncAll}"
-                          Margin="120,0,0,0">
-                    <Border BorderBrush="Gray" 
-                            BorderThickness="1" 
-                            CornerRadius="4"
-                            Padding="10">
-                        <Grid RowDefinitions="Auto,*">
-                            <WrapPanel Grid.Row="0"
-                                      Orientation="Horizontal"
-                                      Margin="0,0,0,10">
-                                <TextBox Text="{Binding NewFilterPattern}"
-                                         Width="200"
-                                         Margin="0,0,10,4"
-                                         PlaceholderText="e.g. photos/2024 or jpg" />
-                                <ComboBox ItemsSource="{Binding FilterKinds}"
-                                          SelectedItem="{Binding SelectedFilterKind}"
-                                          Width="100"
-                                          Margin="0,0,10,4" />
-                                <Button Content="Add"
-                                        Command="{Binding AddFilterCommand}"
-                                        Margin="0,0,0,4" />
-                            </WrapPanel>
+                <StackPanel>
+                    <TextBlock Text="Files to sync" Classes="label" />
+                    <StackPanel Orientation="Horizontal" Spacing="18">
+                        <RadioButton GroupName="files" Content="All files" IsChecked="{Binding SyncAll}" />
+                        <RadioButton GroupName="files" Content="Only matching filters" IsChecked="{Binding !SyncAll}" />
+                    </StackPanel>
 
-                            <ListBox Grid.Row="1"
-                                    ItemsSource="{Binding Filters}"
-                                    MinHeight="150"
-                                    MaxHeight="200">
-                                <ListBox.ItemTemplate>
+                    <Border IsVisible="{Binding !SyncAll}"
+                            BorderBrush="{StaticResource HairlineBrush}"
+                            BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}"
+                                          SelectedItem="{Binding SelectedFilterKind}" Width="110" />
+                                <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0"
+                                         FontFamily="Consolas, monospace" PlaceholderText="e.g. photos/2024 or jpg" />
+                                <Button Grid.Column="2" Content="Add" Command="{Binding AddFilterCommand}" />
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Filters}">
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:FilterRuleViewModel">
-                                        <DockPanel>
-                                            <Button DockPanel.Dock="Right"
-                                                    Command="{Binding $parent[ListBox].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
-                                                    CommandParameter="{Binding}"
-                                                    Content="Remove" />
-                                            <TextBlock Text="{Binding Description}"
-                                                      VerticalAlignment="Center" />
-                                        </DockPanel>
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                                            <TextBlock Grid.Column="0" Text="{Binding Description}" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Content="Remove"
+                                                    Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </Border>
                 </StackPanel>
             </StackPanel>

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -5,6 +7,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SyncMaid.UiTests.Fakes;
+using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
 using SyncMaid.ViewModels;
@@ -48,7 +51,7 @@ public class EditorWindowHeadlessTests
 
         var okButton = window.GetVisualDescendants()
             .OfType<Button>()
-            .First(button => button.Content as string == "OK");
+            .First(button => button.Content as string == "Save task");
 
         Assert.False(okButton.IsEffectivelyEnabled);
 
@@ -75,5 +78,28 @@ public class EditorWindowHeadlessTests
             .Select(block => block.Text);
 
         Assert.Contains("Photos", renderedText);
+    }
+
+    [AvaloniaFact]
+    public void MainWindow_card_shows_destination_status_and_strategy()
+    {
+        var dest = new Destination("Backup", @"D:\b", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("Photos", @"C:\p", new ManualTrigger(), [dest]);
+        var statusStore = new RecordingStatusStore(new Dictionary<Guid, DestinationSyncStatus>
+        {
+            [dest.Id] = new(dest.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 5, null),
+        });
+        var viewModel = new MainWindowViewModel(
+            new FakeDialogService(), new RecordingTaskStore([task]), statusStore,
+            new FakeSyncEngine(), new FakeTriggerSourceFactory(), new FakeUiDispatcher());
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(b => b.Text).ToList();
+
+        Assert.Contains(texts, t => t != null && t.Contains("Synced"));
+        Assert.Contains("Mirror", texts);
+        Assert.Contains("Manual", texts);   // trigger badge
     }
 }

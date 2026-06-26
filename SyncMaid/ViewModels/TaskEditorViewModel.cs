@@ -30,6 +30,7 @@ public partial class TaskEditorViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
+    [NotifyPropertyChangedFor(nameof(CronPreview))]
     private string _cronExpression = string.Empty;
 
     private readonly IFolderPickerService _folderPicker;
@@ -59,6 +60,23 @@ public partial class TaskEditorViewModel : ViewModelBase
     public TaskTriggerType[] TriggerTypes { get; }
 
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
+
+    /// <summary>Plain-language feedback for the cron field: validity and the next run time.</summary>
+    public string CronPreview
+    {
+        get
+        {
+            if (!CronSchedule.IsValid(CronExpression))
+            {
+                return "Enter a valid cron expression (e.g. */5 * * * *)";
+            }
+
+            var next = CronSchedule.NextOccurrenceUtc(CronExpression, DateTime.UtcNow);
+            return next is null
+                ? "Valid, but has no upcoming runs"
+                : $"Next run: {next.Value.ToLocalTime():yyyy-MM-dd HH:mm}";
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK() =>
