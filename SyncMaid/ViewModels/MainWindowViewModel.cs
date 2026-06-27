@@ -78,6 +78,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void RunAll()
+    {
+        foreach (var node in Nodes)
+        {
+            if (node.ExecuteCommand.CanExecute(null))
+            {
+                node.ExecuteCommand.Execute(null);
+            }
+        }
+    }
+
+    [RelayCommand]
     private async Task AddTask()
     {
         var task = await _dialogs.EditTaskAsync(null);

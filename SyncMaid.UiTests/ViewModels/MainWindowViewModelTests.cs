@@ -135,6 +135,22 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public void Run_all_runs_only_runnable_tasks()
+    {
+        var dest = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var runnable = new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]);
+        var empty = new SyncTask("B", @"C:\b", new ManualTrigger(), []);
+        var engine = new FakeSyncEngine();
+        var vm = new MainWindowViewModel(
+            new FakeDialogService(), new RecordingTaskStore([runnable, empty]), new RecordingStatusStore(),
+            engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher());
+
+        vm.RunAllCommand.Execute(null);
+
+        Assert.Single(engine.Executed);   // only the task with a destination ran
+    }
+
+    [Fact]
     public void Toggle_sidebar_flips_visibility()
     {
         var vm = New();

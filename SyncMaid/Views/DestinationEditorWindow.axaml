@@ -4,44 +4,32 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SyncMaid.ViewModels"
         xmlns:conv="using:SyncMaid.Converters"
+        xmlns:mi="using:Material.Icons.Avalonia"
         xmlns:model="using:SyncMaid.Core.Model"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="640"
+        mc:Ignorable="d" d:DesignWidth="510" d:DesignHeight="650"
         x:Class="SyncMaid.Views.DestinationEditorWindow"
         x:DataType="vm:DestinationEditorViewModel"
         x:CompileBindings="True"
         Title="Destination editor"
-        Width="500" Height="640"
+        Width="510" Height="650"
+        Background="{StaticResource SurfaceBrush}"
         WindowStartupLocation="CenterOwner">
 
-    <Window.Resources>
-        <SolidColorBrush x:Key="MutedBrush" Color="#7A7A76" />
-        <SolidColorBrush x:Key="HairlineBrush" Color="#33000000" />
-    </Window.Resources>
-
     <Window.Styles>
-        <Style Selector="TextBlock.label">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Margin" Value="0,0,0,4" />
-        </Style>
         <Style Selector="TextBlock.desc">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
     </Window.Styles>
 
     <DockPanel>
-        <StackPanel DockPanel.Dock="Bottom"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="10"
-                    Margin="20,12,20,18">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Width="80" />
-            <Button Content="Save destination" Command="{Binding OKCommand}" IsDefault="True" Width="140" />
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="22,14,22,20">
+            <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" />
+            <Button Classes="primary" Content="Save destination" Command="{Binding OKCommand}" IsDefault="True" />
         </StackPanel>
 
-        <ScrollViewer Margin="20,20,20,0">
+        <ScrollViewer Margin="22,22,22,0">
             <StackPanel Spacing="16" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="Name" Classes="label" />
@@ -51,8 +39,13 @@
                 <StackPanel>
                     <TextBlock Text="Destination folder" Classes="label" />
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Grid.Column="0" Text="{Binding Path}" FontFamily="Consolas, monospace" />
-                        <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseCommand}" Margin="8,0,0,0" />
+                        <TextBox Grid.Column="0" Text="{Binding Path}" Classes="path" />
+                        <Button Grid.Column="1" Classes="secondary" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
+                                <TextBlock Text="Browse" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
                 </StackPanel>
 
@@ -91,15 +84,15 @@
                     </StackPanel>
 
                     <Border IsVisible="{Binding !SyncAll}"
-                            BorderBrush="{StaticResource HairlineBrush}"
-                            BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,8,0,0">
+                            BorderBrush="{StaticResource HairlineStrongBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
                         <StackPanel Spacing="8">
                             <Grid ColumnDefinitions="Auto,*,Auto">
                                 <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}"
-                                          SelectedItem="{Binding SelectedFilterKind}" Width="110" />
-                                <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0"
-                                         FontFamily="Consolas, monospace" PlaceholderText="e.g. photos/2024 or jpg" />
-                                <Button Grid.Column="2" Content="Add" Command="{Binding AddFilterCommand}" />
+                                          SelectedItem="{Binding SelectedFilterKind}" Width="120" />
+                                <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path"
+                                         PlaceholderText="e.g. photos/2024 or jpg" />
+                                <Button Grid.Column="2" Classes="secondary" Content="Add" Command="{Binding AddFilterCommand}" />
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding Filters}">
@@ -107,9 +100,11 @@
                                     <DataTemplate x:DataType="vm:FilterRuleViewModel">
                                         <Grid ColumnDefinitions="*,Auto" Margin="0,3">
                                             <TextBlock Grid.Column="0" Text="{Binding Description}" VerticalAlignment="Center" />
-                                            <Button Grid.Column="1" Content="Remove"
+                                            <Button Grid.Column="1" Classes="icon" Width="28" Height="28"
                                                     Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
-                                                    CommandParameter="{Binding}" />
+                                                    CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                                <mi:MaterialIcon Kind="Close" Width="14" Height="14" />
+                                            </Button>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

@@ -1,0 +1,233 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Surfaces -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource PageBrush}" />
+        <Setter Property="FontFamily" Value="Inter, sans-serif" />
+    </Style>
+
+    <!-- Typography -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="TextBlock.name">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBlock.label">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Margin" Value="0,0,0,5" />
+    </Style>
+    <Style Selector="TextBlock.path">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="FontFamily" Value="Cascadia Code, Consolas, monospace" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!-- Primary (teal) button -->
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource TealBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="13,7" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions><BrushTransition Property="Background" Duration="0:0:0.15" /></Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.primary /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource TealBrush}" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource TealHoverBrush}" />
+        <Setter Property="TextBlock.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource TealPressedBrush}" />
+    </Style>
+
+    <!-- Secondary (ghost) button -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.secondary /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
+
+    <!-- Danger button -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="13,7" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.danger /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource DangerHoverBrush}" />
+        <Setter Property="TextBlock.Foreground" Value="White" />
+    </Style>
+
+    <!-- Square icon button -->
+    <Style Selector="Button.icon">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.icon /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
+    <Style Selector="Button.icon.run">
+        <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
+    </Style>
+    <Style Selector="Button.icon.run:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+    </Style>
+    <Style Selector="Button.icon:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- Title-bar caption buttons (custom chrome) -->
+    <Style Selector="Button.caption">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.caption /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        <Setter Property="TextBlock.Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover">
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Chevron toggle (card collapse) -->
+    <Style Selector="ToggleButton.chevron">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ToggleButton.chevron /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.chevron:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- Card -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+
+    <!-- Badges / pills -->
+    <Style Selector="Border.badge">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.badge > TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Border.badge.live">
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+    </Style>
+    <Style Selector="Border.badge.live > StackPanel > TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+    </Style>
+
+    <!-- Teal chip (folder glyph holder) -->
+    <Style Selector="Border.chip">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Inputs -->
+    <Style Selector="TextBox">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Padding" Value="9,6" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinHeight" Value="34" />
+    </Style>
+
+    <!-- Sidebar list -->
+    <Style Selector="ListBox.sidebar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Margin" Value="0,1" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+    </Style>
+</Styles>

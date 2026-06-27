@@ -2,203 +2,149 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SyncMaid.ViewModels"
         xmlns:conv="using:SyncMaid.Converters"
+        xmlns:mi="using:Material.Icons.Avalonia"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="620"
         x:Class="SyncMaid.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="True"
-        Width="900" Height="600"
+        Width="940" Height="620"
         Icon="/Assets/avalonia-logo.ico"
         Title="SyncMaid">
 
-    <Window.Resources>
-        <SolidColorBrush x:Key="ActionButtonBackground" Color="#39C5BB" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundHover" Color="#06B0A4" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundPressed" Color="#288C85" />
-        <SolidColorBrush x:Key="ActionButtonBackgroundDisabled" Color="#90E1DB" />
-        <SolidColorBrush x:Key="DangerButtonBackground" Color="#C53943" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundHover" Color="#B00613" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundPressed" Color="#8C282F" />
-        <SolidColorBrush x:Key="DangerButtonBackgroundDisabled" Color="#E19096" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#7A7A76" />
-        <SolidColorBrush x:Key="HairlineBrush" Color="#22000000" />
-    </Window.Resources>
-
-    <Window.Styles>
-        <Style Selector="Button.action">
-            <Setter Property="Background" Value="{StaticResource ActionButtonBackground}" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="9,4" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Transitions">
-                <Transitions><BrushTransition Property="Background" Duration="0:0:0.2" /></Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.action:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundHover}" />
-            <Setter Property="TextBlock.Foreground" Value="White" />
-        </Style>
-        <Style Selector="Button.action:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundPressed}" />
-        </Style>
-        <Style Selector="Button.action:disabled /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ActionButtonBackgroundDisabled}" />
-        </Style>
-
-        <Style Selector="Button.danger">
-            <Setter Property="Background" Value="{StaticResource DangerButtonBackground}" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="9,4" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Transitions">
-                <Transitions><BrushTransition Property="Background" Duration="0:0:0.2" /></Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundHover}" />
-            <Setter Property="TextBlock.Foreground" Value="White" />
-        </Style>
-        <Style Selector="Button.danger:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource DangerButtonBackgroundPressed}" />
-        </Style>
-
-        <Style Selector="TextBlock.path">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-            <Setter Property="FontFamily" Value="Consolas, monospace" />
-            <Setter Property="FontSize" Value="12" />
-        </Style>
-
-        <Style Selector="Border.badge">
-            <Setter Property="BorderBrush" Value="{StaticResource MutedBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="7,1" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Border.badge > TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-            <Setter Property="FontSize" Value="11" />
-        </Style>
-
-        <Style Selector="Border.card">
-            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="ClipToBounds" Value="True" />
-        </Style>
-    </Window.Styles>
-
     <DockPanel>
-        <!-- Sidebar: compact task list -->
-        <Border DockPanel.Dock="Left" Width="200" IsVisible="{Binding IsSidebarVisible}"
-                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
-            <DockPanel Margin="6">
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,4,2,8">
-                    <TextBlock Grid.Column="0" Text="Tasks" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Command="{Binding ToggleSidebarCommand}" Padding="6,2"
-                            ToolTip.Tip="Hide sidebar" Content="‹" />
-                </Grid>
-                <ListBox ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}"
-                         Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TaskNodeViewModel">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Name}" FontWeight="Medium" />
-                                <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
+        <Grid ColumnDefinitions="Auto,Auto,*">
+            <!-- Sidebar: compact task list -->
+            <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
+                    Background="{StaticResource SubtleBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                <DockPanel Margin="8">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,6,2,8">
+                        <TextBlock Grid.Column="0" Text="Tasks" Classes="muted" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="Hide sidebar">
+                            <mi:MaterialIcon Kind="ChevronLeft" Width="16" Height="16" />
+                        </Button>
+                    </Grid>
+                    <ListBox Classes="sidebar" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TaskNodeViewModel">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" />
+                                    <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
 
-        <!-- Rail shown when the sidebar is hidden -->
-        <Border DockPanel.Dock="Left" Width="36" IsVisible="{Binding !IsSidebarVisible}"
-                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
-            <Button Command="{Binding ToggleSidebarCommand}" Content="›" Padding="6,2"
-                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0"
-                    ToolTip.Tip="Show sidebar" />
-        </Border>
-
-        <!-- Main area -->
-        <DockPanel Margin="14,10">
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,10">
-                <TextBlock Grid.Column="0" Text="Sync tasks" FontSize="18" FontWeight="Medium" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Command="{Binding ToggleExpandAllCommand}" Content="{Binding ExpandCollapseLabel}"
-                        Margin="0,0,8,0" Padding="10,5" />
-                <Button Grid.Column="3" Classes="action" Command="{Binding AddTaskCommand}" Padding="12,6">
-                    <TextBlock Text="New task" />
+            <!-- Rail when sidebar hidden -->
+            <Border Grid.Column="1" Width="40" IsVisible="{Binding !IsSidebarVisible}"
+                    Background="{StaticResource SubtleBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                <Button Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="Show sidebar">
+                    <mi:MaterialIcon Kind="ChevronRight" Width="16" Height="16" />
                 </Button>
-            </Grid>
+            </Border>
 
-            <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Nodes}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TaskNodeViewModel">
-                            <Border Classes="card">
-                                <Expander IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch">
-                                    <Expander.Header>
-                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
-                                                    <Border Classes="badge"><TextBlock Text="{Binding TriggerText}" /></Border>
+            <!-- Main area -->
+            <DockPanel Grid.Column="2" Margin="16,12">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
+                    <TextBlock Grid.Column="0" Text="Sync tasks" Classes="h1" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Classes="secondary" Command="{Binding ToggleExpandAllCommand}" Content="{Binding ExpandCollapseLabel}" Margin="0,0,8,0" />
+                    <Button Grid.Column="3" Classes="secondary" Command="{Binding RunAllCommand}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="Play" Width="15" Height="15" />
+                            <TextBlock Text="Run all" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="4" Classes="primary" Command="{Binding AddTaskCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="Plus" Width="15" Height="15" />
+                            <TextBlock Text="New task" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Nodes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TaskNodeViewModel">
+                                <Border Classes="card">
+                                    <StackPanel>
+                                        <!-- Header -->
+                                        <Grid ColumnDefinitions="*,Auto" Margin="10">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ToggleButton Classes="chevron" IsChecked="{Binding IsExpanded}" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                    <Panel Width="18" Height="18">
+                                                        <mi:MaterialIcon Kind="ChevronDown" Width="18" Height="18" IsVisible="{Binding IsExpanded}" />
+                                                        <mi:MaterialIcon Kind="ChevronRight" Width="18" Height="18" IsVisible="{Binding !IsExpanded}" />
+                                                    </Panel>
+                                                </ToggleButton>
+                                                <Border Classes="chip" Margin="0,0,11,0">
+                                                    <mi:MaterialIcon Kind="FolderOutline" Width="19" Height="19" Foreground="{StaticResource TealBrush}"
+                                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding Name}" Classes="name" VerticalAlignment="Center" />
+                                                        <Border Classes="badge"><TextBlock Text="{Binding TriggerText}" /></Border>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Path}" Classes="path" />
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding Path}" Classes="path" />
                                             </StackPanel>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding HealthText}" VerticalAlignment="Center"
-                                                           Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                                    <Button Classes="action" Command="{Binding ExecuteCommand}"><TextBlock Text="Execute" /></Button>
-                                                    <Button Classes="action" Command="{Binding AddDestinationCommand}"><TextBlock Text="Add destination" /></Button>
-                                                    <Button Classes="action" Command="{Binding EditCommand}"><TextBlock Text="Edit" /></Button>
-                                                    <Button Classes="danger" Command="{Binding DeleteCommand}"><TextBlock Text="Delete" /></Button>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                    <mi:MaterialIcon Width="15" Height="15" VerticalAlignment="Center"
+                                                                     Kind="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToIconKindConverter.Instance}}"
+                                                                     Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                    <TextBlock Text="{Binding HealthText}" VerticalAlignment="Center"
+                                                               Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <Button Classes="icon run" Command="{Binding ExecuteCommand}" ToolTip.Tip="Run now"><mi:MaterialIcon Kind="Play" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon" Command="{Binding AddDestinationCommand}" ToolTip.Tip="Add destination"><mi:MaterialIcon Kind="Plus" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit task"><mi:MaterialIcon Kind="Pencil" Width="15" Height="15" /></Button>
+                                                    <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete task"><mi:MaterialIcon Kind="TrashCanOutline" Width="15" Height="15" /></Button>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
-                                    </Expander.Header>
 
-                                    <ItemsControl ItemsSource="{Binding Children}" Margin="6,2,6,6">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:DestinationNodeViewModel">
-                                                <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,9">
-                                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                                        <Ellipse Grid.Column="0" Width="9" Height="9" VerticalAlignment="Center" Margin="2,0,12,0"
-                                                                 Fill="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                                                <Border Classes="badge"><TextBlock Text="{Binding StrategyText}" /></Border>
-                                                                <Border Classes="badge"><TextBlock Text="{Binding FilterText}" /></Border>
+                                        <!-- Destinations -->
+                                        <ItemsControl ItemsSource="{Binding Children}" IsVisible="{Binding IsExpanded}" Margin="0,0,0,4">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:DestinationNodeViewModel">
+                                                    <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="16,10,12,10">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                            <mi:MaterialIcon Grid.Column="0" Width="17" Height="17" VerticalAlignment="Center" Margin="0,0,11,0"
+                                                                             Kind="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToIconKindConverter.Instance}}"
+                                                                             Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                                                    <Border Classes="badge"><TextBlock Text="{Binding StrategyText}" /></Border>
+                                                                    <Border Classes="badge"><TextBlock Text="{Binding FilterText}" /></Border>
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding Path}" Classes="path" />
                                                             </StackPanel>
-                                                            <TextBlock Text="{Binding Path}" Classes="path" />
-                                                        </StackPanel>
-                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
-                                                                       Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
-                                                            <Button Classes="action" Command="{Binding EditCommand}"><TextBlock Text="Edit" /></Button>
-                                                            <Button Classes="danger" Command="{Binding DeleteCommand}"><TextBlock Text="Delete" /></Button>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Expander>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </DockPanel>
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                                                                           Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                                <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit destination"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
+                                                                <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete destination"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Grid>
     </DockPanel>
 </Window>
