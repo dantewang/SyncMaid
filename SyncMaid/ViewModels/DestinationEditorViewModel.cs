@@ -17,7 +17,7 @@ namespace SyncMaid.ViewModels;
 /// path/extension rules. Raises <see cref="CloseRequested"/> instead of touching the
 /// window.
 /// </summary>
-public partial class DestinationEditorViewModel : ViewModelBase
+public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
@@ -78,9 +78,6 @@ public partial class DestinationEditorViewModel : ViewModelBase
         Filters.CollectionChanged += (_, _) => OKCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Raised when the dialog should close: the destination, or null if cancelled.</summary>
-    public event Action<Destination?>? CloseRequested;
-
     public SyncStrategy[] SyncStrategies { get; }
     public FilterKind[] FilterKinds { get; }
     public ObservableCollection<FilterRuleViewModel> Filters { get; }
@@ -92,7 +89,7 @@ public partial class DestinationEditorViewModel : ViewModelBase
             ? [new AllFilesFilter()]
             : Filters.Select(filter => filter.Rule).ToList();
 
-        CloseRequested?.Invoke(new Destination(Name, Path, filters, SelectedStrategy) { Id = _id });
+        Close(new Destination(Name, Path, filters, SelectedStrategy) { Id = _id });
     }
 
     private bool CanOk() =>
@@ -101,7 +98,7 @@ public partial class DestinationEditorViewModel : ViewModelBase
         && (SyncAll || Filters.Count > 0);
 
     [RelayCommand]
-    private void Cancel() => CloseRequested?.Invoke(null);
+    private void Cancel() => Close(null);
 
     [RelayCommand]
     private async Task Browse()

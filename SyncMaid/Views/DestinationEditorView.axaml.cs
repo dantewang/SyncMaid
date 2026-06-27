@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace SyncMaid.Views;
 
-public partial class DestinationEditorWindow : Window
+public partial class DestinationEditorView : UserControl
 {
-    public DestinationEditorWindow()
+    public DestinationEditorView()
     {
         InitializeComponent();
     }

@@ -13,7 +13,7 @@ namespace SyncMaid.ViewModels;
 /// task node, not here. Raises <see cref="CloseRequested"/> with the result (or null on
 /// cancel) instead of touching the window, so it stays view-free and testable.
 /// </summary>
-public partial class TaskEditorViewModel : ViewModelBase
+public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
@@ -54,9 +54,6 @@ public partial class TaskEditorViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Raised when the dialog should close: the new task, or null if cancelled.</summary>
-    public event Action<SyncTask?>? CloseRequested;
-
     public TaskTriggerType[] TriggerTypes { get; }
 
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
@@ -81,7 +78,7 @@ public partial class TaskEditorViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK() =>
         // Destinations are merged in by the caller; a fresh task carries none.
-        CloseRequested?.Invoke(new SyncTask(Name, Path, ToTrigger(), []) { Id = _id });
+        Close(new SyncTask(Name, Path, ToTrigger(), []) { Id = _id });
 
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
@@ -89,7 +86,7 @@ public partial class TaskEditorViewModel : ViewModelBase
         && (SelectedTriggerType != TaskTriggerType.Scheduled || CronSchedule.IsValid(CronExpression));
 
     [RelayCommand]
-    private void Cancel() => CloseRequested?.Invoke(null);
+    private void Cancel() => Close(null);
 
     [RelayCommand]
     private async Task Browse()

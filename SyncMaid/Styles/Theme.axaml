@@ -1,15 +1,20 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Surfaces -->
+    <!-- Surfaces. Default text colour lives on Window/UserControl so it INHERITS — letting
+         buttons (white) and selected segments (teal) override their content text. -->
     <Style Selector="Window">
         <Setter Property="Background" Value="{StaticResource PageBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="Inter, sans-serif" />
+    </Style>
+    <Style Selector="UserControl">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="FontFamily" Value="Inter, sans-serif" />
     </Style>
 
-    <!-- Typography -->
+    <!-- Typography (no Foreground here — it would defeat inheritance on buttons/segments) -->
     <Style Selector="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="FontSize" Value="13" />
     </Style>
     <Style Selector="TextBlock.h1">
@@ -154,19 +159,18 @@
         <Setter Property="Foreground" Value="White" />
     </Style>
 
-    <!-- Chevron toggle (card collapse) -->
+    <!-- Chevron toggle (card collapse) — custom template so Fluent's checked chrome
+         never paints a filled box over the arrow. -->
     <Style Selector="ToggleButton.chevron">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="2" />
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
         <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="ToggleButton.chevron /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-    </Style>
-    <Style Selector="ToggleButton.chevron:checked /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent" Padding="2">
+                    <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
     </Style>
 
     <!-- Card -->
@@ -185,14 +189,14 @@
         <Setter Property="Padding" Value="8,2" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Border.badge > TextBlock">
+    <Style Selector="Border.badge TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="FontSize" Value="11" />
     </Style>
     <Style Selector="Border.badge.live">
         <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
     </Style>
-    <Style Selector="Border.badge.live > StackPanel > TextBlock">
+    <Style Selector="Border.badge.live TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
     </Style>
 
@@ -205,15 +209,94 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <!-- Inputs -->
+    <!-- Inputs: grey hairline border (matching buttons), teal on focus -->
     <Style Selector="TextBox">
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="MinHeight" Value="34" />
         <Setter Property="Padding" Value="9,6" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
     </Style>
     <Style Selector="ComboBox">
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="MinHeight" Value="34" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ComboBox /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+
+    <!-- Segmented selector (trigger type) -->
+    <Style Selector="RadioButton.segment">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="root" CornerRadius="6" BorderThickness="1" Padding="14,7"
+                        BorderBrush="{StaticResource HairlineStrongBrush}" Background="Transparent">
+                    <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.segment:pointerover /template/ Border#root">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
+    <Style Selector="RadioButton.segment:checked /template/ Border#root">
+        <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+    </Style>
+    <Style Selector="RadioButton.segment:checked">
+        <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
+    </Style>
+
+    <!-- Choice card (sync strategy / file mode) -->
+    <Style Selector="RadioButton.card">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="root" CornerRadius="8" BorderThickness="1" Padding="12,10"
+                        BorderBrush="{StaticResource HairlineBrush}" Background="{StaticResource SurfaceBrush}">
+                    <ContentPresenter Content="{TemplateBinding Content}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.card:pointerover /template/ Border#root">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="RadioButton.card:checked /template/ Border#root">
+        <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
+        <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
+    </Style>
+
+    <!-- In-window modal -->
+    <Style Selector="Border.backdrop">
+        <Setter Property="Background" Value="#66000000" />
+    </Style>
+    <Style Selector="Border.dialogCard">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="BoxShadow" Value="0 18 50 0 #40000000" />
+    </Style>
+    <Style Selector="Border.filterRow">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="10,6" />
     </Style>
 
     <!-- Sidebar list -->

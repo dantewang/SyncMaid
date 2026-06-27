@@ -13,7 +13,7 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="SyncMaid">
 
-    <DockPanel>
+    <Grid>
         <Grid ColumnDefinitions="Auto,Auto,*">
             <!-- Sidebar: compact task list -->
             <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
@@ -28,9 +28,14 @@
                     <ListBox Classes="sidebar" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TaskNodeViewModel">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" />
-                                    <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Orientation="Horizontal" Spacing="9">
+                                    <mi:MaterialIcon Kind="FolderOutline" Width="18" Height="18"
+                                                     Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TealBrush}" />
+                                        <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -76,10 +81,8 @@
                                         <Grid ColumnDefinitions="*,Auto" Margin="10">
                                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                 <ToggleButton Classes="chevron" IsChecked="{Binding IsExpanded}" VerticalAlignment="Center" Margin="0,0,4,0">
-                                                    <Panel Width="18" Height="18">
-                                                        <mi:MaterialIcon Kind="ChevronDown" Width="18" Height="18" IsVisible="{Binding IsExpanded}" />
-                                                        <mi:MaterialIcon Kind="ChevronRight" Width="18" Height="18" IsVisible="{Binding !IsExpanded}" />
-                                                    </Panel>
+                                                    <mi:MaterialIcon Width="18" Height="18"
+                                                                     Kind="{Binding IsExpanded, Converter={x:Static conv:BoolToChevronKindConverter.Instance}}" />
                                                 </ToggleButton>
                                                 <Border Classes="chip" Margin="0,0,11,0">
                                                     <mi:MaterialIcon Kind="FolderOutline" Width="19" Height="19" Foreground="{StaticResource TealBrush}"
@@ -88,7 +91,13 @@
                                                 <StackPanel VerticalAlignment="Center">
                                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                                         <TextBlock Text="{Binding Name}" Classes="name" VerticalAlignment="Center" />
-                                                        <Border Classes="badge"><TextBlock Text="{Binding TriggerText}" /></Border>
+                                                        <Border Classes="badge">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <mi:MaterialIcon Kind="{Binding TriggerIconKind}" Width="12" Height="12"
+                                                                                 Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding TriggerText}" />
+                                                            </StackPanel>
+                                                        </Border>
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding Path}" Classes="path" />
                                                 </StackPanel>
@@ -122,8 +131,20 @@
                                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                                                    <Border Classes="badge"><TextBlock Text="{Binding StrategyText}" /></Border>
-                                                                    <Border Classes="badge"><TextBlock Text="{Binding FilterText}" /></Border>
+                                                                    <Border Classes="badge">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                            <mi:MaterialIcon Kind="{Binding StrategyIconKind}" Width="12" Height="12"
+                                                                                             Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                                                            <TextBlock Text="{Binding StrategyText}" />
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                    <Border Classes="badge">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                            <mi:MaterialIcon Kind="FilterOutline" Width="12" Height="12"
+                                                                                             Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                                                            <TextBlock Text="{Binding FilterText}" />
+                                                                        </StackPanel>
+                                                                    </Border>
                                                                 </StackPanel>
                                                                 <TextBlock Text="{Binding Path}" Classes="path" />
                                                             </StackPanel>
@@ -146,5 +167,11 @@
                 </ScrollViewer>
             </DockPanel>
         </Grid>
-    </DockPanel>
+
+        <!-- In-window modal overlay -->
+        <Border Classes="backdrop" IsVisible="{Binding DialogHost.IsOpen}">
+            <ContentControl Content="{Binding DialogHost.CurrentDialog}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+    </Grid>
 </Window>

@@ -4,6 +4,7 @@ using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Services;
 using SyncMaid.ViewModels;
 
 namespace SyncMaid.UiTests.ViewModels;
@@ -24,7 +25,8 @@ public class MainWindowViewModelTests
             statusStore ?? new RecordingStatusStore(),
             new FakeSyncEngine(),
             triggers ?? new FakeTriggerSourceFactory(),
-            new FakeUiDispatcher());
+            new FakeUiDispatcher(),
+            new DialogHost());
 
     [Fact]
     public void Loads_existing_tasks_from_the_store_on_construction()
@@ -143,7 +145,7 @@ public class MainWindowViewModelTests
         var engine = new FakeSyncEngine();
         var vm = new MainWindowViewModel(
             new FakeDialogService(), new RecordingTaskStore([runnable, empty]), new RecordingStatusStore(),
-            engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher());
+            engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost());
 
         vm.RunAllCommand.Execute(null);
 

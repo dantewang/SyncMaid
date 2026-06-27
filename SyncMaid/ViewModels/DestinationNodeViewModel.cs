@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Material.Icons;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 
@@ -45,6 +46,14 @@ public partial class DestinationNodeViewModel : ViewModelBase
         SyncStrategy.AddOnly => "Add-only",
         SyncStrategy.Move => "Move",
         _ => Destination.Strategy.ToString(),
+    };
+
+    public MaterialIconKind StrategyIconKind => Destination.Strategy switch
+    {
+        SyncStrategy.Mirror => MaterialIconKind.Sync,
+        SyncStrategy.AddOnly => MaterialIconKind.Plus,
+        SyncStrategy.Move => MaterialIconKind.ArrowRight,
+        _ => MaterialIconKind.Sync,
     };
 
     public string FilterText => DescribeFilters();

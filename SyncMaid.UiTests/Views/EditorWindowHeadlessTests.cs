@@ -10,31 +10,32 @@ using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Services;
 using SyncMaid.ViewModels;
 using SyncMaid.Views;
 
 namespace SyncMaid.UiTests.Views;
 
 /// <summary>
-/// End-to-end UI tests driving the real windows, XAML, and bindings on Avalonia's
-/// headless platform — the deterministic replacement for poking the live desktop.
+/// End-to-end UI tests driving the real views, XAML, and bindings on Avalonia's headless
+/// platform — the deterministic replacement for poking the live desktop.
 /// </summary>
 public class EditorWindowHeadlessTests
 {
+    private static Window Host(Control content) =>
+        new() { Width = 520, Height = 440, Content = content };
+
     [AvaloniaFact]
     public void Typing_into_the_textboxes_flows_through_bindings_to_the_view_model()
     {
         var viewModel = new TaskEditorViewModel(new FakeFolderPickerService());
-        var window = new TaskEditorWindow { DataContext = viewModel };
+        var window = Host(new TaskEditorView { DataContext = viewModel });
         window.Show();
 
         var textBoxes = window.GetVisualDescendants().OfType<TextBox>().ToList();
-        var nameBox = textBoxes[0];
-        var pathBox = textBoxes[1];
-
-        nameBox.Focus();
+        textBoxes[0].Focus();
         window.KeyTextInput("Photos");
-        pathBox.Focus();
+        textBoxes[1].Focus();
         window.KeyTextInput(@"C:\src");
         Dispatcher.UIThread.RunJobs();
 
@@ -43,41 +44,23 @@ public class EditorWindowHeadlessTests
     }
 
     [AvaloniaFact]
-    public void OK_button_enables_only_when_the_command_can_execute()
+    public void Save_button_enables_only_when_the_command_can_execute()
     {
         var viewModel = new TaskEditorViewModel(new FakeFolderPickerService());
-        var window = new TaskEditorWindow { DataContext = viewModel };
+        var window = Host(new TaskEditorView { DataContext = viewModel });
         window.Show();
 
-        var okButton = window.GetVisualDescendants()
+        var saveButton = window.GetVisualDescendants()
             .OfType<Button>()
             .First(button => button.Content as string == "Save task");
 
-        Assert.False(okButton.IsEffectivelyEnabled);
+        Assert.False(saveButton.IsEffectivelyEnabled);
 
         viewModel.Name = "Photos";
         viewModel.Path = @"C:\src";
         Dispatcher.UIThread.RunJobs();
 
-        Assert.True(okButton.IsEffectivelyEnabled);
-    }
-
-    [AvaloniaFact]
-    public void MainWindow_renders_the_tasks_from_the_view_model()
-    {
-        var store = new RecordingTaskStore([new SyncTask("Photos", @"C:\p", new ManualTrigger(), [])]);
-        var viewModel = new MainWindowViewModel(
-            new FakeDialogService(), store, new RecordingStatusStore(), new FakeSyncEngine(),
-            new FakeTriggerSourceFactory(), new FakeUiDispatcher());
-        var window = new MainWindow { DataContext = viewModel };
-        window.Show();
-        Dispatcher.UIThread.RunJobs();
-
-        var renderedText = window.GetVisualDescendants()
-            .OfType<TextBlock>()
-            .Select(block => block.Text);
-
-        Assert.Contains("Photos", renderedText);
+        Assert.True(saveButton.IsEffectivelyEnabled);
     }
 
     [AvaloniaFact]
@@ -89,10 +72,7 @@ public class EditorWindowHeadlessTests
         {
             [dest.Id] = new(dest.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 5, null),
         });
-        var viewModel = new MainWindowViewModel(
-            new FakeDialogService(), new RecordingTaskStore([task]), statusStore,
-            new FakeSyncEngine(), new FakeTriggerSourceFactory(), new FakeUiDispatcher());
-        var window = new MainWindow { DataContext = viewModel };
+        var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore([task]), statusStore) };
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
@@ -100,6 +80,26 @@ public class EditorWindowHeadlessTests
 
         Assert.Contains(texts, t => t != null && t.Contains("Synced"));
         Assert.Contains("Mirror", texts);
-        Assert.Contains("Manual", texts);   // trigger badge
+        Assert.Contains("Photos", texts);
     }
+
+    [AvaloniaFact]
+    public void Showing_a_dialog_renders_it_in_the_main_window_overlay()
+    {
+        var host = new DialogHost();
+        var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore(), new RecordingStatusStore(), host) };
+        window.Show();
+
+        _ = host.ShowAsync(new TaskEditorViewModel(new FakeFolderPickerService()));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(host.IsOpen);
+        Assert.NotEmpty(window.GetVisualDescendants().OfType<TaskEditorView>());
+    }
+
+    private static MainWindowViewModel NewMainViewModel(
+        RecordingTaskStore store, RecordingStatusStore statusStore, IDialogHost? host = null) =>
+        new(
+            new FakeDialogService(), store, statusStore, new FakeSyncEngine(),
+            new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost());
 }

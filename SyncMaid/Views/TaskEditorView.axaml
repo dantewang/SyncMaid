@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:conv="using:SyncMaid.Converters"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="470"
+             x:Class="SyncMaid.Views.TaskEditorView"
+             x:DataType="vm:TaskEditorViewModel"
+             x:CompileBindings="True">
+
+    <Border Classes="dialogCard" Width="470">
+        <StackPanel Margin="24" Spacing="16">
+            <TextBlock Text="Task" FontSize="16" FontWeight="Medium" />
+
+            <StackPanel>
+                <TextBlock Text="Name" Classes="label" />
+                <TextBox Text="{Binding Name}" />
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="Source folder" Classes="label" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding Path}" Classes="path" />
+                    <Button Grid.Column="1" Classes="secondary" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
+                            <TextBlock Text="Browse" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="Trigger" Classes="label" />
+                <Grid ColumnDefinitions="*,8,*,8,*">
+                    <RadioButton Grid.Column="0" Classes="segment" GroupName="trigger"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Manual}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="CursorDefaultClickOutline" Width="15" Height="15" />
+                            <TextBlock Text="Manual" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Grid.Column="2" Classes="segment" GroupName="trigger"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Scheduled}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="ClockOutline" Width="15" Height="15" />
+                            <TextBlock Text="Scheduled" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Grid.Column="4" Classes="segment" GroupName="trigger"
+                                 IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Watch}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="Eye" Width="15" Height="15" />
+                            <TextBlock Text="Watch" />
+                        </StackPanel>
+                    </RadioButton>
+                </Grid>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsScheduledTrigger}">
+                <TextBlock Text="Cron expression" Classes="label" />
+                <TextBox Text="{Binding CronExpression}" Classes="path" PlaceholderText="*/5 * * * *" />
+                <TextBlock Text="{Binding CronPreview}" Classes="muted" Margin="0,5,0,0" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
+                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                <Button Classes="primary" Content="Save task" Command="{Binding OKCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

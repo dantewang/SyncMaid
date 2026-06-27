@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Material.Icons;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
@@ -83,6 +84,13 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         WatchTrigger => "Watching",
         ScheduledTrigger scheduled => $"Scheduled · {scheduled.CronExpression}",
         _ => "Manual",
+    };
+
+    public MaterialIconKind TriggerIconKind => Task.Trigger switch
+    {
+        WatchTrigger => MaterialIconKind.Eye,
+        ScheduledTrigger => MaterialIconKind.ClockOutline,
+        _ => MaterialIconKind.CursorDefaultClickOutline,
     };
 
     public ObservableCollection<DestinationNodeViewModel> Children { get; }

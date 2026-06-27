@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ISyncEngine _engine;
     private readonly ITriggerSourceFactory _triggerFactory;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IDialogHost _dialogHost;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
     private readonly Lock _statusGate = new();
 
@@ -41,7 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         IStatusStore statusStore,
         ISyncEngine engine,
         ITriggerSourceFactory triggerFactory,
-        IUiDispatcher dispatcher)
+        IUiDispatcher dispatcher,
+        IDialogHost dialogHost)
     {
         _dialogs = dialogs;
         _store = store;
@@ -49,6 +51,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _engine = engine;
         _triggerFactory = triggerFactory;
         _dispatcher = dispatcher;
+        _dialogHost = dialogHost;
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
 
         Nodes = new ObservableCollection<TaskNodeViewModel>();
@@ -61,6 +64,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
+
+    /// <summary>The in-window modal host; the view binds an overlay to its CurrentDialog.</summary>
+    public IDialogHost DialogHost => _dialogHost;
 
     public string ExpandCollapseLabel => AllExpanded ? "Collapse all" : "Expand all";
 

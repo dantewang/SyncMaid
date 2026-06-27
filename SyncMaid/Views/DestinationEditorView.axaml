@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:conv="using:SyncMaid.Converters"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:model="using:SyncMaid.Core.Model"
+             mc:Ignorable="d" d:DesignWidth="510"
+             x:Class="SyncMaid.Views.DestinationEditorView"
+             x:DataType="vm:DestinationEditorViewModel"
+             x:CompileBindings="True">
+
+    <Border Classes="dialogCard" Width="510" MaxHeight="640">
+        <DockPanel Margin="24">
+            <TextBlock DockPanel.Dock="Top" Text="Destination" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
+
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,16,0,0">
+                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                <Button Classes="primary" Content="Save destination" Command="{Binding OKCommand}" />
+            </StackPanel>
+
+            <ScrollViewer>
+                <StackPanel Spacing="16" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="Name" Classes="label" />
+                        <TextBox Text="{Binding Name}" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="Destination folder" Classes="label" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding Path}" Classes="path" />
+                            <Button Grid.Column="1" Classes="secondary" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
+                                    <TextBlock Text="Browse" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="Sync strategy" Classes="label" />
+                        <StackPanel Spacing="8">
+                            <RadioButton Classes="card" GroupName="strategy"
+                                         IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Mirror}}">
+                                <StackPanel Orientation="Horizontal" Spacing="11">
+                                    <mi:MaterialIcon Kind="Sync" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
+                                    <StackPanel>
+                                        <TextBlock Text="Mirror" FontWeight="Medium" />
+                                        <TextBlock Text="Keep the destination identical — copies new and changed files, deletes extras." Classes="muted" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Classes="card" GroupName="strategy"
+                                         IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.AddOnly}}">
+                                <StackPanel Orientation="Horizontal" Spacing="11">
+                                    <mi:MaterialIcon Kind="Plus" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
+                                    <StackPanel>
+                                        <TextBlock Text="Add-only" FontWeight="Medium" />
+                                        <TextBlock Text="Copy new and changed files; never delete from the destination." Classes="muted" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Classes="card" GroupName="strategy"
+                                         IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Move}}">
+                                <StackPanel Orientation="Horizontal" Spacing="11">
+                                    <mi:MaterialIcon Kind="ArrowRight" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
+                                    <StackPanel>
+                                        <TextBlock Text="Move" FontWeight="Medium" />
+                                        <TextBlock Text="Move matching files to the destination, removing them from the source." Classes="muted" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="Files to sync" Classes="label" />
+                        <Grid ColumnDefinitions="*,8,*">
+                            <RadioButton Grid.Column="0" Classes="segment" GroupName="files" Content="All files" IsChecked="{Binding SyncAll}" />
+                            <RadioButton Grid.Column="2" Classes="segment" GroupName="files" Content="Only matching" IsChecked="{Binding !SyncAll}" />
+                        </Grid>
+
+                        <StackPanel IsVisible="{Binding !SyncAll}" Spacing="8" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}" SelectedItem="{Binding SelectedFilterKind}" Width="120" />
+                                <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path" PlaceholderText="e.g. photos/2024 or jpg" />
+                                <Button Grid.Column="2" Classes="primary" Command="{Binding AddFilterCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
+                                        <TextBlock Text="Add" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Filters}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FilterRuleViewModel">
+                                        <Border Classes="filterRow" Margin="0,0,0,6">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <mi:MaterialIcon Grid.Column="0" Kind="FilterOutline" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center" />
+                                                <Button Grid.Column="2" Classes="icon" Width="26" Height="26"
+                                                        Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
+                                                        CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                                    <mi:MaterialIcon Kind="Close" Width="13" Height="13" />
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -1,8 +1,16 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialIcons="using:Material.Icons.Avalonia"
+             xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:views="using:SyncMaid.Views"
              x:Class="SyncMaid.App"
              RequestedThemeVariant="Light">
+
+    <Application.DataTemplates>
+        <!-- Maps each editor view model to its view for the in-window modal host. -->
+        <DataTemplate DataType="vm:TaskEditorViewModel"><views:TaskEditorView /></DataTemplate>
+        <DataTemplate DataType="vm:DestinationEditorViewModel"><views:DestinationEditorView /></DataTemplate>
+    </Application.DataTemplates>
 
     <Application.Resources>
         <!-- Flat palette matching the design -->

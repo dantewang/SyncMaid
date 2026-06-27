@@ -53,15 +53,19 @@ public partial class App : Application
         services.AddSingleton<ISyncEngine>(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<ITriggerSourceFactory>(_ => new TriggerSourceFactory());
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
+        services.AddSingleton<IDialogHost>(_ => new DialogHost());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
-        services.AddSingleton<IDialogService>(sp => new DialogService(sp.GetRequiredService<IFolderPickerService>()));
+        services.AddSingleton<IDialogService>(sp => new DialogService(
+            sp.GetRequiredService<IFolderPickerService>(),
+            sp.GetRequiredService<IDialogHost>()));
         services.AddSingleton(sp => new MainWindowViewModel(
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ITaskStore>(),
             sp.GetRequiredService<IStatusStore>(),
             sp.GetRequiredService<ISyncEngine>(),
             sp.GetRequiredService<ITriggerSourceFactory>(),
-            sp.GetRequiredService<IUiDispatcher>()));
+            sp.GetRequiredService<IUiDispatcher>(),
+            sp.GetRequiredService<IDialogHost>()));
 
         return services.BuildServiceProvider();
     }
