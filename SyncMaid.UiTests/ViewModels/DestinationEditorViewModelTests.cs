@@ -127,4 +127,50 @@ public class DestinationEditorViewModelTests
         Assert.True(vm.SyncAll);
         Assert.Empty(vm.Filters);
     }
+
+    [Fact]
+    public void Verification_and_delete_mode_round_trip_through_the_editor()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            VerifyContents = true,
+            DeleteMode = DeleteMode.Permanent,
+        };
+
+        var vm = New(existing: existing);
+        Assert.True(vm.VerifyContents);
+        Assert.Equal(DeleteMode.Permanent, vm.SelectedDeleteMode);
+
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+
+        Assert.True(result!.VerifyContents);
+        Assert.Equal(DeleteMode.Permanent, result.DeleteMode);
+    }
+
+    [Fact]
+    public void New_destination_defaults_to_recycle_bin_and_no_content_verification()
+    {
+        var vm = New();
+
+        Assert.False(vm.VerifyContents);
+        Assert.Equal(DeleteMode.Recycle, vm.SelectedDeleteMode);
+    }
+
+    [Fact]
+    public void Network_verify_warning_shows_only_for_a_unc_path_with_verification_on()
+    {
+        var vm = New();
+        vm.Path = @"\\nas\backup";
+        Assert.True(vm.IsNetworkPath);
+
+        Assert.False(vm.ShowVerifyNetworkWarning); // off until verification is enabled
+        vm.VerifyContents = true;
+        Assert.True(vm.ShowVerifyNetworkWarning);
+
+        vm.Path = @"D:\local"; // local drive — no warning even with verification on
+        Assert.False(vm.IsNetworkPath);
+        Assert.False(vm.ShowVerifyNetworkWarning);
+    }
 }

@@ -25,6 +25,8 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
+    [NotifyPropertyChangedFor(nameof(IsNetworkPath))]
+    [NotifyPropertyChangedFor(nameof(ShowVerifyNetworkWarning))]
     private string _path = string.Empty;
 
     [ObservableProperty]
@@ -33,6 +35,13 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     [ObservableProperty]
     private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowVerifyNetworkWarning))]
+    private bool _verifyContents;
+
+    [ObservableProperty]
+    private DeleteMode _selectedDeleteMode = DeleteMode.Recycle;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddFilterCommand))]
@@ -49,6 +58,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
         _folderPicker = folderPicker;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         FilterKinds = Enum.GetValues<FilterKind>();
+        DeleteModes = Enum.GetValues<DeleteMode>();
         Filters = new ObservableCollection<FilterRuleViewModel>();
 
         if (existing != null)
@@ -57,6 +67,8 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
             _name = existing.Name;
             _path = existing.Path;
             _selectedStrategy = existing.Strategy;
+            _verifyContents = existing.VerifyContents;
+            _selectedDeleteMode = existing.DeleteMode;
 
             // A lone AllFilesFilter is "sync all"; anything else is an explicit filter list.
             var isSyncAll = existing.Filters is [AllFilesFilter];
@@ -80,7 +92,15 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     public SyncStrategy[] SyncStrategies { get; }
     public FilterKind[] FilterKinds { get; }
+    public DeleteMode[] DeleteModes { get; }
     public ObservableCollection<FilterRuleViewModel> Filters { get; }
+
+    /// <summary>True when the destination path is a mounted network location (UNC or a
+    /// mapped network drive), where content verification means re-reading over the network.</summary>
+    public bool IsNetworkPath => LooksLikeNetworkPath(Path);
+
+    /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
+    public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
@@ -89,7 +109,38 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
             ? [new AllFilesFilter()]
             : Filters.Select(filter => filter.Rule).ToList();
 
-        Close(new Destination(Name, Path, filters, SelectedStrategy) { Id = _id });
+        Close(new Destination(Name, Path, filters, SelectedStrategy)
+        {
+            Id = _id,
+            VerifyContents = VerifyContents,
+            DeleteMode = SelectedDeleteMode,
+        });
+    }
+
+    // UNC paths and mapped network drives mean content verification re-reads over the
+    // network. Computed in the VM so the editor can warn; tolerant of partial input.
+    private static bool LooksLikeNetworkPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        try
+        {
+            var root = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(path));
+            return !string.IsNullOrEmpty(root)
+                   && new System.IO.DriveInfo(root).DriveType == System.IO.DriveType.Network;
+        }
+        catch
+        {
+            return false; // mid-typing or invalid path — not yet a known network path
+        }
     }
 
     private bool CanOk() =>
