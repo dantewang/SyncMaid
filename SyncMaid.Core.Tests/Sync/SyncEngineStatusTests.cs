@@ -51,7 +51,7 @@ public class SyncEngineStatusTests
         var dest = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
         var task = new SyncTask("T", @"C:\src", new ManualTrigger(), [dest]);
 
-        var statuses = await new SyncEngine(fs).ExecuteAsync(task);
+        var statuses = await new SyncEngine(fs, RetryOptions.None).ExecuteAsync(task);
 
         var status = Assert.Single(statuses);
         Assert.Equal(dest.Id, status.DestinationId);
@@ -72,7 +72,7 @@ public class SyncEngineStatusTests
         var bad = new Destination("bad", @"D:\bad", [new AllFilesFilter()], SyncStrategy.Mirror);
         var task = new SyncTask("T", @"C:\src", new ManualTrigger(), [good, bad]);
 
-        var statuses = await new SyncEngine(fs).ExecuteAsync(task);
+        var statuses = await new SyncEngine(fs, RetryOptions.None).ExecuteAsync(task);
 
         Assert.Equal(SyncOutcome.Success, statuses.Single(s => s.DestinationId == good.Id).Outcome);
         var badStatus = statuses.Single(s => s.DestinationId == bad.Id);

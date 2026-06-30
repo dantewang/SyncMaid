@@ -22,6 +22,10 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// — simulating an interrupted transfer (power loss, source read error).</summary>
     public bool FailWrites { get; set; }
 
+    /// <summary>When &gt; 0, the next this-many writes throw (then succeed) — simulating a
+    /// transiently locked file that clears after a retry. Decrements per failed write.</summary>
+    public int FailWritesTimes { get; set; }
+
     /// <summary>When set, written bytes are silently flipped before being stored (same length)
     /// — simulating hardware/environmental corruption that only content verification can catch.</summary>
     public bool CorruptWrites { get; set; }
@@ -132,6 +136,12 @@ public sealed class InMemoryFileSystem : IFileSystem
     {
         if (FailWrites)
         {
+            return new FailingStream();
+        }
+
+        if (FailWritesTimes > 0)
+        {
+            FailWritesTimes--;
             return new FailingStream();
         }
 

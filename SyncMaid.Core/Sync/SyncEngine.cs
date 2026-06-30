@@ -13,8 +13,13 @@ namespace SyncMaid.Core.Sync;
 public sealed class SyncEngine : ISyncEngine
 {
     private readonly IFileSystem _fileSystem;
+    private readonly RetryOptions _retry;
 
-    public SyncEngine(IFileSystem fileSystem) => _fileSystem = fileSystem;
+    public SyncEngine(IFileSystem fileSystem, RetryOptions? retry = null)
+    {
+        _fileSystem = fileSystem;
+        _retry = retry ?? RetryOptions.Default;
+    }
 
     /// <summary>
     /// Executes <paramref name="task"/> against every destination, in order, returning
@@ -83,7 +88,19 @@ public sealed class SyncEngine : ISyncEngine
 
                 var operation = plan[i];
                 progress?.Report(new SyncProgress(destination, operation, i, plan.Count));
-                SyncApplier.Apply(_fileSystem, operation);
+
+                // Retry transient I/O (a locked file, a brief sharing violation) before
+                // failing the whole destination on one momentarily-unavailable file.
+                TransientRetry.Execute(
+                    () => SyncApplier.Apply(_fileSystem, operation),
+                    _retry.MaxAttempts,
+                    attempt =>
+                    {
+                        if (_retry.BaseDelay > TimeSpan.Zero)
+                        {
+                            Thread.Sleep(_retry.BaseDelay * attempt);
+                        }
+                    });
 
                 if (operation is CopyOperation or MoveOperation)
                 {
