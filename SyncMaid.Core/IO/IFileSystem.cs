@@ -54,6 +54,13 @@ public interface IFileSystem
     /// <summary>Deletes the file at <paramref name="path"/> if it exists; otherwise no-op.</summary>
     void DeleteFile(string path);
 
+    /// <summary>
+    /// Sends the file at <paramref name="path"/> to the Recycle Bin if it exists, so the
+    /// deletion is recoverable. On volumes without a Recycle Bin (e.g. network shares) this
+    /// falls back to a permanent delete.
+    /// </summary>
+    void Recycle(string path);
+
     /// <summary>Ensures the directory at <paramref name="path"/> exists, creating parents as needed.</summary>
     void EnsureDirectory(string path);
 

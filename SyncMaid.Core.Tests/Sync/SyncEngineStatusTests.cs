@@ -24,6 +24,7 @@ public class SyncEngineStatusTests
         public void CopyFile(string source, string destination) => inner.CopyFile(source, destination);
         public void MoveFile(string source, string destination) => inner.MoveFile(source, destination);
         public void DeleteFile(string path) => inner.DeleteFile(path);
+        public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
         public Stream OpenRead(string path) => inner.OpenRead(path);
         public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);

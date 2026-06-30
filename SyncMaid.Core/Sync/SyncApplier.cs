@@ -24,7 +24,15 @@ public static class SyncApplier
                 break;
 
             case DeleteOperation delete:
-                fileSystem.DeleteFile(delete.DestinationFullPath);
+                if (delete.Mode == Model.DeleteMode.Recycle)
+                {
+                    fileSystem.Recycle(delete.DestinationFullPath);
+                }
+                else
+                {
+                    fileSystem.DeleteFile(delete.DestinationFullPath);
+                }
+
                 break;
 
             case MoveOperation move:

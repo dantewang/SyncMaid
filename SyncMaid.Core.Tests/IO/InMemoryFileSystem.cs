@@ -99,7 +99,19 @@ public sealed class InMemoryFileSystem : IFileSystem
         _files.Remove(key);
     }
 
+    /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.</summary>
+    public List<string> Recycled { get; } = [];
+
     public void DeleteFile(string path) => _files.Remove(Normalize(path));
+
+    public void Recycle(string path)
+    {
+        var key = Normalize(path);
+        if (_files.Remove(key))
+        {
+            Recycled.Add(key);
+        }
+    }
 
     public void EnsureDirectory(string path)
     {

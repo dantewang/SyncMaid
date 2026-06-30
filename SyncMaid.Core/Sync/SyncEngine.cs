@@ -58,12 +58,23 @@ public sealed class SyncEngine : ISyncEngine
     {
         try
         {
-            var filtered = _fileSystem
-                .EnumerateFiles(task.SourcePath)
-                .Where(destination.Includes)
-                .ToList();
+            var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
+            var filtered = sourceFiles.Where(destination.Includes).ToList();
 
             var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, destination, filtered);
+
+            // Guard Mirror deletions before applying anything: an empty/unavailable source
+            // or a mass-delete must not silently wipe the destination.
+            var deleteCount = plan.Count(operation => operation is DeleteOperation);
+            if (deleteCount > 0)
+            {
+                var destinationFileCount = _fileSystem.EnumerateFiles(destination.Path).Count();
+                MirrorGuard.Validate(
+                    deleteCount,
+                    destinationFileCount,
+                    sourceIsEmpty: sourceFiles.Count == 0,
+                    destination.MassDeleteThreshold);
+            }
 
             var filesCopied = 0;
             for (var i = 0; i < plan.Count; i++)

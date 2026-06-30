@@ -28,7 +28,11 @@ public sealed record CopyOperation(string RelativePath, string SourceFullPath, s
 /// that are no longer in the filtered source set.
 /// </summary>
 public sealed record DeleteOperation(string RelativePath, string DestinationFullPath)
-    : SyncOperation(RelativePath);
+    : SyncOperation(RelativePath)
+{
+    /// <summary>Whether the file is sent to the Recycle Bin or deleted permanently.</summary>
+    public Model.DeleteMode Mode { get; init; }
+}
 
 /// <summary>
 /// Move a file from the source into the destination: copy it across, then remove the

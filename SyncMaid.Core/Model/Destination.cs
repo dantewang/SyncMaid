@@ -26,6 +26,17 @@ public sealed record Destination(
     /// </summary>
     public bool VerifyContents { get; init; }
 
+    /// <summary>How Mirror removes files no longer in the source. Defaults to the safe
+    /// Recycle Bin so deletions are recoverable.</summary>
+    public DeleteMode DeleteMode { get; init; } = DeleteMode.Recycle;
+
+    /// <summary>
+    /// Fraction (0–1) of the destination that a single Mirror run may delete before it is
+    /// aborted as a likely mistake (see <see cref="SyncMaid.Core.Sync.MirrorGuard"/>). Defaults to 0.5;
+    /// set 0 to disable the ratio guard (the empty-source guard always applies).
+    /// </summary>
+    public double MassDeleteThreshold { get; init; } = 0.5;
+
     /// <summary>
     /// True when the source file at <paramref name="relativePath"/> should be synced
     /// to this destination. A file is included when it matches any rule; with no rules,

@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace SyncMaid.Core.IO;
 
 /// <summary>
@@ -71,6 +73,55 @@ public sealed class PhysicalFileSystem : IFileSystem
     }
 
     /// <inheritdoc />
+    public void Recycle(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        // Network shares have no Recycle Bin; a permanent delete is the only option there.
+        if (IsNetworkPath(path))
+        {
+            File.Delete(path);
+            return;
+        }
+
+        // SHFileOperation moves the file to the Recycle Bin (FOF_ALLOWUNDO). pFrom must be
+        // double-null-terminated. Silent, no confirmation or error UI.
+        var operation = new SHFILEOPSTRUCT
+        {
+            wFunc = FO_DELETE,
+            pFrom = path + '\0' + '\0',
+            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT,
+        };
+
+        var result = SHFileOperation(ref operation);
+        if (result != 0)
+        {
+            throw new IOException($"Failed to send '{path}' to the Recycle Bin (SHFileOperation returned {result}).");
+        }
+    }
+
+    private static bool IsNetworkPath(string path)
+    {
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(path));
+            return !string.IsNullOrEmpty(root) && new DriveInfo(root).DriveType == DriveType.Network;
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
     public void EnsureDirectory(string path) => Directory.CreateDirectory(path);
 
     /// <inheritdoc />
@@ -134,4 +185,28 @@ public sealed class PhysicalFileSystem : IFileSystem
             Directory.CreateDirectory(parent);
         }
     }
+
+    // --- Win32 Recycle Bin interop (shell32 SHFileOperation) ---
+
+    private const uint FO_DELETE = 0x0003;
+    private const ushort FOF_SILENT = 0x0004;
+    private const ushort FOF_NOCONFIRMATION = 0x0010;
+    private const ushort FOF_ALLOWUNDO = 0x0040;
+    private const ushort FOF_NOERRORUI = 0x0400;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)] public string pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)] public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
 }

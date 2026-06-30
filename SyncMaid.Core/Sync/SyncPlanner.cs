@@ -85,7 +85,10 @@ public static class SyncPlanner
         {
             if (!keep.Contains(destRelative))
             {
-                operations.Add(new DeleteOperation(destRelative, Combine(destination.Path, destRelative)));
+                operations.Add(new DeleteOperation(destRelative, Combine(destination.Path, destRelative))
+                {
+                    Mode = destination.DeleteMode,
+                });
             }
         }
 
