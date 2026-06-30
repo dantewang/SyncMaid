@@ -61,7 +61,10 @@ public static class SyncPlanner
 
             if (NeedsCopy(fileSystem, sourceFull, destFull))
             {
-                operations.Add(new CopyOperation(relativePath, sourceFull, destFull));
+                operations.Add(new CopyOperation(relativePath, sourceFull, destFull)
+                {
+                    Verify = destination.VerifyContents,
+                });
             }
         }
 
@@ -101,7 +104,10 @@ public static class SyncPlanner
         {
             var sourceFull = Combine(sourceRoot, relativePath);
             var destFull = Combine(destination.Path, relativePath);
-            operations.Add(new MoveOperation(relativePath, sourceFull, destFull));
+            operations.Add(new MoveOperation(relativePath, sourceFull, destFull)
+            {
+                Verify = destination.VerifyContents,
+            });
         }
 
         return operations;

@@ -56,4 +56,38 @@ public interface IFileSystem
 
     /// <summary>Ensures the directory at <paramref name="path"/> exists, creating parents as needed.</summary>
     void EnsureDirectory(string path);
+
+    /// <summary>
+    /// Opens the file at <paramref name="path"/> for reading. The caller disposes the
+    /// stream. Throws if the file does not exist.
+    /// </summary>
+    Stream OpenRead(string path);
+
+    /// <summary>
+    /// Creates (or overwrites) the file at <paramref name="path"/> for writing, creating
+    /// parent directories as needed, with write-through semantics so bytes are flushed to
+    /// the storage device rather than left in a write cache. The caller disposes the stream.
+    /// </summary>
+    Stream CreateWriteThrough(string path);
+
+    /// <summary>
+    /// Sets the last-write-time (UTC) of the file at <paramref name="path"/>, so a copy can
+    /// be made to share its source's <see cref="FileStamp"/>.
+    /// </summary>
+    void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc);
+
+    /// <summary>
+    /// Atomically replaces <paramref name="destinationPath"/> with the file at
+    /// <paramref name="sourcePath"/> (an on-volume rename/overwrite), creating the
+    /// destination's parent directories as needed. After it returns the source no longer
+    /// exists and the destination holds the source's bytes.
+    /// </summary>
+    void Replace(string sourcePath, string destinationPath);
+
+    /// <summary>
+    /// Bytes of free space available on the volume that would hold <paramref name="path"/>.
+    /// Used as a preflight before a copy. Returns <see cref="long.MaxValue"/> when the
+    /// amount cannot be determined.
+    /// </summary>
+    long GetAvailableFreeSpace(string path);
 }

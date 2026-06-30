@@ -17,7 +17,11 @@ public abstract record SyncOperation(string RelativePath);
 /// Used by Mirror and AddOnly for new and changed files.
 /// </summary>
 public sealed record CopyOperation(string RelativePath, string SourceFullPath, string DestinationFullPath)
-    : SyncOperation(RelativePath);
+    : SyncOperation(RelativePath)
+{
+    /// <summary>When true, the copy is read back and content-verified before commit (§ Destination.VerifyContents).</summary>
+    public bool Verify { get; init; }
+}
 
 /// <summary>
 /// Delete a file from the destination. Emitted only by Mirror, for destination files
@@ -31,4 +35,8 @@ public sealed record DeleteOperation(string RelativePath, string DestinationFull
 /// source. Emitted only by the Move strategy.
 /// </summary>
 public sealed record MoveOperation(string RelativePath, string SourceFullPath, string DestinationFullPath)
-    : SyncOperation(RelativePath);
+    : SyncOperation(RelativePath)
+{
+    /// <summary>When true, the copy is read back and content-verified before the source is deleted.</summary>
+    public bool Verify { get; init; }
+}

@@ -10,8 +10,10 @@ namespace SyncMaid.Core.Tests.Sync;
 
 public class SyncEngineStatusTests
 {
-    // Wraps the in-memory filesystem but fails copies to any path containing a marker,
-    // so a single destination can be made to fail deterministically.
+    // Wraps the in-memory filesystem but fails writes to any path containing a marker,
+    // so a single destination can be made to fail deterministically. The fault is on the
+    // write path SafeFileTransfer actually uses (temp files start with the destination
+    // path, so they carry the marker too).
     private sealed class FaultyFileSystem(InMemoryFileSystem inner, string failMarker) : IFileSystem
     {
         public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
@@ -19,18 +21,23 @@ public class SyncEngineStatusTests
         public FileStamp GetStamp(string path) => inner.GetStamp(path);
         public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
         public void WriteAllBytes(string path, byte[] contents) => inner.WriteAllBytes(path, contents);
+        public void CopyFile(string source, string destination) => inner.CopyFile(source, destination);
         public void MoveFile(string source, string destination) => inner.MoveFile(source, destination);
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
+        public Stream OpenRead(string path) => inner.OpenRead(path);
+        public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);
+        public void Replace(string source, string destination) => inner.Replace(source, destination);
+        public long GetAvailableFreeSpace(string path) => inner.GetAvailableFreeSpace(path);
 
-        public void CopyFile(string source, string destination)
+        public Stream CreateWriteThrough(string path)
         {
-            if (destination.Contains(failMarker))
+            if (path.Contains(failMarker))
             {
                 throw new IOException("simulated copy failure");
             }
 
-            inner.CopyFile(source, destination);
+            return inner.CreateWriteThrough(path);
         }
     }
 

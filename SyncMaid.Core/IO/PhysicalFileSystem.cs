@@ -73,6 +73,59 @@ public sealed class PhysicalFileSystem : IFileSystem
     /// <inheritdoc />
     public void EnsureDirectory(string path) => Directory.CreateDirectory(path);
 
+    /// <inheritdoc />
+    public Stream OpenRead(string path) => File.OpenRead(path);
+
+    /// <inheritdoc />
+    public Stream CreateWriteThrough(string path)
+    {
+        EnsureParentDirectory(path);
+        // WriteThrough flushes to the storage device on each write rather than leaving
+        // bytes in the OS write cache, so a crash right after a "successful" copy can't
+        // lose them.
+        return new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 1 << 16,
+            FileOptions.WriteThrough);
+    }
+
+    /// <inheritdoc />
+    public void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc) =>
+        File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+
+    /// <inheritdoc />
+    public void Replace(string sourcePath, string destinationPath)
+    {
+        EnsureParentDirectory(destinationPath);
+        // On-volume move with overwrite is an atomic rename: the destination flips from
+        // the old file to the fully-written new one with no half-written window.
+        File.Move(sourcePath, destinationPath, overwrite: true);
+    }
+
+    /// <inheritdoc />
+    public long GetAvailableFreeSpace(string path)
+    {
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(path));
+            if (string.IsNullOrEmpty(root))
+            {
+                return long.MaxValue;
+            }
+
+            return new DriveInfo(root).AvailableFreeSpace;
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            // UNC paths and some volumes can't be probed via DriveInfo; don't block the
+            // copy on a preflight we couldn't run.
+            return long.MaxValue;
+        }
+    }
+
     private static void EnsureParentDirectory(string path)
     {
         var parent = Path.GetDirectoryName(path);

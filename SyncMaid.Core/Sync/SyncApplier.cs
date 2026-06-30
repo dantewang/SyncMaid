@@ -18,7 +18,9 @@ public static class SyncApplier
         switch (operation)
         {
             case CopyOperation copy:
-                fileSystem.CopyFile(copy.SourceFullPath, copy.DestinationFullPath);
+                // Atomic, verified copy: temp → verify → atomic rename. The existing
+                // destination is only ever replaced by a complete, verified file.
+                SafeFileTransfer.Copy(fileSystem, copy.SourceFullPath, copy.DestinationFullPath, copy.Verify);
                 break;
 
             case DeleteOperation delete:
@@ -26,11 +28,9 @@ public static class SyncApplier
                 break;
 
             case MoveOperation move:
-                // Copy-then-delete rather than a raw move so the transfer works across
-                // volumes and so a mid-operation failure leaves the source intact (the
-                // destination is the new home; losing it without the source is worse).
-                fileSystem.CopyFile(move.SourceFullPath, move.DestinationFullPath);
-                fileSystem.DeleteFile(move.SourceFullPath);
+                // Verified move: atomic copy across, then delete the source only after the
+                // destination is confirmed to match — a failed copy never loses the source.
+                SafeFileTransfer.Move(fileSystem, move.SourceFullPath, move.DestinationFullPath, move.Verify);
                 break;
 
             default:
