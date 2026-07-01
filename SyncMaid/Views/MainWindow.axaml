@@ -28,7 +28,7 @@
         <Grid ColumnDefinitions="Auto,Auto,*">
             <!-- Sidebar: compact task list -->
             <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
-                    Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="Transparent" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
                 <DockPanel Margin="8">
                     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,6,2,8">
                         <TextBlock Grid.Column="0" Text="Tasks" Classes="muted" VerticalAlignment="Center" />
@@ -56,15 +56,16 @@
 
             <!-- Rail when sidebar hidden -->
             <Border Grid.Column="1" Width="40" IsVisible="{Binding !IsSidebarVisible}"
-                    Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="Transparent" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
                 <Button Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}"
                         HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="Show sidebar">
                     <mi:MaterialIcon Kind="ChevronRight" Width="16" Height="16" />
                 </Button>
             </Border>
 
-            <!-- Main area -->
-            <DockPanel Grid.Column="2" Margin="16,12">
+            <!-- Main area: solid pane; the acrylic shows through the sidebar instead -->
+            <Border Grid.Column="2" Background="{StaticResource PageBrush}">
+            <DockPanel Margin="16,12">
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
                     <TextBlock Grid.Column="0" Text="Sync tasks" Classes="h1" VerticalAlignment="Center" />
                     <Button Grid.Column="2" Classes="secondary" Command="{Binding ToggleExpandAllCommand}" Content="{Binding ExpandCollapseLabel}" Margin="0,0,8,0" />
@@ -177,6 +178,7 @@
                     </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
+            </Border>
         </Grid>
 
         <!-- In-window modal overlay -->

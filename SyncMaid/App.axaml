@@ -17,8 +17,6 @@
         <SolidColorBrush x:Key="PageBrush" Color="#F7F7F4" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SubtleBrush" Color="#F1F1ED" />
-        <!-- Translucent sidebar surface so it blends into the acrylic background -->
-        <SolidColorBrush x:Key="SidebarBrush" Color="#C6F1F1ED" />
         <SolidColorBrush x:Key="HairlineBrush" Color="#E6E6E0" />
         <SolidColorBrush x:Key="HairlineStrongBrush" Color="#D6D6CF" />
 
