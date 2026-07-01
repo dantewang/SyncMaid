@@ -57,7 +57,7 @@ public partial class App : Application
         services.AddSingleton<ISyncEngine>(sp => new SyncEngine(
             sp.GetRequiredService<IFileSystem>(),
             sp.GetRequiredService<IDestinationProviderFactory>()));
-        services.AddSingleton<ITriggerSourceFactory>(_ => new TriggerSourceFactory());
+        services.AddSingleton<ITriggerSourceFactory>(sp => new TriggerSourceFactory(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IDialogHost>(_ => new DialogHost());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());

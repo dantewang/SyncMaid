@@ -81,7 +81,7 @@ public sealed class PhysicalFileSystem : IFileSystem
         }
 
         // Network shares have no Recycle Bin; a permanent delete is the only option there.
-        if (IsNetworkPath(path))
+        if (NetworkPath.IsNetwork(path))
         {
             File.Delete(path);
             return;
@@ -100,24 +100,6 @@ public sealed class PhysicalFileSystem : IFileSystem
         if (result != 0)
         {
             throw new IOException($"Failed to send '{path}' to the Recycle Bin (SHFileOperation returned {result}).");
-        }
-    }
-
-    private static bool IsNetworkPath(string path)
-    {
-        if (path.StartsWith(@"\\", StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        try
-        {
-            var root = Path.GetPathRoot(Path.GetFullPath(path));
-            return !string.IsNullOrEmpty(root) && new DriveInfo(root).DriveType == DriveType.Network;
-        }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
-        {
-            return false;
         }
     }
 

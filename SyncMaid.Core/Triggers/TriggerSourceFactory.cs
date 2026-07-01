@@ -1,3 +1,5 @@
+using SyncMaid.Core.IO;
+
 namespace SyncMaid.Core.Triggers;
 
 /// <summary>
@@ -7,15 +9,26 @@ namespace SyncMaid.Core.Triggers;
 /// </summary>
 public sealed class TriggerSourceFactory : ITriggerSourceFactory
 {
+    private readonly IFileSystem _fileSystem;
+
+    public TriggerSourceFactory(IFileSystem fileSystem) => _fileSystem = fileSystem;
+
     /// <inheritdoc />
     public ITriggerSource Create(Trigger trigger, string sourcePath) => trigger switch
     {
         ManualTrigger => new ManualTriggerSource(),
         ScheduledTrigger scheduled => new ScheduledTriggerSource(scheduled.CronExpression),
-        WatchTrigger => new WatchTriggerSource(sourcePath),
+        WatchTrigger => CreateWatch(sourcePath),
         _ => throw new ArgumentOutOfRangeException(
             nameof(trigger),
             trigger.GetType().Name,
             "Unknown trigger type."),
     };
+
+    // FileSystemWatcher is unreliable over UNC / mapped network drives, so a network source
+    // is watched by polling instead; local sources use the OS watcher.
+    private ITriggerSource CreateWatch(string sourcePath) =>
+        NetworkPath.IsNetwork(sourcePath)
+            ? new PollingWatchTriggerSource(_fileSystem, sourcePath)
+            : new WatchTriggerSource(sourcePath);
 }
