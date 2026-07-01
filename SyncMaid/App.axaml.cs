@@ -50,7 +50,13 @@ public partial class App : Application
         services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
         services.AddSingleton<IStatusStore>(sp => new JsonStatusStore(sp.GetRequiredService<IFileSystem>(), statusPath));
-        services.AddSingleton<ISyncEngine>(sp => new SyncEngine(sp.GetRequiredService<IFileSystem>()));
+        // Destination provider factory — the extension seam. Local/mounted today; a
+        // composite that also routes cloud/SFTP slots in here without touching the engine.
+        services.AddSingleton<IDestinationProviderFactory>(sp =>
+            new LocalDestinationProviderFactory(sp.GetRequiredService<IFileSystem>()));
+        services.AddSingleton<ISyncEngine>(sp => new SyncEngine(
+            sp.GetRequiredService<IFileSystem>(),
+            sp.GetRequiredService<IDestinationProviderFactory>()));
         services.AddSingleton<ITriggerSourceFactory>(_ => new TriggerSourceFactory());
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IDialogHost>(_ => new DialogHost());

@@ -16,7 +16,7 @@ public class SyncPlannerTests
 
     private static IReadOnlyList<SyncOperation> PlanFor(
         InMemoryFileSystem fs, SyncStrategy strategy, params string[] filtered) =>
-        SyncPlanner.Plan(fs, SourceRoot, Dest(strategy), filtered);
+        SyncPlanner.Plan(fs, SourceRoot, new LocalDestinationProvider(fs, DestRoot), Dest(strategy), filtered);
 
     [Fact]
     public void AddOnly_copies_only_new_and_changed_files()
@@ -80,7 +80,7 @@ public class SyncPlannerTests
     }
 
     [Fact]
-    public void Copy_carries_correct_full_paths()
+    public void Copy_carries_the_relative_and_source_paths()
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile(@"S:\src\sub\a.txt", "a");
@@ -88,8 +88,9 @@ public class SyncPlannerTests
         var ops = PlanFor(fs, SyncStrategy.AddOnly, "sub/a.txt");
 
         var copy = Assert.Single(ops.OfType<CopyOperation>());
+        Assert.Equal("sub/a.txt", copy.RelativePath);
         Assert.Equal(@"S:\src/sub/a.txt".Replace('\\', '/'), copy.SourceFullPath.Replace('\\', '/'));
-        Assert.Equal(@"D:\dst/sub/a.txt".Replace('\\', '/'), copy.DestinationFullPath.Replace('\\', '/'));
+        // The destination is addressed by RelativePath through the provider — no absolute dest path.
     }
 
     [Fact]

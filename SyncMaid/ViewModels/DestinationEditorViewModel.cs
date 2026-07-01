@@ -65,7 +65,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
         {
             _id = existing.Id;   // preserve identity so status stays linked across edits
             _name = existing.Name;
-            _path = existing.Path;
+            _path = existing.LocalPath;
             _selectedStrategy = existing.Strategy;
             _verifyContents = existing.VerifyContents;
             _selectedDeleteMode = existing.DeleteMode;

@@ -13,12 +13,21 @@ namespace SyncMaid.Core.Sync;
 public sealed class SyncEngine : ISyncEngine
 {
     private readonly IFileSystem _fileSystem;
+    private readonly IDestinationProviderFactory _destinations;
     private readonly RetryOptions _retry;
 
-    public SyncEngine(IFileSystem fileSystem, RetryOptions? retry = null)
+    /// <summary>Full constructor: an explicit destination-provider factory (the extension seam).</summary>
+    public SyncEngine(IFileSystem fileSystem, IDestinationProviderFactory destinations, RetryOptions? retry = null)
     {
         _fileSystem = fileSystem;
+        _destinations = destinations;
         _retry = retry ?? RetryOptions.Default;
+    }
+
+    /// <summary>Convenience: source and destinations are the same local filesystem (phase-1 default).</summary>
+    public SyncEngine(IFileSystem fileSystem, RetryOptions? retry = null)
+        : this(fileSystem, new LocalDestinationProviderFactory(fileSystem), retry)
+    {
     }
 
     /// <summary>
@@ -63,17 +72,19 @@ public sealed class SyncEngine : ISyncEngine
     {
         try
         {
+            var provider = _destinations.Create(destination.Target);
+
             var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
             var filtered = sourceFiles.Where(destination.Includes).ToList();
 
-            var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, destination, filtered);
+            var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
             // Guard Mirror deletions before applying anything: an empty/unavailable source
             // or a mass-delete must not silently wipe the destination.
             var deleteCount = plan.Count(operation => operation is DeleteOperation);
             if (deleteCount > 0)
             {
-                var destinationFileCount = _fileSystem.EnumerateFiles(destination.Path).Count();
+                var destinationFileCount = provider.Enumerate().Count();
                 MirrorGuard.Validate(
                     deleteCount,
                     destinationFileCount,
@@ -92,7 +103,7 @@ public sealed class SyncEngine : ISyncEngine
                 // Retry transient I/O (a locked file, a brief sharing violation) before
                 // failing the whole destination on one momentarily-unavailable file.
                 TransientRetry.Execute(
-                    () => SyncApplier.Apply(_fileSystem, operation),
+                    () => SyncApplier.Apply(_fileSystem, provider, operation),
                     _retry.MaxAttempts,
                     attempt =>
                     {

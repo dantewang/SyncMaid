@@ -11,34 +11,35 @@ namespace SyncMaid.Core.Sync;
 /// <see cref="SyncApplier"/> runs.
 /// </summary>
 /// <remarks>
-/// The planner only <i>reads</i> from the filesystem (file stamps) to decide whether
-/// a file changed. It never writes, deletes, or moves.
+/// The planner only <i>reads</i>: source stamps via the source <see cref="IFileSystem"/>,
+/// and destination existence/stamps/listing via the <see cref="IDestinationProvider"/>. It
+/// never writes, deletes, or moves.
 /// </remarks>
 public static class SyncPlanner
 {
     /// <summary>
-    /// Plans the operations needed to reconcile <paramref name="destination"/> with the
-    /// filtered source set, according to the destination's
-    /// <see cref="SyncStrategy"/>.
+    /// Plans the operations needed to reconcile the destination with the filtered source
+    /// set, according to the destination's <see cref="SyncStrategy"/>.
     /// </summary>
-    /// <param name="fileSystem">Used read-only, to compare file stamps.</param>
+    /// <param name="sourceFileSystem">The source filesystem, used read-only for source stamps.</param>
     /// <param name="sourceRoot">Absolute path of the source root.</param>
-    /// <param name="destination">The destination being reconciled (path + strategy).</param>
+    /// <param name="destinationProvider">The destination, read-only, for existence/stamps/listing.</param>
+    /// <param name="destination">The destination definition (strategy, delete mode, verify flag).</param>
     /// <param name="filteredRelativePaths">
-    /// Source files (relative paths, forward slashes) that passed the destination's
-    /// filters. These are the only source files considered.
+    /// Source files (relative paths, forward slashes) that passed the destination's filters.
     /// </param>
     public static IReadOnlyList<SyncOperation> Plan(
-        IFileSystem fileSystem,
+        IFileSystem sourceFileSystem,
         string sourceRoot,
+        IDestinationProvider destinationProvider,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths)
     {
         return destination.Strategy switch
         {
-            SyncStrategy.Mirror => PlanMirror(fileSystem, sourceRoot, destination, filteredRelativePaths),
-            SyncStrategy.AddOnly => PlanCopies(fileSystem, sourceRoot, destination, filteredRelativePaths),
-            SyncStrategy.Move => PlanMove(fileSystem, sourceRoot, destination, filteredRelativePaths),
+            SyncStrategy.Mirror => PlanMirror(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths),
+            SyncStrategy.AddOnly => PlanCopies(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths),
+            SyncStrategy.Move => PlanMove(sourceRoot, destination, filteredRelativePaths),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(destination),
                 destination.Strategy,
@@ -48,8 +49,9 @@ public static class SyncPlanner
 
     // AddOnly: copy new and changed files; never delete from the destination.
     private static List<SyncOperation> PlanCopies(
-        IFileSystem fileSystem,
+        IFileSystem sourceFileSystem,
         string sourceRoot,
+        IDestinationProvider destinationProvider,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths)
     {
@@ -57,11 +59,10 @@ public static class SyncPlanner
         foreach (var relativePath in filteredRelativePaths)
         {
             var sourceFull = Combine(sourceRoot, relativePath);
-            var destFull = Combine(destination.Path, relativePath);
 
-            if (NeedsCopy(fileSystem, sourceFull, destFull))
+            if (NeedsCopy(sourceFileSystem, sourceFull, destinationProvider, relativePath))
             {
-                operations.Add(new CopyOperation(relativePath, sourceFull, destFull)
+                operations.Add(new CopyOperation(relativePath, sourceFull)
                 {
                     Verify = destination.VerifyContents,
                 });
@@ -73,22 +74,20 @@ public static class SyncPlanner
 
     // Mirror: AddOnly's copies, plus delete every destination file not in the filtered set.
     private static List<SyncOperation> PlanMirror(
-        IFileSystem fileSystem,
+        IFileSystem sourceFileSystem,
         string sourceRoot,
+        IDestinationProvider destinationProvider,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths)
     {
-        var operations = PlanCopies(fileSystem, sourceRoot, destination, filteredRelativePaths);
+        var operations = PlanCopies(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths);
 
         var keep = new HashSet<string>(filteredRelativePaths, StringComparer.OrdinalIgnoreCase);
-        foreach (var destRelative in fileSystem.EnumerateFiles(destination.Path))
+        foreach (var destRelative in destinationProvider.Enumerate())
         {
             if (!keep.Contains(destRelative))
             {
-                operations.Add(new DeleteOperation(destRelative, Combine(destination.Path, destRelative))
-                {
-                    Mode = destination.DeleteMode,
-                });
+                operations.Add(new DeleteOperation(destRelative) { Mode = destination.DeleteMode });
             }
         }
 
@@ -97,7 +96,6 @@ public static class SyncPlanner
 
     // Move: move each filtered source file to the destination (copy then remove source).
     private static List<SyncOperation> PlanMove(
-        IFileSystem fileSystem,
         string sourceRoot,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths)
@@ -105,9 +103,7 @@ public static class SyncPlanner
         var operations = new List<SyncOperation>();
         foreach (var relativePath in filteredRelativePaths)
         {
-            var sourceFull = Combine(sourceRoot, relativePath);
-            var destFull = Combine(destination.Path, relativePath);
-            operations.Add(new MoveOperation(relativePath, sourceFull, destFull)
+            operations.Add(new MoveOperation(relativePath, Combine(sourceRoot, relativePath))
             {
                 Verify = destination.VerifyContents,
             });
@@ -121,18 +117,22 @@ public static class SyncPlanner
     /// and destination stamps differ (size or last-write-time). See
     /// <see cref="FileStamp"/> for why stamps, not hashes.
     /// </summary>
-    private static bool NeedsCopy(IFileSystem fileSystem, string sourceFull, string destFull)
+    private static bool NeedsCopy(
+        IFileSystem sourceFileSystem,
+        string sourceFull,
+        IDestinationProvider destinationProvider,
+        string relativePath)
     {
-        if (!fileSystem.FileExists(destFull))
+        if (!destinationProvider.Exists(relativePath))
         {
             return true;
         }
 
-        return fileSystem.GetStamp(sourceFull) != fileSystem.GetStamp(destFull);
+        return sourceFileSystem.GetStamp(sourceFull) != destinationProvider.GetStamp(relativePath);
     }
 
-    // Joins a root with a forward-slash relative path. Used to build full paths in the
-    // plan; the resulting separators are normalized by the IFileSystem implementation.
+    // Joins a root with a forward-slash relative path. Used to build source full paths in
+    // the plan; the resulting separators are normalized by the IFileSystem implementation.
     private static string Combine(string root, string relativePath)
     {
         var trimmedRoot = root.TrimEnd('/', '\\');

@@ -1,22 +1,59 @@
+using System.Text.Json.Serialization;
 using SyncMaid.Core.Filtering;
 
 namespace SyncMaid.Core.Model;
 
 /// <summary>
-/// A sync target: where filtered source files go, which files are selected, and
-/// how the destination is reconciled. Immutable — edit with <c>with</c> expressions.
+/// A sync target: where filtered source files go (its <see cref="Target"/> location),
+/// which files are selected, and how the destination is reconciled. Immutable — edit with
+/// <c>with</c> expressions.
 /// </summary>
-public sealed record Destination(
-    string Name,
-    string Path,
-    IReadOnlyList<FilterRule> Filters,
-    SyncStrategy Strategy)
+public sealed record Destination
 {
+    /// <summary>Canonical constructor. Marked for the serializer since the string-path
+    /// overload gives <see cref="Destination"/> two constructors.</summary>
+    [JsonConstructor]
+    public Destination(
+        string name,
+        DestinationLocation target,
+        IReadOnlyList<FilterRule> filters,
+        SyncStrategy strategy)
+    {
+        Name = name;
+        Target = target;
+        Filters = filters;
+        Strategy = strategy;
+    }
+
+    /// <summary>Convenience overload for the common local/mounted case — wraps
+    /// <paramref name="path"/> in a <see cref="LocalDestination"/>.</summary>
+    public Destination(string name, string path, IReadOnlyList<FilterRule> filters, SyncStrategy strategy)
+        : this(name, new LocalDestination(path), filters, strategy)
+    {
+    }
+
+    /// <summary>Display name.</summary>
+    public string Name { get; init; }
+
+    /// <summary>Where this destination's files live (local/mounted today; cloud/SFTP later).</summary>
+    public DestinationLocation Target { get; init; }
+
+    /// <summary>The filter rules selecting which source files sync here.</summary>
+    public IReadOnlyList<FilterRule> Filters { get; init; }
+
+    /// <summary>How the destination is reconciled with the filtered source.</summary>
+    public SyncStrategy Strategy { get; init; }
+
     /// <summary>
     /// Stable identity, generated once and preserved across edits (via <c>with</c>) so
     /// the destination's sync status survives renames. Persisted with the task.
     /// </summary>
     public Guid Id { get; init; } = Guid.NewGuid();
+
+    /// <summary>The destination path when <see cref="Target"/> is a local/mounted location;
+    /// empty otherwise. For display and the editor, which are path-based in phase 1.</summary>
+    [JsonIgnore]
+    public string LocalPath => (Target as LocalDestination)?.Path ?? string.Empty;
 
     /// <summary>
     /// When true, every copied file is read back and its xxHash compared to the source

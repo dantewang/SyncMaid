@@ -1,11 +1,13 @@
 using SyncMaid.Core.IO;
+using SyncMaid.Core.Model;
 
 namespace SyncMaid.Core.Sync;
 
 /// <summary>
-/// Executes a planned list of <see cref="SyncOperation"/>s against an
-/// <see cref="IFileSystem"/>. This is the only place in the engine that mutates the
-/// filesystem; planning (<see cref="SyncPlanner"/>) is kept side-effect-free.
+/// Executes a planned list of <see cref="SyncOperation"/>s: reading from the source
+/// <see cref="IFileSystem"/> and writing through the destination's
+/// <see cref="IDestinationProvider"/>. This is the only place in the engine that mutates a
+/// destination; planning (<see cref="SyncPlanner"/>) is kept side-effect-free.
 /// </summary>
 public static class SyncApplier
 {
@@ -13,32 +15,31 @@ public static class SyncApplier
     /// Applies a single operation. Exposed so callers (e.g. the engine's per-operation
     /// progress loop) can drive execution one step at a time.
     /// </summary>
-    public static void Apply(IFileSystem fileSystem, SyncOperation operation)
+    public static void Apply(IFileSystem sourceFileSystem, IDestinationProvider destination, SyncOperation operation)
     {
         switch (operation)
         {
             case CopyOperation copy:
-                // Atomic, verified copy: temp → verify → atomic rename. The existing
-                // destination is only ever replaced by a complete, verified file.
-                SafeFileTransfer.Copy(fileSystem, copy.SourceFullPath, copy.DestinationFullPath, copy.Verify);
+                // The provider commits atomically and verifies before replacing the
+                // destination (its own strategy — for local, temp → verify → atomic rename).
+                destination.Write(copy.RelativePath, SourceFile(sourceFileSystem, copy.RelativePath, copy.SourceFullPath), copy.Verify);
                 break;
 
             case DeleteOperation delete:
-                if (delete.Mode == Model.DeleteMode.Recycle)
-                {
-                    fileSystem.Recycle(delete.DestinationFullPath);
-                }
-                else
-                {
-                    fileSystem.DeleteFile(delete.DestinationFullPath);
-                }
-
+                destination.Delete(delete.RelativePath, delete.Mode);
                 break;
 
             case MoveOperation move:
-                // Verified move: atomic copy across, then delete the source only after the
-                // destination is confirmed to match — a failed copy never loses the source.
-                SafeFileTransfer.Move(fileSystem, move.SourceFullPath, move.DestinationFullPath, move.Verify);
+                // Verified move: write (and verify) to the destination, confirm it matches
+                // the source, then delete the source — a failed copy never loses the source.
+                destination.Write(move.RelativePath, SourceFile(sourceFileSystem, move.RelativePath, move.SourceFullPath), move.Verify);
+                if (destination.GetStamp(move.RelativePath) != sourceFileSystem.GetStamp(move.SourceFullPath))
+                {
+                    throw new SyncVerificationException(
+                        $"Refusing to delete source '{move.SourceFullPath}': destination does not match after copy.");
+                }
+
+                sourceFileSystem.DeleteFile(move.SourceFullPath);
                 break;
 
             default:
@@ -50,11 +51,14 @@ public static class SyncApplier
     }
 
     /// <summary>Applies every operation in order.</summary>
-    public static void ApplyAll(IFileSystem fileSystem, IEnumerable<SyncOperation> operations)
+    public static void ApplyAll(IFileSystem sourceFileSystem, IDestinationProvider destination, IEnumerable<SyncOperation> operations)
     {
         foreach (var operation in operations)
         {
-            Apply(fileSystem, operation);
+            Apply(sourceFileSystem, destination, operation);
         }
     }
+
+    private static LocalSourceFile SourceFile(IFileSystem sourceFileSystem, string relativePath, string sourceFullPath) =>
+        new(sourceFileSystem, relativePath, sourceFullPath);
 }

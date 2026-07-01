@@ -35,7 +35,7 @@ public partial class DestinationNodeViewModel : ViewModelBase
 
     public Guid Id => Destination.Id;
     public string Name => Destination.Name;
-    public string Path => Destination.Path;
+    public string Path => Destination.LocalPath;
 
     /// <summary>Current sync outcome — drives the status colour in the view.</summary>
     public SyncOutcome Outcome => Status.Outcome;
