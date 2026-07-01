@@ -11,13 +11,24 @@
         x:CompileBindings="True"
         Width="940" Height="620"
         Icon="/Assets/avalonia-logo.ico"
+        TransparencyLevelHint="AcrylicBlur,Blur,None"
+        Background="Transparent"
         Title="SyncMaid">
 
     <Grid>
+        <!-- Frosted acrylic background; cards stay opaque so content readability is unaffected.
+             Falls back to a solid fill when Windows transparency is disabled. -->
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial BackgroundSource="Digger" TintColor="#F7F7F4"
+                                             TintOpacity="1" MaterialOpacity="0.6" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+
         <Grid ColumnDefinitions="Auto,Auto,*">
             <!-- Sidebar: compact task list -->
             <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
-                    Background="{StaticResource SubtleBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
                 <DockPanel Margin="8">
                     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,6,2,8">
                         <TextBlock Grid.Column="0" Text="Tasks" Classes="muted" VerticalAlignment="Center" />
@@ -28,15 +39,15 @@
                     <ListBox Classes="sidebar" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TaskNodeViewModel">
-                                <StackPanel Orientation="Horizontal" Spacing="9">
-                                    <mi:MaterialIcon Kind="FolderOutline" Width="18" Height="18"
-                                                     Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
-                                    <StackPanel VerticalAlignment="Center">
+                                <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding SidebarTooltip}">
+                                    <mi:MaterialIcon Grid.Column="0" Kind="FolderOutline" Width="18" Height="18"
+                                                     Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,9,0" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TealBrush}" />
+                                                   Foreground="{StaticResource TealBrush}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Path}" Classes="path" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                </StackPanel>
+                                </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -45,7 +56,7 @@
 
             <!-- Rail when sidebar hidden -->
             <Border Grid.Column="1" Width="40" IsVisible="{Binding !IsSidebarVisible}"
-                    Background="{StaticResource SubtleBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
                 <Button Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}"
                         HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="Show sidebar">
                     <mi:MaterialIcon Kind="ChevronRight" Width="16" Height="16" />

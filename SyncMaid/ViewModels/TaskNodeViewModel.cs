@@ -78,6 +78,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     public string Name => Task.Name;
     public string Path => Task.SourcePath;
 
+    /// <summary>Full name + path, shown as the sidebar tooltip since the row truncates both.</summary>
+    public string SidebarTooltip => $"{Name}\n{Path}";
+
     public string TriggerText => Task.Trigger switch
     {
         ManualTrigger => "Manual",

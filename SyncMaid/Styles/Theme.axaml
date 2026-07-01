@@ -239,6 +239,7 @@
     <!-- Segmented selector (trigger type) -->
     <Style Selector="RadioButton.segment">
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="Template">
             <ControlTemplate>
