@@ -24,14 +24,17 @@
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6C6C66" />
         <SolidColorBrush x:Key="TextMutedBrush" Color="#9A9A92" />
 
-        <SolidColorBrush x:Key="TealBrush" Color="#1D9E75" />
-        <SolidColorBrush x:Key="TealHoverBrush" Color="#178A66" />
-        <SolidColorBrush x:Key="TealPressedBrush" Color="#136F53" />
-        <SolidColorBrush x:Key="TealSubtleBrush" Color="#E4F4ED" />
+        <!-- Brand accent: cyan drawn from the app icon's hair-bow accessory (#36D6E2),
+             deepened for legible white-on-fill and text-on-light contrast. Keys kept as
+             "Teal*" to avoid churn across the XAML that references them. -->
+        <SolidColorBrush x:Key="TealBrush" Color="#1AA0B5" />
+        <SolidColorBrush x:Key="TealHoverBrush" Color="#158799" />
+        <SolidColorBrush x:Key="TealPressedBrush" Color="#106E7D" />
+        <SolidColorBrush x:Key="TealSubtleBrush" Color="#E3F5F8" />
 
         <SolidColorBrush x:Key="DangerBrush" Color="#C53943" />
         <SolidColorBrush x:Key="DangerHoverBrush" Color="#B00613" />
-        <SolidColorBrush x:Key="SuccessBrush" Color="#2E9E6B" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#1AA0B5" />
     </Application.Resources>
 
     <Application.Styles>

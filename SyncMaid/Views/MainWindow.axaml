@@ -10,7 +10,7 @@
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="True"
         Width="940" Height="620"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/syncmaid.ico"
         TransparencyLevelHint="AcrylicBlur,Blur,None"
         Background="Transparent"
         Title="SyncMaid">

@@ -11,9 +11,9 @@ public sealed class SyncOutcomeToBrushConverter : IValueConverter
 {
     public static readonly SyncOutcomeToBrushConverter Instance = new();
 
-    private static readonly IBrush Success = new SolidColorBrush(Color.Parse("#2E9E6B"));
+    private static readonly IBrush Success = new SolidColorBrush(Color.Parse("#1AA0B5"));
     private static readonly IBrush Failed = new SolidColorBrush(Color.Parse("#C53943"));
-    private static readonly IBrush Running = new SolidColorBrush(Color.Parse("#1D9E75"));
+    private static readonly IBrush Running = new SolidColorBrush(Color.Parse("#1AA0B5"));
     private static readonly IBrush Never = new SolidColorBrush(Color.Parse("#8A8A86"));
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
