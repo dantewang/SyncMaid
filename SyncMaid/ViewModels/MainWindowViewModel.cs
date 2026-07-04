@@ -73,6 +73,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarVisible = !IsSidebarVisible;
 
+    // Stub entry point for the title-bar gear button. The real settings dialog (start
+    // with Windows, etc.) is designed in docs/guide-settings-autostart.md and lands later;
+    // this no-op keeps the button wired so the title bar is complete now.
+    [RelayCommand]
+    private void OpenSettings()
+    {
+    }
+
     [RelayCommand]
     private void ToggleExpandAll()
     {

@@ -153,6 +153,15 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public void Open_settings_command_exists_and_executes_without_throwing()
+    {
+        var vm = New();
+
+        Assert.True(vm.OpenSettingsCommand.CanExecute(null));
+        vm.OpenSettingsCommand.Execute(null);   // stub no-op; the dialog lands later
+    }
+
+    [Fact]
     public void Toggle_sidebar_flips_visibility()
     {
         var vm = New();

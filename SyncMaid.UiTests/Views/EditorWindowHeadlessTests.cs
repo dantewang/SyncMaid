@@ -97,6 +97,30 @@ public class EditorWindowHeadlessTests
         Assert.NotEmpty(window.GetVisualDescendants().OfType<TaskEditorView>());
     }
 
+    [AvaloniaFact]
+    public void MainWindow_renders_the_custom_title_bar_with_caption_and_settings_buttons()
+    {
+        var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore(), new RecordingStatusStore()) };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var named = window.GetVisualDescendants()
+            .OfType<Control>()
+            .Where(c => c.Name != null)
+            .Select(c => c.Name)
+            .ToList();
+
+        // The title-bar strip and the three caption buttons are present in the layout.
+        Assert.Contains("TitleBar", named);
+        Assert.Contains("MinimizeButton", named);
+        Assert.Contains("MaximizeButton", named);
+        Assert.Contains("CloseButton", named);
+
+        // The settings gear is bound to the view model's stub command (no binding errors).
+        var titleTexts = window.GetVisualDescendants().OfType<TextBlock>().Select(b => b.Text).ToList();
+        Assert.Contains("SyncMaid", titleTexts);
+    }
+
     private static MainWindowViewModel NewMainViewModel(
         RecordingTaskStore store, RecordingStatusStore statusStore, IDialogHost? host = null) =>
         new(

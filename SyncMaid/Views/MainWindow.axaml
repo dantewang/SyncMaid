@@ -3,6 +3,7 @@
         xmlns:vm="using:SyncMaid.ViewModels"
         xmlns:conv="using:SyncMaid.Converters"
         xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="620"
@@ -13,19 +14,65 @@
         Icon="/Assets/syncmaid.ico"
         TransparencyLevelHint="AcrylicBlur,Blur,None"
         Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="40"
         Title="SyncMaid">
 
-    <Grid>
-        <!-- Frosted acrylic background; cards stay opaque so content readability is unaffected.
-             Falls back to a solid fill when Windows transparency is disabled. -->
-        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+    <Grid RowDefinitions="Auto,*">
+        <!-- Frosted acrylic background spanning the extended title bar AND the body, so the
+             glass is one continuous region across the custom title bar and the sidebar.
+             Cards stay opaque so content readability is unaffected; falls back to a solid
+             fill when Windows transparency is disabled. -->
+        <ExperimentalAcrylicBorder Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False">
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial BackgroundSource="Digger" TintColor="#F7F7F4"
                                              TintOpacity="1" MaterialOpacity="0.6" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
 
-        <Grid ColumnDefinitions="Auto,Auto,*">
+        <!-- Custom title bar (40px). Transparent so the acrylic behind it shows through and
+             reads as one glass region with the sidebar below. The ElementRole attached
+             properties (only active because ExtendClientAreaToDecorationsHint is true) give
+             Windows native non-client hit testing back: TitleBar => drag/double-click/system
+             menu; the caption roles => native snap-layout flyout etc. -->
+        <Border Grid.Row="0" Name="TitleBar" Background="Transparent"
+                chrome:WindowDecorationProperties.ElementRole="TitleBar">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Image Source="/Assets/syncmaid.ico" Width="16" Height="16"
+                           VerticalAlignment="Center" />
+                    <TextBlock Text="SyncMaid" FontSize="13" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+
+                <!-- Column 1 is the star spacer: part of the draggable TitleBar strip. -->
+
+                <Button Grid.Column="2" Classes="caption" Command="{Binding OpenSettingsCommand}"
+                        ToolTip.Tip="Settings"
+                        chrome:WindowDecorationProperties.ElementRole="User">
+                    <mi:MaterialIcon Kind="CogOutline" Width="16" Height="16" />
+                </Button>
+
+                <Button Grid.Column="3" Name="MinimizeButton" Classes="caption"
+                        Click="OnMinimize" ToolTip.Tip="Minimize"
+                        chrome:WindowDecorationProperties.ElementRole="MinimizeButton">
+                    <mi:MaterialIcon Kind="WindowMinimize" Width="16" Height="16" />
+                </Button>
+                <Button Grid.Column="4" Name="MaximizeButton" Classes="caption"
+                        Click="OnMaximizeRestore" ToolTip.Tip="Maximize"
+                        chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
+                    <mi:MaterialIcon Name="MaximizeIcon" Kind="WindowMaximize" Width="16" Height="16" />
+                </Button>
+                <Button Grid.Column="5" Name="CloseButton" Classes="caption close"
+                        Click="OnClose" ToolTip.Tip="Close"
+                        chrome:WindowDecorationProperties.ElementRole="CloseButton">
+                    <mi:MaterialIcon Kind="Close" Width="16" Height="16" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
             <!-- Sidebar: compact task list -->
             <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
                     Background="Transparent" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
@@ -181,8 +228,8 @@
             </Border>
         </Grid>
 
-        <!-- In-window modal overlay -->
-        <Border Classes="backdrop" IsVisible="{Binding DialogHost.IsOpen}">
+        <!-- In-window modal overlay; spans the title bar too (standard modal dimming). -->
+        <Border Grid.Row="0" Grid.RowSpan="2" Classes="backdrop" IsVisible="{Binding DialogHost.IsOpen}">
             <ContentControl Content="{Binding DialogHost.CurrentDialog}"
                             HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
