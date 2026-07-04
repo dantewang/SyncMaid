@@ -16,6 +16,7 @@
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="40"
+        WindowDecorations="BorderOnly"
         Title="SyncMaid">
 
     <Grid RowDefinitions="Auto,*">
@@ -34,7 +35,11 @@
              reads as one glass region with the sidebar below. The ElementRole attached
              properties (only active because ExtendClientAreaToDecorationsHint is true) give
              Windows native non-client hit testing back: TitleBar => drag/double-click/system
-             menu; the caption roles => native snap-layout flyout etc. -->
+             menu; the caption roles => native snap-layout flyout etc.
+             WindowDecorations="BorderOnly" on the Window is what stops Avalonia's own
+             WindowDrawnDecorations layer (built-in title text + caption buttons) from being
+             drawn on top of this bar — the extend hint activates that layer when
+             WindowDecorations is left at Full — while keeping the resize border and shadow. -->
         <Border Grid.Row="0" Name="TitleBar" Background="Transparent"
                 chrome:WindowDecorationProperties.ElementRole="TitleBar">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
@@ -110,8 +115,11 @@
                 </Button>
             </Border>
 
-            <!-- Main area: solid pane; the acrylic shows through the sidebar instead -->
-            <Border Grid.Column="2" Background="{StaticResource PageBrush}">
+            <!-- Main area: solid pane; the acrylic shows through the sidebar instead.
+                 The rounded top-left corner (matching the card radius) softens the inner
+                 corner of the glass L-shape formed by the title bar above and the sidebar
+                 to the left — the acrylic shows through the rounded-off notch. -->
+            <Border Grid.Column="2" Background="{StaticResource PageBrush}" CornerRadius="12,0,0,0">
             <DockPanel Margin="16,12">
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
                     <TextBlock Grid.Column="0" Text="Sync tasks" Classes="h1" VerticalAlignment="Center" />
