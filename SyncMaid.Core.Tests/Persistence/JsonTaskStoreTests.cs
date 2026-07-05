@@ -116,4 +116,56 @@ public class JsonTaskStoreTests
         Assert.Contains("AddOnly", json);   // UseStringEnumConverter
         Assert.Contains("\"kind\"", json);  // polymorphic discriminator
     }
+
+    [Fact]
+    public void An_interrupted_save_leaves_the_previous_file_intact()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        var before = fs.ReadAllBytes(ConfigPath);
+
+        fs.FailWrites = true; // simulate a crash / power cut mid-write
+        Assert.ThrowsAny<IOException>(() => store.Save([]));
+        fs.FailWrites = false;
+
+        Assert.Equal(before, fs.ReadAllBytes(ConfigPath));            // main file untouched
+        Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-")); // temp cleaned up
+        Assert.Equal(3, store.Load().Count);                          // all tasks still load
+    }
+
+    [Fact]
+    public void A_successful_save_leaves_no_temp_file()
+    {
+        var fs = new InMemoryFileSystem();
+        NewStore(fs).Save(SampleTasks());
+
+        Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-"));
+    }
+
+    [Fact]
+    public void Each_save_keeps_the_previous_version_as_a_backup()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+
+        store.Save(SampleTasks());
+        Assert.False(fs.FileExists(ConfigPath + AtomicFile.BackupSuffix)); // no backup on first save
+
+        store.Save([SampleTasks()[0]]);
+        Assert.True(fs.FileExists(ConfigPath + AtomicFile.BackupSuffix));  // previous version snapshotted
+    }
+
+    [Fact]
+    public void Load_falls_back_to_the_backup_when_the_main_file_is_corrupt()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());          // v1 (3 tasks)
+        store.Save([SampleTasks()[0]]);     // v2 (1 task); backup now holds v1
+
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes("{ not valid json"));
+
+        Assert.Equal(3, store.Load().Count); // main unreadable → recovered from the backup
+    }
 }

@@ -25,18 +25,13 @@ public sealed class JsonStatusStore : IStatusStore
     /// <inheritdoc />
     public IReadOnlyDictionary<Guid, DestinationSyncStatus> Load()
     {
-        if (!_fileSystem.FileExists(_path))
+        // Fall back to the .bak snapshot if the main file is missing or corrupt.
+        var list = TryLoad(_path) ?? TryLoad(_path + AtomicFile.BackupSuffix);
+        if (list is null)
         {
             return new Dictionary<Guid, DestinationSyncStatus>();
         }
 
-        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(_path));
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return new Dictionary<Guid, DestinationSyncStatus>();
-        }
-
-        var list = JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListDestinationSyncStatus) ?? [];
         var byId = new Dictionary<Guid, DestinationSyncStatus>(list.Count);
         foreach (var status in list)
         {
@@ -46,11 +41,34 @@ public sealed class JsonStatusStore : IStatusStore
         return byId;
     }
 
+    private List<DestinationSyncStatus>? TryLoad(string path)
+    {
+        if (!_fileSystem.FileExists(path))
+        {
+            return null;
+        }
+
+        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(path));
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
+        }
+        catch (JsonException)
+        {
+            return null; // corrupt file — let the caller try the backup
+        }
+    }
+
     /// <inheritdoc />
     public void Save(IReadOnlyDictionary<Guid, DestinationSyncStatus> statuses)
     {
         var list = new List<DestinationSyncStatus>(statuses.Values);
         var json = JsonSerializer.Serialize(list, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
-        _fileSystem.WriteAllBytes(_path, Encoding.UTF8.GetBytes(json));
+        AtomicFile.Write(_fileSystem, _path, Encoding.UTF8.GetBytes(json));
     }
 }

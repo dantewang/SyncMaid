@@ -24,20 +24,31 @@ public sealed class JsonTaskStore : ITaskStore
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<SyncTask> Load()
+    public IReadOnlyList<SyncTask> Load() =>
+        // Fall back to the .bak snapshot if the main file is missing or corrupt.
+        TryLoad(_path) ?? TryLoad(_path + AtomicFile.BackupSuffix) ?? [];
+
+    private IReadOnlyList<SyncTask>? TryLoad(string path)
     {
-        if (!_fileSystem.FileExists(_path))
+        if (!_fileSystem.FileExists(path))
         {
-            return [];
+            return null;
         }
 
-        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(_path));
+        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(path));
         if (string.IsNullOrWhiteSpace(json))
         {
-            return [];
+            return null;
         }
 
-        return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListSyncTask) ?? [];
+        try
+        {
+            return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListSyncTask);
+        }
+        catch (JsonException)
+        {
+            return null; // corrupt file — let the caller try the backup
+        }
     }
 
     /// <inheritdoc />
@@ -46,6 +57,6 @@ public sealed class JsonTaskStore : ITaskStore
         // The source-generated contract is typed to List<SyncTask>; materialize once.
         var list = tasks as List<SyncTask> ?? [.. tasks];
         var json = JsonSerializer.Serialize(list, TaskStoreJsonContext.Default.ListSyncTask);
-        _fileSystem.WriteAllBytes(_path, Encoding.UTF8.GetBytes(json));
+        AtomicFile.Write(_fileSystem, _path, Encoding.UTF8.GetBytes(json));
     }
 }
