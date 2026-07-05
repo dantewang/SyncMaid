@@ -9,7 +9,7 @@ backends, clean MVVM with DI. The items below are the gaps that remain.
 
 ## 🔴 High value / low effort
 
-### 1. Config writes are not atomic (ironic, given the engine)
+### 1. Config writes are not atomic (ironic, given the engine) — ✅ done (`b841ae0`)
 `JsonTaskStore.Save` and `JsonStatusStore.Save` overwrite `tasks.json` / `status.json`
 in place via `WriteAllBytes`. A crash or power cut mid-write corrupts the file — for
 `tasks.json` that means **losing every task definition**, the exact failure mode the sync
@@ -20,16 +20,13 @@ each save (one extra rename) and falling back to it on parse failure at load.
 *Effort: small. Tests: fault-injection via the in-memory fs (fail during write → old file
 intact).*
 
-### 2. Errors are swallowed silently
-- `TaskNodeViewModel.StartTrigger`: `catch { /* TODO: surface trigger-start failures */ }`
-  — a bad watch path means the task silently never auto-runs.
-- `TaskNodeViewModel.RunAsync`: `catch { /* TODO: surface sync errors */ }` — engine-level
-  failures (not per-destination ones) vanish.
-- No logging anywhere in the app.
-Recommendation: (a) route unexpected exceptions into the destination/task status text so
-the UI shows them; (b) add a minimal rolling log file (`AppData/SyncMaid/logs/`) behind a
-tiny `ILog` interface — plain `StreamWriter`, no framework needed, AOT-friendly. Being a
-*sync* tool, users will eventually ask "what did it do at 03:00?" — that's the log.
+### 2. Errors are swallowed silently — ✅ logging done; UI-surfacing still open
+Done: both `TaskNodeViewModel` `catch {}` blocks now log via `ILogger`, and a file log
+(`Microsoft.Extensions.Logging` + a custom `FileLoggerProvider`) writes to
+`AppData/SyncMaid/logs/syncmaid.log` with single-backup size rollover; the config stores'
+save paths are guarded and app-level unhandled/unobserved exceptions are logged.
+Still open (part a): route those failures into the **UI status text** (e.g. a task-level
+"trigger failed to start" badge) — needs a small status-model addition, tracked here.
 
 ## 🟠 Real functional gaps
 
@@ -104,6 +101,9 @@ makes the sidebar an actual navigator.
   ring buffer (last N runs) would enable a history flyout; goes well with the log in #2.
 - **Editor validation polish** — task editor accepts any path string; a gentle
   "folder does not exist" hint (non-blocking) would catch typos before first run.
+- **Configurable config/data location (portable mode)** — let the user keep everything in
+  the default `%APPDATA%\SyncMaid` or beside the executable for portable installs. Full
+  design in [guide-config-location.md](guide-config-location.md).
 
 ## Suggested order
 
