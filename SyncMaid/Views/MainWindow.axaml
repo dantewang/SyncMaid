@@ -39,7 +39,9 @@
              WindowDecorations="BorderOnly" on the Window is what stops Avalonia's own
              WindowDrawnDecorations layer (built-in title text + caption buttons) from being
              drawn on top of this bar — the extend hint activates that layer when
-             WindowDecorations is left at Full — while keeping the resize border and shadow. -->
+             WindowDecorations is left at Full — while keeping the resize border and shadow.
+             Known limitation (accepted): with BorderOnly the right-click / Alt+Space
+             system menu on the title bar is unavailable. -->
         <Border Grid.Row="0" Name="TitleBar" Background="Transparent"
                 chrome:WindowDecorationProperties.ElementRole="TitleBar">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
@@ -78,9 +80,11 @@
         </Border>
 
         <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
-            <!-- Sidebar: compact task list -->
+            <!-- Sidebar: compact task list. No right hairline: the glass butts directly
+                 against the rounded solid pane, and the acrylic/PageBrush tonal contrast is
+                 the separation (a divider line would cut across the rounded corner). -->
             <Border Grid.Column="0" Width="210" IsVisible="{Binding IsSidebarVisible}"
-                    Background="Transparent" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="Transparent">
                 <DockPanel Margin="8">
                     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,6,2,8">
                         <TextBlock Grid.Column="0" Text="Tasks" Classes="muted" VerticalAlignment="Center" />
@@ -106,9 +110,9 @@
                 </DockPanel>
             </Border>
 
-            <!-- Rail when sidebar hidden -->
+            <!-- Rail when sidebar hidden (borderless, same as the sidebar) -->
             <Border Grid.Column="1" Width="40" IsVisible="{Binding !IsSidebarVisible}"
-                    Background="Transparent" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+                    Background="Transparent">
                 <Button Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}"
                         HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="Show sidebar">
                     <mi:MaterialIcon Kind="ChevronRight" Width="16" Height="16" />
@@ -118,7 +122,9 @@
             <!-- Main area: solid pane; the acrylic shows through the sidebar instead.
                  The rounded top-left corner (matching the card radius) softens the inner
                  corner of the glass L-shape formed by the title bar above and the sidebar
-                 to the left — the acrylic shows through the rounded-off notch. -->
+                 to the left — the acrylic shows through the rounded-off notch. The
+                 glass-to-pane transition is borderless by design (Windows 11 Terminal /
+                 Settings pattern). -->
             <Border Grid.Column="2" Background="{StaticResource PageBrush}" CornerRadius="12,0,0,0">
             <DockPanel Margin="16,12">
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
