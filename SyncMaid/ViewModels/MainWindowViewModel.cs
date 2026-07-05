@@ -23,6 +23,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ITriggerSourceFactory _triggerFactory;
     private readonly IUiDispatcher _dispatcher;
     private readonly IDialogHost _dialogHost;
+    private readonly IAutoStartService _autoStart;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
     private readonly Lock _statusGate = new();
 
@@ -43,7 +44,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ISyncEngine engine,
         ITriggerSourceFactory triggerFactory,
         IUiDispatcher dispatcher,
-        IDialogHost dialogHost)
+        IDialogHost dialogHost,
+        IAutoStartService autoStart)
     {
         _dialogs = dialogs;
         _store = store;
@@ -52,6 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _triggerFactory = triggerFactory;
         _dispatcher = dispatcher;
         _dialogHost = dialogHost;
+        _autoStart = autoStart;
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
 
         Nodes = new ObservableCollection<TaskNodeViewModel>();
@@ -73,13 +76,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarVisible = !IsSidebarVisible;
 
-    // Stub entry point for the title-bar gear button. The real settings dialog (start
-    // with Windows, etc.) is designed in docs/guide-settings-autostart.md and lands later;
-    // this no-op keeps the button wired so the title bar is complete now.
+    // Title-bar gear button → the in-window Settings modal (start with Windows, etc.).
     [RelayCommand]
-    private void OpenSettings()
-    {
-    }
+    private async Task OpenSettings() => await _dialogHost.ShowAsync(new SettingsViewModel(_autoStart));
 
     [RelayCommand]
     private void ToggleExpandAll()

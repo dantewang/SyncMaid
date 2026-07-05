@@ -18,7 +18,9 @@ public class MainWindowViewModelTests
         FakeDialogService? dialogs = null,
         RecordingTaskStore? store = null,
         FakeTriggerSourceFactory? triggers = null,
-        RecordingStatusStore? statusStore = null) =>
+        RecordingStatusStore? statusStore = null,
+        IDialogHost? host = null,
+        FakeAutoStartService? autoStart = null) =>
         new(
             dialogs ?? new FakeDialogService(),
             store ?? new RecordingTaskStore(),
@@ -26,7 +28,8 @@ public class MainWindowViewModelTests
             new FakeSyncEngine(),
             triggers ?? new FakeTriggerSourceFactory(),
             new FakeUiDispatcher(),
-            new DialogHost());
+            host ?? new DialogHost(),
+            autoStart ?? new FakeAutoStartService());
 
     [Fact]
     public void Loads_existing_tasks_from_the_store_on_construction()
@@ -145,7 +148,8 @@ public class MainWindowViewModelTests
         var engine = new FakeSyncEngine();
         var vm = new MainWindowViewModel(
             new FakeDialogService(), new RecordingTaskStore([runnable, empty]), new RecordingStatusStore(),
-            engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost());
+            engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost(),
+            new FakeAutoStartService());
 
         vm.RunAllCommand.Execute(null);
 
@@ -153,12 +157,16 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public void Open_settings_command_exists_and_executes_without_throwing()
+    public void Open_settings_command_shows_the_settings_dialog()
     {
-        var vm = New();
+        var host = new DialogHost();
+        var vm = New(host: host);
 
         Assert.True(vm.OpenSettingsCommand.CanExecute(null));
-        vm.OpenSettingsCommand.Execute(null);   // stub no-op; the dialog lands later
+        vm.OpenSettingsCommand.Execute(null); // async; ShowAsync sets the dialog synchronously before awaiting
+
+        Assert.True(host.IsOpen);
+        Assert.IsType<SettingsViewModel>(host.CurrentDialog);
     }
 
     [Fact]

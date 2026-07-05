@@ -60,6 +60,7 @@ public partial class App : Application
         services.AddSingleton<ITriggerSourceFactory>(sp => new TriggerSourceFactory(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IDialogHost>(_ => new DialogHost());
+        services.AddSingleton<IAutoStartService>(_ => new WindowsAutoStartService());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(
             sp.GetRequiredService<IFolderPickerService>(),
@@ -71,7 +72,8 @@ public partial class App : Application
             sp.GetRequiredService<ISyncEngine>(),
             sp.GetRequiredService<ITriggerSourceFactory>(),
             sp.GetRequiredService<IUiDispatcher>(),
-            sp.GetRequiredService<IDialogHost>()));
+            sp.GetRequiredService<IDialogHost>(),
+            sp.GetRequiredService<IAutoStartService>()));
 
         return services.BuildServiceProvider();
     }

@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="440"
+             x:Class="SyncMaid.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             x:CompileBindings="True">
+
+    <Border Classes="dialogCard" Width="440">
+        <StackPanel Margin="24" Spacing="16">
+            <TextBlock Text="Settings" FontSize="16" FontWeight="Medium" />
+
+            <StackPanel>
+                <TextBlock Text="Startup" Classes="label" />
+                <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding !IsDisabledByWindows}"
+                          Content="Start SyncMaid when Windows starts" />
+                <TextBlock Text="Opens the main window at sign-in." Classes="muted" Margin="0,4,0,0" />
+
+                <Border IsVisible="{Binding IsDisabledByWindows}" Classes="filterRow" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
+                                         Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Startup is turned off for SyncMaid in Windows Task Manager (Startup apps). Turn it back on there to allow starting with Windows." />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
+                <Button Classes="primary" Content="Done" Command="{Binding DoneCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

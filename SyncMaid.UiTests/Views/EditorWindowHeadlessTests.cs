@@ -98,6 +98,20 @@ public class EditorWindowHeadlessTests
     }
 
     [AvaloniaFact]
+    public void Showing_the_settings_dialog_renders_it_in_the_overlay()
+    {
+        var host = new DialogHost();
+        var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore(), new RecordingStatusStore(), host) };
+        window.Show();
+
+        _ = host.ShowAsync(new SettingsViewModel(new FakeAutoStartService()));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(host.IsOpen);
+        Assert.NotEmpty(window.GetVisualDescendants().OfType<SettingsView>());
+    }
+
+    [AvaloniaFact]
     public void MainWindow_renders_the_custom_title_bar_with_caption_and_settings_buttons()
     {
         var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore(), new RecordingStatusStore()) };
@@ -125,5 +139,6 @@ public class EditorWindowHeadlessTests
         RecordingTaskStore store, RecordingStatusStore statusStore, IDialogHost? host = null) =>
         new(
             new FakeDialogService(), store, statusStore, new FakeSyncEngine(),
-            new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost());
+            new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost(),
+            new FakeAutoStartService());
 }

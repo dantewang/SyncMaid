@@ -10,6 +10,7 @@
         <!-- Maps each editor view model to its view for the in-window modal host. -->
         <DataTemplate DataType="vm:TaskEditorViewModel"><views:TaskEditorView /></DataTemplate>
         <DataTemplate DataType="vm:DestinationEditorViewModel"><views:DestinationEditorView /></DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
     </Application.DataTemplates>
 
     <Application.Resources>
