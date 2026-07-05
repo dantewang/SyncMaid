@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Material.Icons;
+using Microsoft.Extensions.Logging;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
@@ -24,6 +25,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly Action<TaskNodeViewModel> _onDelete;
     private readonly Action _onChanged;
     private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
+    private readonly ILogger _logger;
 
     private ITriggerSource? _triggerSource;
     private int _running;   // 0 = idle, 1 = a sync is in progress (manual or triggered)
@@ -41,7 +43,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         Func<TaskNodeViewModel, Task> onEdit,
         Action<TaskNodeViewModel> onDelete,
         Action onChanged,
-        Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated)
+        Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated,
+        ILogger logger)
     {
         Task = task;
         _dialogs = dialogs;
@@ -52,6 +55,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         _onDelete = onDelete;
         _onChanged = onChanged;
         _onStatusesUpdated = onStatusesUpdated;
+        _logger = logger;
 
         Children = new ObservableCollection<DestinationNodeViewModel>();
         foreach (var destination in task.Destinations)
@@ -191,9 +195,11 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             _triggerSource.Fired += OnTriggerFired;
             _triggerSource.Start();
         }
-        catch
+        catch (Exception exception)
         {
-            // TODO: surface trigger-start failures in the UI.
+            // Degrade to manual-only rather than crashing, but no longer silently — a bad
+            // watch path or cron would otherwise never run with no explanation.
+            _logger.LogError(exception, "Failed to start the trigger for task '{Task}'.", Task.Name);
         }
     }
 
@@ -235,9 +241,11 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
             _onStatusesUpdated(statuses);
         }
-        catch
+        catch (Exception exception)
         {
-            // TODO: surface sync errors in the UI.
+            // Per-destination failures are already captured as statuses by the engine; this
+            // catches an unexpected engine/dispatch failure so it is recorded, not swallowed.
+            _logger.LogError(exception, "Sync run failed for task '{Task}'.", Task.Name);
         }
         finally
         {

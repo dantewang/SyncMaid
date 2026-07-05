@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Persistence;
 using SyncMaid.Core.Sync;
@@ -16,6 +18,8 @@ namespace SyncMaid;
 
 public partial class App : Application
 {
+    private ILogger? _logger;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -26,6 +30,20 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = ConfigureServices();
+
+            _logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("SyncMaid");
+            _logger.LogInformation("SyncMaid started.");
+
+            // Last-resort logging for anything that escapes a local handler, so crashes leave
+            // a trace in the log file instead of vanishing.
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+                _logger.LogCritical(e.ExceptionObject as Exception, "Unhandled exception.");
+            TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                _logger.LogError(e.Exception, "Unobserved task exception.");
+                e.SetObserved();
+            };
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = services.GetRequiredService<MainWindowViewModel>(),
@@ -44,8 +62,14 @@ public partial class App : Application
             "SyncMaid");
         var configPath = Path.Combine(configDir, "tasks.json");
         var statusPath = Path.Combine(configDir, "status.json");
+        var logPath = Path.Combine(configDir, "logs", "syncmaid.log");
 
         var services = new ServiceCollection();
+
+        // File logging via Microsoft.Extensions.Logging (custom file sink); the log lives
+        // next to the config files under the app-data folder.
+        services.AddSingleton<ILoggerFactory>(_ =>
+            new LoggerFactory(new ILoggerProvider[] { new FileLoggerProvider(logPath) }));
 
         services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
@@ -73,7 +97,8 @@ public partial class App : Application
             sp.GetRequiredService<ITriggerSourceFactory>(),
             sp.GetRequiredService<IUiDispatcher>(),
             sp.GetRequiredService<IDialogHost>(),
-            sp.GetRequiredService<IAutoStartService>()));
+            sp.GetRequiredService<IAutoStartService>(),
+            sp.GetRequiredService<ILoggerFactory>()));
 
         return services.BuildServiceProvider();
     }

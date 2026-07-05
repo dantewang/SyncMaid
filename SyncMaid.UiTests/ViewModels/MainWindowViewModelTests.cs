@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
@@ -29,7 +30,8 @@ public class MainWindowViewModelTests
             triggers ?? new FakeTriggerSourceFactory(),
             new FakeUiDispatcher(),
             host ?? new DialogHost(),
-            autoStart ?? new FakeAutoStartService());
+            autoStart ?? new FakeAutoStartService(),
+            NullLoggerFactory.Instance);
 
     [Fact]
     public void Loads_existing_tasks_from_the_store_on_construction()
@@ -149,7 +151,7 @@ public class MainWindowViewModelTests
         var vm = new MainWindowViewModel(
             new FakeDialogService(), new RecordingTaskStore([runnable, empty]), new RecordingStatusStore(),
             engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost(),
-            new FakeAutoStartService());
+            new FakeAutoStartService(), NullLoggerFactory.Instance);
 
         vm.RunAllCommand.Execute(null);
 

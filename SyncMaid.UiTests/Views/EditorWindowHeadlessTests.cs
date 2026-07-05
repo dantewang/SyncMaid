@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
@@ -140,5 +141,5 @@ public class EditorWindowHeadlessTests
         new(
             new FakeDialogService(), store, statusStore, new FakeSyncEngine(),
             new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost(),
-            new FakeAutoStartService());
+            new FakeAutoStartService(), NullLoggerFactory.Instance);
 }

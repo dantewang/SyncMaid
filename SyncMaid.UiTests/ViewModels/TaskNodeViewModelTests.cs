@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
@@ -22,7 +24,8 @@ public class TaskNodeViewModelTests
         FakeTriggerSourceFactory? triggers = null,
         Action? onChanged = null,
         Action<IReadOnlyList<DestinationSyncStatus>>? onStatuses = null,
-        IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null) =>
+        IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null,
+        ILogger? logger = null) =>
         new(
             task,
             statuses ?? new Dictionary<Guid, DestinationSyncStatus>(),
@@ -33,7 +36,8 @@ public class TaskNodeViewModelTests
             _ => Task.CompletedTask,
             _ => { },
             onChanged ?? (() => { }),
-            onStatuses ?? (_ => { }));
+            onStatuses ?? (_ => { }),
+            logger ?? NullLogger.Instance);
 
     [Fact]
     public void Execute_is_disabled_without_destinations()
@@ -53,6 +57,27 @@ public class TaskNodeViewModelTests
         node.ExecuteCommand.Execute(null);
 
         Assert.Same(task, Assert.Single(engine.Executed));
+    }
+
+    [Fact]
+    public void A_trigger_start_failure_is_logged_not_swallowed()
+    {
+        var logger = new RecordingLogger();
+        var task = new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]);
+
+        var node = new TaskNodeViewModel(
+            task, new Dictionary<Guid, DestinationSyncStatus>(),
+            new FakeDialogService(), new FakeSyncEngine(), new ThrowingTriggerSourceFactory(),
+            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { }, logger);
+
+        Assert.NotNull(node); // degrades to manual-only rather than throwing from the ctor
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Exception is not null);
+    }
+
+    private sealed class ThrowingTriggerSourceFactory : ITriggerSourceFactory
+    {
+        public ITriggerSource Create(Trigger trigger, string sourcePath) =>
+            throw new InvalidOperationException("bad trigger");
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Persistence;
@@ -24,6 +25,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IUiDispatcher _dispatcher;
     private readonly IDialogHost _dialogHost;
     private readonly IAutoStartService _autoStart;
+    private readonly ILogger _logger;
+    private readonly ILogger _nodeLogger;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
     private readonly Lock _statusGate = new();
 
@@ -45,7 +48,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ITriggerSourceFactory triggerFactory,
         IUiDispatcher dispatcher,
         IDialogHost dialogHost,
-        IAutoStartService autoStart)
+        IAutoStartService autoStart,
+        ILoggerFactory loggerFactory)
     {
         _dialogs = dialogs;
         _store = store;
@@ -55,6 +59,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _dispatcher = dispatcher;
         _dialogHost = dialogHost;
         _autoStart = autoStart;
+        _logger = loggerFactory.CreateLogger<MainWindowViewModel>();
+        _nodeLogger = loggerFactory.CreateLogger<TaskNodeViewModel>();
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
 
         Nodes = new ObservableCollection<TaskNodeViewModel>();
@@ -144,7 +150,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private TaskNodeViewModel CreateNode(SyncTask task) =>
         new(task, _statuses, _dialogs, _engine, _triggerFactory, _dispatcher,
-            EditTask, DeleteTask, Persist, OnStatusesUpdated)
+            EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger)
         {
             IsExpanded = AllExpanded,
         };
@@ -159,11 +165,30 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 _statuses[status.DestinationId] = status;
             }
 
-            _statusStore.Save(_statuses);
+            try
+            {
+                _statusStore.Save(_statuses);
+            }
+            catch (Exception exception)
+            {
+                // A failed status save is not worth crashing over; the atomic write left the
+                // previous file intact and the next run will retry.
+                _logger.LogError(exception, "Failed to save sync statuses.");
+            }
         }
     }
 
-    private void Persist() => _store.Save(Nodes.Select(node => node.Task).ToList());
+    private void Persist()
+    {
+        try
+        {
+            _store.Save(Nodes.Select(node => node.Task).ToList());
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to save tasks.");
+        }
+    }
 
     partial void OnSelectedTaskChanged(TaskNodeViewModel? value)
     {
