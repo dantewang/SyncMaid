@@ -41,14 +41,14 @@ The engine reports `IProgress<SyncProgress>` (current file, N of M) and the UI i
 While running, show on the destination row: `Copying photos/2024/img_0042.jpg (3/120)`
 (marshal via the existing `IUiDispatcher`). Pairs naturally with #3.
 
-### 5. Mirror guard has no user-facing resolution path
-When `MirrorGuard` aborts a mass delete, the destination just shows *Failed* with the
-guard message. There is no way to say "yes, I really deleted half my source, proceed".
-Recommendation: a per-run confirmation flow — status gains a "needs confirmation" state;
-clicking it opens a dialog listing the would-be deletions (or a count + sample) with
-"Delete N files" / "Keep them" actions; proceeding re-runs that destination with the
-guard bypassed **once** (an explicit `overrideMassDelete` flag on `ExecuteAsync`, never
-persisted).
+### 5. Mirror guard has no user-facing resolution path — ✅ done (`da1a08b`)
+Done: a blocked mass-delete now shows a `NeedsConfirmation` state (amber), and a Review
+action opens an **independent top-level window** (not an in-window overlay, so it works
+when the main window is hidden — background/tray-friendly) listing the count + a sample of
+the would-be deletions with Keep / Delete. Approving re-runs that destination with a
+one-shot, non-persisted override; the empty-source guard stays a non-overridable hard
+failure. The mass-delete threshold is now editable per destination (percentage + off
+toggle) in the Mirror section.
 
 ### 6. Destructive UI actions have no confirmation
 Task delete and destination delete are single-click with no undo. Add a small confirm
