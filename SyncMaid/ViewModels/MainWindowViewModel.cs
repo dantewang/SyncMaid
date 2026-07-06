@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IUiDispatcher _dispatcher;
     private readonly IDialogHost _dialogHost;
     private readonly IAutoStartService _autoStart;
+    private readonly IMirrorDeleteConfirmer _confirmer;
     private readonly ILogger _logger;
     private readonly ILogger _nodeLogger;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
@@ -49,6 +50,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         IUiDispatcher dispatcher,
         IDialogHost dialogHost,
         IAutoStartService autoStart,
+        IMirrorDeleteConfirmer confirmer,
         ILoggerFactory loggerFactory)
     {
         _dialogs = dialogs;
@@ -59,6 +61,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _dispatcher = dispatcher;
         _dialogHost = dialogHost;
         _autoStart = autoStart;
+        _confirmer = confirmer;
         _logger = loggerFactory.CreateLogger<MainWindowViewModel>();
         _nodeLogger = loggerFactory.CreateLogger<TaskNodeViewModel>();
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
@@ -150,7 +153,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private TaskNodeViewModel CreateNode(SyncTask task) =>
         new(task, _statuses, _dialogs, _engine, _triggerFactory, _dispatcher,
-            EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger)
+            EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger, _confirmer)
         {
             IsExpanded = AllExpanded,
         };

@@ -26,7 +26,8 @@ public class TaskNodeViewModelTests
         Action? onChanged = null,
         Action<IReadOnlyList<DestinationSyncStatus>>? onStatuses = null,
         IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null,
-        ILogger? logger = null) =>
+        ILogger? logger = null,
+        FakeMirrorDeleteConfirmer? confirmer = null) =>
         new(
             task,
             statuses ?? new Dictionary<Guid, DestinationSyncStatus>(),
@@ -38,7 +39,8 @@ public class TaskNodeViewModelTests
             _ => { },
             onChanged ?? (() => { }),
             onStatuses ?? (_ => { }),
-            logger ?? NullLogger.Instance);
+            logger ?? NullLogger.Instance,
+            confirmer ?? new FakeMirrorDeleteConfirmer());
 
     [Fact]
     public void Execute_is_disabled_without_destinations()
@@ -69,7 +71,8 @@ public class TaskNodeViewModelTests
         var node = new TaskNodeViewModel(
             task, new Dictionary<Guid, DestinationSyncStatus>(),
             new FakeDialogService(), new FakeSyncEngine(), new ThrowingTriggerSourceFactory(),
-            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { }, logger);
+            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { }, logger,
+            new FakeMirrorDeleteConfirmer());
 
         Assert.NotNull(node); // degrades to manual-only rather than throwing from the ctor
         Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Exception is not null);
@@ -218,5 +221,51 @@ public class TaskNodeViewModelTests
 
         node.CancelCommand.Execute(null);
         await node.ExecuteCommand.ExecutionTask!;
+    }
+
+    [Fact]
+    public void A_blocked_mass_delete_surfaces_as_needs_confirmation()
+    {
+        var engine = new FakeSyncEngine { NeedsConfirmation = true };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]), engine: engine);
+
+        node.ExecuteCommand.Execute(null);
+
+        Assert.Equal(SyncOutcome.NeedsConfirmation, node.Children[0].Outcome);
+        Assert.True(node.Children[0].NeedsConfirmation);
+        Assert.Equal(SyncOutcome.NeedsConfirmation, node.HealthOutcome);
+    }
+
+    [Fact]
+    public async Task Confirming_a_mass_delete_reruns_with_the_override()
+    {
+        var dest = Dest("D");
+        var engine = new FakeSyncEngine { NeedsConfirmation = true, PreviewResult = new MirrorDeletePreview(19, ["orphan.txt"]) };
+        var confirmer = new FakeMirrorDeleteConfirmer { Approve = true };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]), engine: engine, confirmer: confirmer);
+
+        node.ExecuteCommand.Execute(null);                        // trips the guard
+        Assert.Equal(SyncOutcome.NeedsConfirmation, node.Children[0].Outcome);
+
+        await node.Children[0].ConfirmCommand.ExecuteAsync(null); // review → approve → re-run
+
+        Assert.Equal(1, confirmer.CallCount);
+        Assert.Contains(dest.Id, engine.LastConfirmed!);          // re-run carried the override
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
+    }
+
+    [Fact]
+    public async Task Keeping_the_files_does_not_rerun()
+    {
+        var engine = new FakeSyncEngine { NeedsConfirmation = true, PreviewResult = new MirrorDeletePreview(19, ["orphan.txt"]) };
+        var confirmer = new FakeMirrorDeleteConfirmer { Approve = false };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]), engine: engine, confirmer: confirmer);
+
+        node.ExecuteCommand.Execute(null);
+        await node.Children[0].ConfirmCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, confirmer.CallCount);
+        Assert.Single(engine.Executed); // original run only — no re-run
+        Assert.Equal(SyncOutcome.NeedsConfirmation, node.Children[0].Outcome);
     }
 }

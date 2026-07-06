@@ -157,6 +157,16 @@
                                 </StackPanel>
                             </RadioButton>
                         </Grid>
+
+                        <CheckBox IsChecked="{Binding ConfirmLargeDeletions}"
+                                  Content="Confirm before a large deletion" Margin="0,10,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="24,2,0,0"
+                                    IsVisible="{Binding ConfirmLargeDeletions}">
+                            <TextBlock Text="Ask when deleting more than" Classes="muted" VerticalAlignment="Center" />
+                            <NumericUpDown Value="{Binding MassDeletePercent}" Minimum="1" Maximum="100"
+                                           Increment="5" FormatString="0" Width="120" />
+                            <TextBlock Text="% of the destination" Classes="muted" VerticalAlignment="Center" />
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

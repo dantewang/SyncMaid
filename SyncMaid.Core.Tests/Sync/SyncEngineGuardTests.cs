@@ -31,8 +31,7 @@ public class SyncEngineGuardTests
         Assert.True(fs.FileExists(@"D:\dst\important2.txt"));
     }
 
-    [Fact]
-    public async Task Mass_delete_over_threshold_aborts_without_deleting()
+    private static InMemoryFileSystem MassDeleteScenario(out Destination dest)
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile(@"S:\src\keep.txt", "k");
@@ -42,12 +41,42 @@ public class SyncEngineGuardTests
             fs.AddFile($@"D:\dst\orphan{i}.txt", "o"); // 19 of 20 files would be deleted
         }
 
-        var dest = new Destination("d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Mirror);
+        dest = new Destination("d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Mirror);
+        return fs;
+    }
+
+    [Fact]
+    public async Task Mass_delete_over_threshold_needs_confirmation_and_deletes_nothing()
+    {
+        var fs = MassDeleteScenario(out var dest);
 
         var statuses = await new SyncEngine(fs).ExecuteAsync(Mirror(fs, dest));
 
-        Assert.Equal(SyncOutcome.Failed, Assert.Single(statuses).Outcome);
+        Assert.Equal(SyncOutcome.NeedsConfirmation, Assert.Single(statuses).Outcome);
         Assert.Equal(20, fs.EnumerateFiles(@"D:\dst").Count()); // all still present
+    }
+
+    [Fact]
+    public async Task A_confirmed_mass_delete_proceeds()
+    {
+        var fs = MassDeleteScenario(out var dest);
+
+        var statuses = await new SyncEngine(fs).ExecuteAsync(
+            Mirror(fs, dest), confirmedMassDeletes: new HashSet<Guid> { dest.Id });
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.Equal(1, fs.EnumerateFiles(@"D:\dst").Count()); // only keep.txt remains
+    }
+
+    [Fact]
+    public async Task Preview_lists_the_files_a_mass_delete_would_remove()
+    {
+        var fs = MassDeleteScenario(out var dest);
+
+        var preview = await new SyncEngine(fs).PreviewMirrorDeletionsAsync(Mirror(fs, dest), dest.Id);
+
+        Assert.Equal(19, preview.Count);
+        Assert.All(preview.Sample, path => Assert.Contains("orphan", path));
     }
 
     [Fact]

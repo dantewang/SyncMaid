@@ -141,5 +141,5 @@ public class EditorWindowHeadlessTests
         new(
             new FakeDialogService(), store, statusStore, new FakeSyncEngine(),
             new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost(),
-            new FakeAutoStartService(), NullLoggerFactory.Instance);
+            new FakeAutoStartService(), new FakeMirrorDeleteConfirmer(), NullLoggerFactory.Instance);
 }

@@ -14,6 +14,10 @@ public enum SyncOutcome
 
     /// <summary>The last sync failed; see <see cref="DestinationSyncStatus.Error"/>.</summary>
     Failed,
+
+    /// <summary>A Mirror run was blocked by the mass-delete guard and is awaiting the user's
+    /// confirmation before it will delete files (see <see cref="Sync.MirrorGuard"/>).</summary>
+    NeedsConfirmation,
 }
 
 /// <summary>

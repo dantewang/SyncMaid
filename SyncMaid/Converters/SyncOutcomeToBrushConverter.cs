@@ -14,6 +14,7 @@ public sealed class SyncOutcomeToBrushConverter : IValueConverter
     private static readonly IBrush Success = new SolidColorBrush(Color.Parse("#1AA0B5"));
     private static readonly IBrush Failed = new SolidColorBrush(Color.Parse("#C53943"));
     private static readonly IBrush Running = new SolidColorBrush(Color.Parse("#1AA0B5"));
+    private static readonly IBrush NeedsConfirmation = new SolidColorBrush(Color.Parse("#C7810B"));
     private static readonly IBrush Never = new SolidColorBrush(Color.Parse("#8A8A86"));
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -23,6 +24,7 @@ public sealed class SyncOutcomeToBrushConverter : IValueConverter
                 SyncOutcome.Success => Success,
                 SyncOutcome.Failed => Failed,
                 SyncOutcome.Running => Running,
+                SyncOutcome.NeedsConfirmation => NeedsConfirmation,
                 _ => Never,
             }
             : Never;

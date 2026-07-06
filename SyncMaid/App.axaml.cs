@@ -85,6 +85,7 @@ public partial class App : Application
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IDialogHost>(_ => new DialogHost());
         services.AddSingleton<IAutoStartService>(_ => new WindowsAutoStartService());
+        services.AddSingleton<IMirrorDeleteConfirmer>(_ => new MirrorDeleteConfirmer());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(
             sp.GetRequiredService<IFolderPickerService>(),
@@ -98,6 +99,7 @@ public partial class App : Application
             sp.GetRequiredService<IUiDispatcher>(),
             sp.GetRequiredService<IDialogHost>(),
             sp.GetRequiredService<IAutoStartService>(),
+            sp.GetRequiredService<IMirrorDeleteConfirmer>(),
             sp.GetRequiredService<ILoggerFactory>()));
 
         return services.BuildServiceProvider();

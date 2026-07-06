@@ -226,6 +226,9 @@
                                                                 <TextBlock Text="{Binding DisplayStatus}" VerticalAlignment="Center"
                                                                            MaxWidth="280" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayStatus}"
                                                                            Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
+                                                                <Button Classes="icon" Command="{Binding ConfirmCommand}" IsVisible="{Binding NeedsConfirmation}" ToolTip.Tip="Review deletions">
+                                                                    <mi:MaterialIcon Kind="AlertOutline" Width="15" Height="15" Foreground="{StaticResource WarningBrush}" />
+                                                                </Button>
                                                                 <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit destination"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
                                                                 <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete destination"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
                                                             </StackPanel>

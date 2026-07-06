@@ -1,11 +1,26 @@
 namespace SyncMaid.Core.Sync;
 
+/// <summary>How a Mirror run's planned deletions were judged before applying them.</summary>
+public enum MirrorGuardVerdict
+{
+    /// <summary>Safe to proceed — apply the plan as-is.</summary>
+    Allowed,
+
+    /// <summary>The source is empty/unavailable; deletions are refused outright (a blip must
+    /// never wipe the backup). Not overridable — the user should fix the source.</summary>
+    EmptySource,
+
+    /// <summary>The run would delete a large fraction of the destination. Blocked pending the
+    /// user's explicit confirmation; overridable for a single run.</summary>
+    NeedsConfirmation,
+}
+
 /// <summary>
 /// Guards a Mirror run against catastrophic deletion. Mirror deletes every destination
 /// file not present in the filtered source set — which is correct, until the source
 /// briefly disappears (an unmounted drive, a permission hiccup) and enumerates as empty,
-/// turning the plan into "delete the entire backup." This validates a plan's deletions
-/// before any are applied. Pure and side-effect-free, so it is exhaustively testable.
+/// or a filter change removes most of the set. Judges a plan's deletions before any are
+/// applied. Pure and side-effect-free, so it is exhaustively testable.
 /// </summary>
 public static class MirrorGuard
 {
@@ -16,40 +31,46 @@ public static class MirrorGuard
     public const int MinDestinationFilesForRatioGuard = 10;
 
     /// <summary>
-    /// Throws <see cref="MirrorGuardException"/> when the planned deletions look dangerous.
+    /// Judges whether a Mirror run's deletions are safe to apply.
     /// </summary>
     /// <param name="deleteCount">How many files the plan would delete.</param>
     /// <param name="destinationFileCount">How many files the destination currently holds.</param>
     /// <param name="sourceIsEmpty">True when the source enumerated to zero files (missing or empty).</param>
     /// <param name="massDeleteThreshold">
-    /// Fraction (0–1) of the destination that, if exceeded, aborts the run. 0 disables the ratio guard.
+    /// Fraction (0–1) of the destination that, if exceeded, needs confirmation. 0 disables the ratio guard.
     /// </param>
-    public static void Validate(
+    /// <param name="overrideMassDelete">
+    /// When true, a mass delete the user has already confirmed proceeds. Does <b>not</b>
+    /// override the empty-source guard.
+    /// </param>
+    public static MirrorGuardVerdict Evaluate(
         int deleteCount,
         int destinationFileCount,
         bool sourceIsEmpty,
-        double massDeleteThreshold)
+        double massDeleteThreshold,
+        bool overrideMassDelete = false)
     {
         if (deleteCount == 0)
         {
-            return;
+            return MirrorGuardVerdict.Allowed;
         }
 
         // An empty/unavailable source must never drive deletions — this is the blip-wipe case.
         if (sourceIsEmpty)
         {
-            throw new MirrorGuardException(
-                $"The source is empty or unavailable; skipping {deleteCount} deletion(s) to avoid wiping the destination.");
+            return MirrorGuardVerdict.EmptySource;
         }
 
-        // Mass-delete: refuse to remove a large fraction of a non-trivial destination.
-        if (massDeleteThreshold > 0
+        // Mass-delete: a large fraction of a non-trivial destination needs confirmation,
+        // unless the user has explicitly confirmed this run.
+        if (!overrideMassDelete
+            && massDeleteThreshold > 0
             && destinationFileCount >= MinDestinationFilesForRatioGuard
             && deleteCount >= destinationFileCount * massDeleteThreshold)
         {
-            throw new MirrorGuardException(
-                $"Refusing to delete {deleteCount} of {destinationFileCount} files " +
-                $"(at or over the {massDeleteThreshold:P0} safety threshold). Confirm the change to proceed.");
+            return MirrorGuardVerdict.NeedsConfirmation;
         }
+
+        return MirrorGuardVerdict.Allowed;
     }
 }

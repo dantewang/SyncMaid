@@ -156,6 +156,53 @@ public class DestinationEditorViewModelTests
 
         Assert.False(vm.VerifyContents);
         Assert.Equal(DeleteMode.Recycle, vm.SelectedDeleteMode);
+        Assert.True(vm.ConfirmLargeDeletions);   // guard on by default
+        Assert.Equal(50m, vm.MassDeletePercent); // at 50%
+    }
+
+    [Fact]
+    public void Mass_delete_threshold_round_trips_as_a_percentage()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            MassDeleteThreshold = 0.75,
+        };
+
+        var vm = New(existing: existing);
+        Assert.True(vm.ConfirmLargeDeletions);
+        Assert.Equal(75m, vm.MassDeletePercent);
+
+        vm.MassDeletePercent = 30m;
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(0.30, result!.MassDeleteThreshold, 3);
+    }
+
+    [Fact]
+    public void Turning_the_guard_off_persists_a_zero_threshold()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var vm = New(existing: existing);
+
+        vm.ConfirmLargeDeletions = false;
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(0, result!.MassDeleteThreshold);
+    }
+
+    [Fact]
+    public void A_zero_threshold_loads_as_the_guard_being_off()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            MassDeleteThreshold = 0,
+        };
+
+        Assert.False(New(existing: existing).ConfirmLargeDeletions);
     }
 
     [Fact]

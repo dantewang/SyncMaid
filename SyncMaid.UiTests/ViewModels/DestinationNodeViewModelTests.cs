@@ -11,7 +11,7 @@ public class DestinationNodeViewModelTests
     private static DestinationNodeViewModel New()
     {
         var dest = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
-        return new DestinationNodeViewModel(dest, DestinationSyncStatus.Never(dest.Id), _ => Task.CompletedTask, _ => { });
+        return new DestinationNodeViewModel(dest, DestinationSyncStatus.Never(dest.Id), _ => Task.CompletedTask, _ => { }, _ => Task.CompletedTask);
     }
 
     [Fact]

@@ -12,11 +12,13 @@ public partial class DestinationNodeViewModel : ViewModelBase
 {
     private readonly Func<DestinationNodeViewModel, Task> _onEdit;
     private readonly Action<DestinationNodeViewModel> _onDelete;
+    private readonly Func<DestinationNodeViewModel, Task> _onConfirm;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Outcome))]
     [NotifyPropertyChangedFor(nameof(StatusText))]
     [NotifyPropertyChangedFor(nameof(DisplayStatus))]
+    [NotifyPropertyChangedFor(nameof(NeedsConfirmation))]
     private DestinationSyncStatus _status;
 
     // The live "Copying x (3/120)" line while a run is in progress; null otherwise.
@@ -28,12 +30,14 @@ public partial class DestinationNodeViewModel : ViewModelBase
         Destination destination,
         DestinationSyncStatus status,
         Func<DestinationNodeViewModel, Task> onEdit,
-        Action<DestinationNodeViewModel> onDelete)
+        Action<DestinationNodeViewModel> onDelete,
+        Func<DestinationNodeViewModel, Task> onConfirm)
     {
         Destination = destination;
         _status = status;
         _onEdit = onEdit;
         _onDelete = onDelete;
+        _onConfirm = onConfirm;
     }
 
     /// <summary>The wrapped immutable destination.</summary>
@@ -69,11 +73,15 @@ public partial class DestinationNodeViewModel : ViewModelBase
         SyncOutcome.Running => "Syncing…",
         SyncOutcome.Success => $"Synced {Relative(Status.LastRun)} · {Status.FilesCopied} files",
         SyncOutcome.Failed => string.IsNullOrEmpty(Status.Error) ? "Failed" : $"Failed · {Status.Error}",
+        SyncOutcome.NeedsConfirmation => "Needs confirmation",
         _ => "Never run",
     };
 
     /// <summary>What the row shows: the live progress line while running, else the status.</summary>
     public string DisplayStatus => ProgressText ?? StatusText;
+
+    /// <summary>True when a Mirror mass-delete is waiting on the user — drives the Review button.</summary>
+    public bool NeedsConfirmation => Outcome == SyncOutcome.NeedsConfirmation;
 
     /// <summary>Flips to the running state at the start of a sync.</summary>
     public void MarkRunning()
@@ -97,6 +105,10 @@ public partial class DestinationNodeViewModel : ViewModelBase
 
     [RelayCommand]
     private void Delete() => _onDelete(this);
+
+    /// <summary>Opens the independent confirmation window for a blocked mass-delete.</summary>
+    [RelayCommand]
+    private Task Confirm() => _onConfirm(this);
 
     private string DescribeFilters()
     {

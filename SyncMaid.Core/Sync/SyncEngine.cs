@@ -44,21 +44,50 @@ public sealed class SyncEngine : ISyncEngine
     public Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
         SyncTask task,
         CancellationToken cancellationToken = default,
-        IProgress<SyncProgress>? progress = null)
+        IProgress<SyncProgress>? progress = null,
+        IReadOnlySet<Guid>? confirmedMassDeletes = null)
     {
-        return Task.Run(() => Execute(task, cancellationToken, progress), cancellationToken);
+        return Task.Run(() => Execute(task, cancellationToken, progress, confirmedMassDeletes), cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<MirrorDeletePreview> PreviewMirrorDeletionsAsync(
+        SyncTask task,
+        Guid destinationId,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.Run(
+            () =>
+            {
+                var destination = task.Destinations.FirstOrDefault(d => d.Id == destinationId);
+                if (destination is null || destination.Strategy != SyncStrategy.Mirror)
+                {
+                    return MirrorDeletePreview.None;
+                }
+
+                var provider = _destinations.Create(destination.Target);
+                var filtered = _fileSystem.EnumerateFiles(task.SourcePath).Where(destination.Includes).ToList();
+                var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
+
+                var deletions = plan.OfType<DeleteOperation>().Select(operation => operation.RelativePath).ToList();
+                return new MirrorDeletePreview(deletions.Count, deletions.Take(PreviewSampleSize).ToList());
+            },
+            cancellationToken);
+    }
+
+    private const int PreviewSampleSize = 25;
 
     private IReadOnlyList<DestinationSyncStatus> Execute(
         SyncTask task,
         CancellationToken cancellationToken,
-        IProgress<SyncProgress>? progress)
+        IProgress<SyncProgress>? progress,
+        IReadOnlySet<Guid>? confirmedMassDeletes)
     {
         var statuses = new List<DestinationSyncStatus>(task.Destinations.Count);
         foreach (var destination in task.Destinations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            statuses.Add(ExecuteDestination(task, destination, cancellationToken, progress));
+            statuses.Add(ExecuteDestination(task, destination, cancellationToken, progress, confirmedMassDeletes));
         }
 
         return statuses;
@@ -68,7 +97,8 @@ public sealed class SyncEngine : ISyncEngine
         SyncTask task,
         Destination destination,
         CancellationToken cancellationToken,
-        IProgress<SyncProgress>? progress)
+        IProgress<SyncProgress>? progress,
+        IReadOnlySet<Guid>? confirmedMassDeletes)
     {
         try
         {
@@ -79,17 +109,32 @@ public sealed class SyncEngine : ISyncEngine
 
             var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
-            // Guard Mirror deletions before applying anything: an empty/unavailable source
-            // or a mass-delete must not silently wipe the destination.
+            // Guard Mirror deletions before applying anything: an empty/unavailable source is
+            // refused; a mass-delete needs the user's confirmation (unless already given).
             var deleteCount = plan.Count(operation => operation is DeleteOperation);
             if (deleteCount > 0)
             {
                 var destinationFileCount = provider.Enumerate().Count();
-                MirrorGuard.Validate(
+                var verdict = MirrorGuard.Evaluate(
                     deleteCount,
                     destinationFileCount,
                     sourceIsEmpty: sourceFiles.Count == 0,
-                    destination.MassDeleteThreshold);
+                    destination.MassDeleteThreshold,
+                    overrideMassDelete: confirmedMassDeletes?.Contains(destination.Id) ?? false);
+
+                if (verdict == MirrorGuardVerdict.EmptySource)
+                {
+                    return new DestinationSyncStatus(
+                        destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                        "Source is empty or unavailable; skipped deletions to avoid wiping the destination.");
+                }
+
+                if (verdict == MirrorGuardVerdict.NeedsConfirmation)
+                {
+                    return new DestinationSyncStatus(
+                        destination.Id, SyncOutcome.NeedsConfirmation, DateTimeOffset.UtcNow, 0,
+                        $"Would delete {deleteCount} files no longer in the source — review before syncing.");
+                }
             }
 
             var filesCopied = 0;

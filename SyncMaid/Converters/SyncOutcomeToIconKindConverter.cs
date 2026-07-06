@@ -18,6 +18,7 @@ public sealed class SyncOutcomeToIconKindConverter : IValueConverter
                 SyncOutcome.Success => MaterialIconKind.CheckCircle,
                 SyncOutcome.Failed => MaterialIconKind.AlertCircle,
                 SyncOutcome.Running => MaterialIconKind.Sync,
+                SyncOutcome.NeedsConfirmation => MaterialIconKind.AlertOutline,
                 _ => MaterialIconKind.MinusCircle,
             }
             : MaterialIconKind.MinusCircle;

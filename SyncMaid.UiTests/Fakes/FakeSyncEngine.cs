@@ -25,12 +25,23 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When true, the run blocks until cancelled (then throws), simulating a long sync.</summary>
     public bool HangUntilCancelled { get; set; }
 
+    /// <summary>When true, destinations return NeedsConfirmation unless their id was confirmed.</summary>
+    public bool NeedsConfirmation { get; set; }
+
+    /// <summary>The confirmed-mass-delete set passed to the most recent run.</summary>
+    public IReadOnlySet<Guid>? LastConfirmed { get; private set; }
+
+    /// <summary>Returned from <see cref="PreviewMirrorDeletionsAsync"/>.</summary>
+    public MirrorDeletePreview PreviewResult { get; set; } = MirrorDeletePreview.None;
+
     public async Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
         SyncTask task,
         CancellationToken cancellationToken = default,
-        IProgress<SyncProgress>? progress = null)
+        IProgress<SyncProgress>? progress = null,
+        IReadOnlySet<Guid>? confirmedMassDeletes = null)
     {
         Executed.Add(task);
+        LastConfirmed = confirmedMassDeletes;
 
         if (progress is not null && ProgressToReport is not null)
         {
@@ -47,8 +58,23 @@ public sealed class FakeSyncEngine : ISyncEngine
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Result ?? task.Destinations
-            .Select(d => new DestinationSyncStatus(d.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 1, null))
+        if (Result is not null)
+        {
+            return Result;
+        }
+
+        return task.Destinations
+            .Select(d =>
+            {
+                var confirmed = confirmedMassDeletes?.Contains(d.Id) ?? false;
+                var outcome = NeedsConfirmation && !confirmed ? SyncOutcome.NeedsConfirmation : SyncOutcome.Success;
+                return new DestinationSyncStatus(d.Id, outcome, DateTimeOffset.UtcNow,
+                    outcome == SyncOutcome.Success ? 1 : 0, null);
+            })
             .ToList();
     }
+
+    public Task<MirrorDeletePreview> PreviewMirrorDeletionsAsync(
+        SyncTask task, Guid destinationId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(PreviewResult);
 }

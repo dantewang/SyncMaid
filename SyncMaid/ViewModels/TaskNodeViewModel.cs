@@ -26,6 +26,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly Action _onChanged;
     private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
     private readonly ILogger _logger;
+    private readonly IMirrorDeleteConfirmer _confirmer;
 
     private ITriggerSource? _triggerSource;
     private int _running;   // 0 = idle, 1 = a sync is in progress (manual or triggered)
@@ -49,7 +50,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         Action<TaskNodeViewModel> onDelete,
         Action onChanged,
         Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated,
-        ILogger logger)
+        ILogger logger,
+        IMirrorDeleteConfirmer confirmer)
     {
         Task = task;
         _dialogs = dialogs;
@@ -61,6 +63,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         _onChanged = onChanged;
         _onStatusesUpdated = onStatusesUpdated;
         _logger = logger;
+        _confirmer = confirmer;
 
         Children = new ObservableCollection<DestinationNodeViewModel>();
         foreach (var destination in task.Destinations)
@@ -114,6 +117,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         {
             if (Children.Count == 0) return SyncOutcome.Never;
             if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return SyncOutcome.Running;
+            if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return SyncOutcome.NeedsConfirmation;
             if (Children.Any(c => c.Outcome == SyncOutcome.Failed)) return SyncOutcome.Failed;
             if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return SyncOutcome.Success;
             return SyncOutcome.Never;
@@ -126,6 +130,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         {
             if (Children.Count == 0) return "No destinations";
             if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return "Syncing…";
+            if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return "Needs confirmation";
             var failed = Children.Count(c => c.Outcome == SyncOutcome.Failed);
             if (failed > 0) return $"{failed} of {Children.Count} failed";
             if (Children.All(c => c.Outcome == SyncOutcome.Success)) return "All synced";
@@ -178,7 +183,28 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     }
 
     private DestinationNodeViewModel NewChild(Destination destination, DestinationSyncStatus status) =>
-        new(destination, status, EditLeaf, DeleteLeaf);
+        new(destination, status, EditLeaf, DeleteLeaf, ConfirmLeaf);
+
+    // A destination is blocked on a mass-delete confirmation: preview the current deletions,
+    // ask the user in an independent window, and re-run just that destination if they approve.
+    private async Task ConfirmLeaf(DestinationNodeViewModel node)
+    {
+        var preview = await _engine.PreviewMirrorDeletionsAsync(Task, node.Id);
+        if (preview.Count == 0)
+        {
+            // The situation resolved (e.g. the source came back) — just run normally.
+            await RunAsync();
+            return;
+        }
+
+        var approved = await _confirmer.ConfirmAsync(new MirrorDeleteRequest(
+            node.Name, node.Path, node.Destination.DeleteMode, preview));
+
+        if (approved)
+        {
+            await RunAsync(new HashSet<Guid> { node.Id });
+        }
+    }
 
     // Destinations are immutable on the task, so rebuild it from the child nodes.
     private void RebuildAndPersist()
@@ -217,7 +243,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     // Single entry point for both manual and triggered runs; skips if one is already in
     // flight so overlapping triggers don't run concurrent syncs of the same task. VM
     // mutations are marshaled to the UI thread since triggers fire on background threads.
-    private async Task RunAsync()
+    // <paramref name="confirmedMassDeletes"/> carries destinations whose mass-delete the user
+    // just approved, so this run applies their deletions.
+    private async Task RunAsync(IReadOnlySet<Guid>? confirmedMassDeletes = null)
     {
         if (Interlocked.Exchange(ref _running, 1) == 1)
         {
@@ -244,7 +272,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             });
 
             var progress = new DispatchedProgress(_dispatcher, OnProgress);
-            var statuses = await _engine.ExecuteAsync(Task, cts.Token, progress);
+            var statuses = await _engine.ExecuteAsync(Task, cts.Token, progress, confirmedMassDeletes);
 
             _dispatcher.Post(() =>
             {

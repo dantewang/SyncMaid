@@ -43,6 +43,14 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     [ObservableProperty]
     private DeleteMode _selectedDeleteMode = DeleteMode.Recycle;
 
+    /// <summary>Whether the mass-delete guard is on (off = never ask, threshold 0).</summary>
+    [ObservableProperty]
+    private bool _confirmLargeDeletions = true;
+
+    /// <summary>The guard threshold as a whole percentage (persisted as a 0–1 fraction).</summary>
+    [ObservableProperty]
+    private decimal _massDeletePercent = 50;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddFilterCommand))]
     private string _newFilterPattern = string.Empty;
@@ -69,6 +77,13 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
             _selectedStrategy = existing.Strategy;
             _verifyContents = existing.VerifyContents;
             _selectedDeleteMode = existing.DeleteMode;
+
+            // 0 (or less) means the guard is off; otherwise show it as a whole percentage.
+            _confirmLargeDeletions = existing.MassDeleteThreshold > 0;
+            if (_confirmLargeDeletions)
+            {
+                _massDeletePercent = Math.Clamp((decimal)Math.Round(existing.MassDeleteThreshold * 100), 1, 100);
+            }
 
             // A lone AllFilesFilter is "sync all"; anything else is an explicit filter list.
             var isSyncAll = existing.Filters is [AllFilesFilter];
@@ -114,6 +129,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
             Id = _id,
             VerifyContents = VerifyContents,
             DeleteMode = SelectedDeleteMode,
+            MassDeleteThreshold = ConfirmLargeDeletions ? (double)Math.Clamp(MassDeletePercent, 1, 100) / 100.0 : 0,
         });
     }
 
