@@ -88,9 +88,15 @@ makes the sidebar an actual navigator.
 
 ## ⚪ Noted, fine to defer
 
-- **Tray icon + minimize-to-tray** — natural companion to autostart (see
-  guide-settings-autostart.md); Avalonia has `TrayIcon` support. Watch/scheduled tasks
-  make SyncMaid a background app; today closing the window kills the triggers.
+- **Tray icon + close-to-tray** — a tray icon with a "Show main window" / "Exit" menu and a
+  "Close to tray" setting so watch/scheduled tasks keep running when the window is hidden.
+  Full design in [guide-tray-icon.md](guide-tray-icon.md). (Introduces the first persisted
+  app *setting* → a `JsonSettingsStore`.)
+- **OS-specific features the .NET-idiomatic way** (structural) — autostart is a single
+  Windows-only service with inline `OperatingSystem.IsWindows()` guards; move to the standard
+  pattern (neutral interface + `[SupportedOSPlatform]` per-OS impls + a DI selector + no-op
+  fallback) so macOS/Linux are drop-ins later. Full design in
+  [guide-os-specific-services.md](guide-os-specific-services.md).
 - **Move + Watch interplay** — a Move task with a Watch trigger re-fires after its own
   source deletions (debounced; next run plans zero ops). Harmless but wasteful; could
   suppress the watcher during an active run of the same task.
