@@ -184,7 +184,8 @@
                                                                Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
                                                 </StackPanel>
                                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                                    <Button Classes="icon run" Command="{Binding ExecuteCommand}" ToolTip.Tip="Run now"><mi:MaterialIcon Kind="Play" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon run" Command="{Binding ExecuteCommand}" IsVisible="{Binding !IsRunning}" ToolTip.Tip="Run now"><mi:MaterialIcon Kind="Play" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon danger" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" ToolTip.Tip="Stop"><mi:MaterialIcon Kind="Stop" Width="16" Height="16" /></Button>
                                                     <Button Classes="icon" Command="{Binding AddDestinationCommand}" ToolTip.Tip="Add destination"><mi:MaterialIcon Kind="Plus" Width="16" Height="16" /></Button>
                                                     <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit task"><mi:MaterialIcon Kind="Pencil" Width="15" Height="15" /></Button>
                                                     <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete task"><mi:MaterialIcon Kind="TrashCanOutline" Width="15" Height="15" /></Button>
@@ -222,7 +223,8 @@
                                                                 <TextBlock Text="{Binding Path}" Classes="path" />
                                                             </StackPanel>
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                                                                <TextBlock Text="{Binding DisplayStatus}" VerticalAlignment="Center"
+                                                                           MaxWidth="280" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayStatus}"
                                                                            Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
                                                                 <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit destination"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
                                                                 <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete destination"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>

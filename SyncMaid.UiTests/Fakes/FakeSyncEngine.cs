@@ -19,17 +19,36 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When set, returned from the next run instead of the default successes.</summary>
     public IReadOnlyList<DestinationSyncStatus>? Result { get; set; }
 
-    public Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
+    /// <summary>Progress updates reported (in order) before the run completes.</summary>
+    public IReadOnlyList<SyncProgress>? ProgressToReport { get; set; }
+
+    /// <summary>When true, the run blocks until cancelled (then throws), simulating a long sync.</summary>
+    public bool HangUntilCancelled { get; set; }
+
+    public async Task<IReadOnlyList<DestinationSyncStatus>> ExecuteAsync(
         SyncTask task,
         CancellationToken cancellationToken = default,
         IProgress<SyncProgress>? progress = null)
     {
         Executed.Add(task);
 
-        IReadOnlyList<DestinationSyncStatus> statuses = Result ?? task.Destinations
+        if (progress is not null && ProgressToReport is not null)
+        {
+            foreach (var report in ProgressToReport)
+            {
+                progress.Report(report);
+            }
+        }
+
+        if (HangUntilCancelled)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken); // throws OperationCanceledException on cancel
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Result ?? task.Destinations
             .Select(d => new DestinationSyncStatus(d.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 1, null))
             .ToList();
-
-        return Task.FromResult(statuses);
     }
 }

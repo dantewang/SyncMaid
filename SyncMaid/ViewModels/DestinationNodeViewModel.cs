@@ -16,7 +16,13 @@ public partial class DestinationNodeViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Outcome))]
     [NotifyPropertyChangedFor(nameof(StatusText))]
+    [NotifyPropertyChangedFor(nameof(DisplayStatus))]
     private DestinationSyncStatus _status;
+
+    // The live "Copying x (3/120)" line while a run is in progress; null otherwise.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayStatus))]
+    private string? _progressText;
 
     public DestinationNodeViewModel(
         Destination destination,
@@ -66,11 +72,25 @@ public partial class DestinationNodeViewModel : ViewModelBase
         _ => "Never run",
     };
 
-    /// <summary>Flips to the running state at the start of a sync.</summary>
-    public void MarkRunning() => Status = Status with { Outcome = SyncOutcome.Running };
+    /// <summary>What the row shows: the live progress line while running, else the status.</summary>
+    public string DisplayStatus => ProgressText ?? StatusText;
 
-    /// <summary>Applies the final status from a completed run.</summary>
-    public void SetStatus(DestinationSyncStatus status) => Status = status;
+    /// <summary>Flips to the running state at the start of a sync.</summary>
+    public void MarkRunning()
+    {
+        ProgressText = null;
+        Status = Status with { Outcome = SyncOutcome.Running };
+    }
+
+    /// <summary>Reports the current operation while the sync runs.</summary>
+    public void SetProgress(string text) => ProgressText = text;
+
+    /// <summary>Applies the final status from a completed run and clears any progress line.</summary>
+    public void SetStatus(DestinationSyncStatus status)
+    {
+        ProgressText = null;
+        Status = status;
+    }
 
     [RelayCommand]
     private Task Edit() => _onEdit(this);

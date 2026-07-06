@@ -129,6 +129,13 @@
     <Style Selector="Button.icon.run:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
     </Style>
+    <Style Selector="Button.icon.danger">
+        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F9E7E8" />
+    </Style>
     <Style Selector="Button.icon:disabled">
         <Setter Property="Opacity" Value="0.4" />
     </Style>

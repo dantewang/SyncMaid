@@ -29,9 +29,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private ITriggerSource? _triggerSource;
     private int _running;   // 0 = idle, 1 = a sync is in progress (manual or triggered)
+    private CancellationTokenSource? _cts;
 
     [ObservableProperty]
     private bool _isExpanded = true;
+
+    /// <summary>True while a sync is running — the view swaps the Run button for a Stop button.</summary>
+    [ObservableProperty]
+    private bool _isRunning;
 
     public TaskNodeViewModel(
         SyncTask task,
@@ -134,6 +139,10 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private bool CanExecute() => Children.Count > 0;
 
+    /// <summary>Requests cancellation of the in-flight run (the Stop button).</summary>
+    [RelayCommand]
+    private void Cancel() => _cts?.Cancel();
+
     [RelayCommand]
     private Task Edit() => _onEdit(this);
 
@@ -215,10 +224,17 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        var cts = new CancellationTokenSource();
+        _cts = cts;
+        // Capture each destination's status so a cancelled run reverts cleanly (cancel is
+        // neutral — not a failure) rather than leaving rows stuck on "Syncing…".
+        var priorStatuses = Children.ToDictionary(child => child.Id, child => child.Status);
+
         try
         {
             _dispatcher.Post(() =>
             {
+                IsRunning = true;
                 foreach (var child in Children)
                 {
                     child.MarkRunning();
@@ -227,7 +243,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
                 RefreshHealth();
             });
 
-            var statuses = await _engine.ExecuteAsync(Task);
+            var progress = new DispatchedProgress(_dispatcher, OnProgress);
+            var statuses = await _engine.ExecuteAsync(Task, cts.Token, progress);
 
             _dispatcher.Post(() =>
             {
@@ -241,6 +258,22 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
             _onStatusesUpdated(statuses);
         }
+        catch (OperationCanceledException)
+        {
+            // Revert to the pre-run status; the user stopped it, so it's not a failure.
+            _dispatcher.Post(() =>
+            {
+                foreach (var child in Children)
+                {
+                    if (priorStatuses.TryGetValue(child.Id, out var prior))
+                    {
+                        child.SetStatus(prior);
+                    }
+                }
+
+                RefreshHealth();
+            });
+        }
         catch (Exception exception)
         {
             // Per-destination failures are already captured as statuses by the engine; this
@@ -249,11 +282,44 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         }
         finally
         {
+            _cts = null;
+            cts.Dispose();
+            _dispatcher.Post(() => IsRunning = false);
             Interlocked.Exchange(ref _running, 0);
         }
     }
 
+    // Turns an engine progress report into the destination row's live "Copying x (i/n)" line.
+    private void OnProgress(SyncProgress progress)
+    {
+        var verb = progress.Operation switch
+        {
+            CopyOperation => "Copying",
+            MoveOperation => "Moving",
+            DeleteOperation => "Removing",
+            _ => "Syncing",
+        };
+
+        ChildById(progress.Destination.Id)?.SetProgress(
+            $"{verb} {progress.Operation.RelativePath} ({progress.CompletedOperations + 1}/{progress.TotalOperations})");
+    }
+
     private DestinationNodeViewModel? ChildById(Guid id) => Children.FirstOrDefault(c => c.Id == id);
+
+    // Marshals engine progress (reported on a background thread) onto the UI dispatcher.
+    private sealed class DispatchedProgress : IProgress<SyncProgress>
+    {
+        private readonly IUiDispatcher _dispatcher;
+        private readonly Action<SyncProgress> _handler;
+
+        public DispatchedProgress(IUiDispatcher dispatcher, Action<SyncProgress> handler)
+        {
+            _dispatcher = dispatcher;
+            _handler = handler;
+        }
+
+        public void Report(SyncProgress value) => _dispatcher.Post(() => _handler(value));
+    }
 
     public void Dispose()
     {

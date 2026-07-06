@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
+using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
 using SyncMaid.ViewModels;
 
@@ -180,5 +181,42 @@ public class TaskNodeViewModelTests
 
         Assert.Empty(node.Children);
         Assert.Equal(0, persisted);
+    }
+
+    [Fact]
+    public async Task Cancelling_a_run_reverts_to_a_neutral_status_not_a_failure()
+    {
+        var engine = new FakeSyncEngine { HangUntilCancelled = true };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]), engine: engine);
+
+        node.ExecuteCommand.Execute(null);
+        Assert.True(node.IsRunning);
+        Assert.Equal(SyncOutcome.Running, node.Children[0].Outcome);
+
+        node.CancelCommand.Execute(null);
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.False(node.IsRunning);
+        Assert.Equal(SyncOutcome.Never, node.Children[0].Outcome); // reverted to before the run, not Failed
+    }
+
+    [Fact]
+    public async Task Progress_reports_are_shown_on_the_destination_row()
+    {
+        var dest = Dest("D");
+        var engine = new FakeSyncEngine
+        {
+            HangUntilCancelled = true,
+            ProgressToReport = [new SyncProgress(dest, new CopyOperation("photos/img.jpg", @"C:\a\photos\img.jpg"), 2, 10)],
+        };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]), engine: engine);
+
+        node.ExecuteCommand.Execute(null); // progress is reported before the run hangs
+
+        Assert.Contains("Copying photos/img.jpg", node.Children[0].DisplayStatus);
+        Assert.Contains("(3/10)", node.Children[0].DisplayStatus);
+
+        node.CancelCommand.Execute(null);
+        await node.ExecuteCommand.ExecutionTask!;
     }
 }
