@@ -20,13 +20,14 @@ each save (one extra rename) and falling back to it on parse failure at load.
 *Effort: small. Tests: fault-injection via the in-memory fs (fail during write → old file
 intact).*
 
-### 2. Errors are swallowed silently — ✅ logging done; UI-surfacing still open
+### 2. Errors are swallowed silently — ✅ done (`b31211d`, `0ace4c8`)
 Done: both `TaskNodeViewModel` `catch {}` blocks now log via `ILogger`, and a file log
 (`Microsoft.Extensions.Logging` + a custom `FileLoggerProvider`) writes to
 `AppData/SyncMaid/logs/syncmaid.log` with single-backup size rollover; the config stores'
 save paths are guarded and app-level unhandled/unobserved exceptions are logged.
-Still open (part a): route those failures into the **UI status text** (e.g. a task-level
-"trigger failed to start" badge) — needs a small status-model addition, tracked here.
+Part a done (`0ace4c8`): a trigger that fails to start now sets a `TriggerError` on the
+task node and shows an amber "Trigger error" badge on the card (tooltip = the reason), so a
+bad watch path / cron is visible, not just logged.
 
 ## 🟠 Real functional gaps
 
@@ -88,10 +89,12 @@ makes the sidebar an actual navigator.
 
 ## ⚪ Noted, fine to defer
 
-- **Tray icon + close-to-tray** — a tray icon with a "Show main window" / "Exit" menu and a
-  "Close to tray" setting so watch/scheduled tasks keep running when the window is hidden.
-  Full design in [guide-tray-icon.md](guide-tray-icon.md). (Introduces the first persisted
-  app *setting* → a `JsonSettingsStore`.)
+- **Tray icon + close-to-tray** — ✅ done (`c4cf50e`). Tray icon with a "Show main window" /
+  "Exit" menu and left-click to restore, plus a "Close to the system tray instead of exiting"
+  setting so watch/scheduled tasks keep running when the window is hidden. Introduced the first
+  persisted app *setting* (`AppSettings` + `JsonSettingsStore` → `settings.json`, fronted by
+  `IAppSettingsService`); the hide-vs-exit decision lives in a testable `TrayController` behind
+  an `IShellController` seam. Design: [guide-tray-icon.md](guide-tray-icon.md).
 - **OS-specific features the .NET-idiomatic way** (structural) — autostart is a single
   Windows-only service with inline `OperatingSystem.IsWindows()` guards; move to the standard
   pattern (neutral interface + `[SupportedOSPlatform]` per-OS impls + a DI selector + no-op
