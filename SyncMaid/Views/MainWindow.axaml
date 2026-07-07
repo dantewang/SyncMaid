@@ -171,6 +171,15 @@
                                                                 <TextBlock Text="{Binding TriggerText}" />
                                                             </StackPanel>
                                                         </Border>
+                                                        <!-- Trigger failed to start: this task won't run automatically. -->
+                                                        <Border Classes="badge warn" IsVisible="{Binding HasTriggerError}"
+                                                                ToolTip.Tip="{Binding TriggerError}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <mi:MaterialIcon Kind="AlertOutline" Width="12" Height="12"
+                                                                                 Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" />
+                                                                <TextBlock Text="Trigger error" />
+                                                            </StackPanel>
+                                                        </Border>
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding Path}" Classes="path" />
                                                 </StackPanel>

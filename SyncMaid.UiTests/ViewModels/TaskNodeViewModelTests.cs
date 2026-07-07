@@ -78,6 +78,30 @@ public class TaskNodeViewModelTests
         Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Exception is not null);
     }
 
+    [Fact]
+    public void A_trigger_start_failure_surfaces_on_the_card()
+    {
+        var task = new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]);
+
+        var node = new TaskNodeViewModel(
+            task, new Dictionary<Guid, DestinationSyncStatus>(),
+            new FakeDialogService(), new FakeSyncEngine(), new ThrowingTriggerSourceFactory(),
+            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { },
+            NullLogger.Instance, new FakeMirrorDeleteConfirmer());
+
+        Assert.True(node.HasTriggerError);
+        Assert.Contains("bad trigger", node.TriggerError); // carries the underlying reason for the tooltip
+    }
+
+    [Fact]
+    public void A_healthy_trigger_leaves_no_error_badge()
+    {
+        var node = New(new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]));
+
+        Assert.False(node.HasTriggerError);
+        Assert.Null(node.TriggerError);
+    }
+
     private sealed class ThrowingTriggerSourceFactory : ITriggerSourceFactory
     {
         public ITriggerSource Create(Trigger trigger, string sourcePath) =>

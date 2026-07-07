@@ -206,6 +206,12 @@
     <Style Selector="Border.badge.live TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TealBrush}" />
     </Style>
+    <Style Selector="Border.badge.warn">
+        <Setter Property="Background" Value="#FBEFD6" />
+    </Style>
+    <Style Selector="Border.badge.warn TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+    </Style>
 
     <!-- Teal chip (folder glyph holder) -->
     <Style Selector="Border.chip">

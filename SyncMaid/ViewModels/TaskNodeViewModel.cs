@@ -39,6 +39,13 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isRunning;
 
+    /// <summary>Set when the task's trigger could not be started (e.g. a missing watch
+    /// directory or bad cron); drives an amber "Trigger error" badge on the card. Null when
+    /// the trigger is healthy. Holds the user-facing explanation, shown as the badge tooltip.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTriggerError))]
+    private string? _triggerError;
+
     public TaskNodeViewModel(
         SyncTask task,
         IReadOnlyDictionary<Guid, DestinationSyncStatus> statuses,
@@ -109,6 +116,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     };
 
     public ObservableCollection<DestinationNodeViewModel> Children { get; }
+
+    /// <summary>True when the trigger failed to start; drives the visibility of the error badge.</summary>
+    public bool HasTriggerError => !string.IsNullOrEmpty(TriggerError);
 
     /// <summary>At-a-glance health shown on the (possibly collapsed) card header.</summary>
     public SyncOutcome HealthOutcome
@@ -229,12 +239,17 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             _triggerSource = _triggerFactory.Create(Task.Trigger, Task.SourcePath);
             _triggerSource.Fired += OnTriggerFired;
             _triggerSource.Start();
+            TriggerError = null;
         }
         catch (Exception exception)
         {
             // Degrade to manual-only rather than crashing, but no longer silently — a bad
-            // watch path or cron would otherwise never run with no explanation.
+            // watch path or cron would otherwise never run with no explanation. Surface it
+            // both to the log and to the card (an amber badge) so the user knows the task
+            // won't run automatically.
             _logger.LogError(exception, "Failed to start the trigger for task '{Task}'.", Task.Name);
+            TriggerError =
+                $"This task's trigger failed to start, so it only runs when you run it manually. ({exception.Message})";
         }
     }
 
