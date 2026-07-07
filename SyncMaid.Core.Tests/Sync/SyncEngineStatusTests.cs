@@ -13,10 +13,13 @@ public class SyncEngineStatusTests
     // Wraps the in-memory filesystem but fails writes to any path containing a marker,
     // so a single destination can be made to fail deterministically. The fault is on the
     // write path SafeFileTransfer actually uses (temp files live in the destination
-    // directory, so they carry the marker too). The marker must be a full path segment
-    // (e.g. @"\bad\") rather than a bare word: temp files use a random hex GUID suffix,
-    // and "b"/"a"/"d" are all hex digits, so a bare "bad" marker would intermittently
-    // match a random temp name under the *good* destination and fail it spuriously.
+    // directory, so they carry the marker too). The marker must be a token that appears in
+    // the failing destination's path yet cannot occur by chance in the random temp name:
+    // SafeFileTransfer's temp suffix is a hex GUID, so a marker built only from hex digits
+    // (e.g. "bad") can spuriously match a temp file under the *good* destination. "nope"
+    // includes non-hex letters, so it can't. (A backslash-delimited marker like @"\bad\"
+    // fails the opposite way — LocalDestinationProvider joins with a forward slash, e.g.
+    // D:\nope/a.txt, so it would never match at all.)
     private sealed class FaultyFileSystem(InMemoryFileSystem inner, string failMarker) : IFileSystem
     {
         public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
@@ -69,10 +72,10 @@ public class SyncEngineStatusTests
     {
         var inner = new InMemoryFileSystem();
         inner.AddFile(@"C:\src\a.txt", "a");
-        var fs = new FaultyFileSystem(inner, failMarker: @"\bad\");
+        var fs = new FaultyFileSystem(inner, failMarker: "nope");
 
         var good = new Destination("good", @"D:\good", [new AllFilesFilter()], SyncStrategy.Mirror);
-        var bad = new Destination("bad", @"D:\bad", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var bad = new Destination("bad", @"D:\nope", [new AllFilesFilter()], SyncStrategy.Mirror);
         var task = new SyncTask("T", @"C:\src", new ManualTrigger(), [good, bad]);
 
         var statuses = await new SyncEngine(fs, RetryOptions.None).ExecuteAsync(task);
