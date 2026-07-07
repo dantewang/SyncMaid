@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IDialogHost _dialogHost;
     private readonly IAutoStartService _autoStart;
     private readonly IMirrorDeleteConfirmer _confirmer;
+    private readonly IAppSettingsService _appSettings;
     private readonly ILogger _logger;
     private readonly ILogger _nodeLogger;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
@@ -51,6 +52,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         IDialogHost dialogHost,
         IAutoStartService autoStart,
         IMirrorDeleteConfirmer confirmer,
+        IAppSettingsService appSettings,
         ILoggerFactory loggerFactory)
     {
         _dialogs = dialogs;
@@ -62,6 +64,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _dialogHost = dialogHost;
         _autoStart = autoStart;
         _confirmer = confirmer;
+        _appSettings = appSettings;
         _logger = loggerFactory.CreateLogger<MainWindowViewModel>();
         _nodeLogger = loggerFactory.CreateLogger<TaskNodeViewModel>();
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
@@ -85,9 +88,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarVisible = !IsSidebarVisible;
 
-    // Title-bar gear button → the in-window Settings modal (start with Windows, etc.).
+    // Title-bar gear button → the in-window Settings modal (start with Windows, close to tray).
     [RelayCommand]
-    private async Task OpenSettings() => await _dialogHost.ShowAsync(new SettingsViewModel(_autoStart));
+    private async Task OpenSettings() => await _dialogHost.ShowAsync(new SettingsViewModel(_autoStart, _appSettings));
 
     [RelayCommand]
     private void ToggleExpandAll()

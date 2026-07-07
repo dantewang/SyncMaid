@@ -29,6 +29,14 @@
                 </Border>
             </StackPanel>
 
+            <StackPanel>
+                <TextBlock Text="Window" Classes="label" />
+                <CheckBox IsChecked="{Binding CloseToTray}"
+                          Content="Close to the system tray instead of exiting" />
+                <TextBlock Text="Keeps SyncMaid running in the tray when you close the window, so scheduled and watched tasks keep syncing."
+                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
                 <Button Classes="primary" Content="Done" Command="{Binding DoneCommand}" />
             </StackPanel>

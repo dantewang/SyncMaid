@@ -5,13 +5,14 @@ using SyncMaid.Services;
 namespace SyncMaid.ViewModels;
 
 /// <summary>
-/// The Settings dialog. For now a single option — start SyncMaid with Windows — applied
-/// immediately on toggle (a registry write; no separate save step). The dialog result is
-/// unused; it just closes.
+/// The Settings dialog. Each option is applied immediately on toggle (a registry write for
+/// autostart; a persisted setting for close-to-tray) — there is no separate save step. The
+/// dialog result is unused; it just closes.
 /// </summary>
 public partial class SettingsViewModel : DialogViewModel<bool>
 {
     private readonly IAutoStartService _autoStart;
+    private readonly IAppSettingsService _appSettings;
 
     [ObservableProperty]
     private bool _startWithWindows;
@@ -21,14 +22,20 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private bool _isDisabledByWindows;
 
-    public SettingsViewModel(IAutoStartService autoStart)
+    /// <summary>When on, closing the main window hides it to the tray instead of exiting.</summary>
+    [ObservableProperty]
+    private bool _closeToTray;
+
+    public SettingsViewModel(IAutoStartService autoStart, IAppSettingsService appSettings)
     {
         _autoStart = autoStart;
+        _appSettings = appSettings;
         var state = autoStart.GetState();
         // Set the backing fields directly so seeding the initial state does not fire the
-        // toggle handler (which would perform a redundant registry write).
+        // toggle handlers (which would perform a redundant registry / settings write).
         _startWithWindows = state == AutoStartState.Enabled;
         _isDisabledByWindows = state == AutoStartState.DisabledByWindows;
+        _closeToTray = appSettings.CloseToTray;
     }
 
     partial void OnStartWithWindowsChanged(bool value)
@@ -47,6 +54,8 @@ public partial class SettingsViewModel : DialogViewModel<bool>
             _autoStart.Disable();
         }
     }
+
+    partial void OnCloseToTrayChanged(bool value) => _appSettings.CloseToTray = value;
 
     [RelayCommand]
     private void Done() => Close(true);
