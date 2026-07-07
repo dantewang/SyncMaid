@@ -5,8 +5,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Platform;
-using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SyncMaid.Core.IO;
@@ -22,7 +20,6 @@ namespace SyncMaid;
 public partial class App : Application
 {
     private ILogger? _logger;
-    private TrayIcon? _trayIcon;
 
     public override void Initialize()
     {
@@ -64,9 +61,10 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    // Creates the system-tray icon and routes its menu/click and the window's close through a
-    // TrayController. The tray icon itself (Avalonia's TrayIcon/NativeMenu) is created here and
-    // is manual-test only; the hide-vs-exit decision lives in the unit-tested TrayController.
+    // Wires the declarative tray icon (App.axaml) to the app lifetime: the tray commands run
+    // through the AppTrayViewModel set as Application.DataContext, and the window's close is
+    // routed through the TrayController. The tray icon control/menu itself is XAML; only this
+    // event/lifetime glue — which cannot be expressed declaratively — lives in code.
     private void SetupTray(
         IClassicDesktopStyleApplicationLifetime desktop,
         Window mainWindow,
@@ -74,22 +72,8 @@ public partial class App : Application
     {
         var controller = new TrayController(settings, new ShellController(mainWindow, desktop));
 
-        var showCommand = new RelayCommand(controller.ShowMainWindow);
-        var exitCommand = new RelayCommand(controller.Exit);
-
-        var menu = new NativeMenu();
-        menu.Items.Add(new NativeMenuItem("Show main window") { Command = showCommand });
-        menu.Items.Add(new NativeMenuItemSeparator());
-        menu.Items.Add(new NativeMenuItem("Exit") { Command = exitCommand });
-
-        _trayIcon = new TrayIcon
-        {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://SyncMaid/Assets/syncmaid.ico"))),
-            ToolTipText = "SyncMaid",
-            Menu = menu,
-            Command = showCommand, // left-click (Win32) opens the window
-        };
-        TrayIcon.SetIcons(this, new TrayIcons { _trayIcon });
+        // The TrayIcon in App.axaml binds its click/menu commands to this.
+        DataContext = new AppTrayViewModel(controller);
 
         // Intercept only a genuine user close of the window; an app-shutdown close (e.g. the
         // tray Exit item) must proceed even while close-to-tray is on.
@@ -100,8 +84,6 @@ public partial class App : Application
                 e.Cancel = true;
             }
         };
-
-        desktop.Exit += (_, _) => _trayIcon?.Dispose();
     }
 
     // Drives the actual Avalonia window/lifetime for the TrayController's decisions.

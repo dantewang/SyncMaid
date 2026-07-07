@@ -13,6 +13,28 @@
         <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
     </Application.DataTemplates>
 
+    <!-- System tray icon. Declared here (rather than built in code) since TrayIcon is a
+         control; its commands bind to the AppTrayViewModel that App sets as Application's
+         DataContext at startup. Left-click / "Show main window" restores the window; "Exit"
+         quits. The hide-vs-exit-on-close decision is event/lifetime logic and stays in code
+         (TrayController), as does setting the DataContext (the controller needs the runtime
+         window). -->
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/syncmaid.ico" ToolTipText="SyncMaid"
+                      x:DataType="vm:AppTrayViewModel"
+                      Command="{Binding ShowMainWindowCommand}">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Show main window" Command="{Binding ShowMainWindowCommand}" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="Exit" Command="{Binding ExitCommand}" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
     <Application.Resources>
         <!-- Flat palette matching the design -->
         <SolidColorBrush x:Key="PageBrush" Color="#F7F7F4" />
