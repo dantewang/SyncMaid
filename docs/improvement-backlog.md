@@ -60,16 +60,14 @@ so `status.json` no longer accumulates orphans (rewritten only when something wa
 
 ## 🟡 Polish / hygiene
 
-### 7. Duplicated network-path detection
-`DestinationEditorViewModel.LooksLikeNetworkPath` re-implements
-`SyncMaid.Core.IO.NetworkPath.IsNetwork` (they drifted already: same logic, two homes).
-Delete the private copy, call Core.
+### 7. Duplicated network-path detection — ✅ done (`0c33dbb`)
+Done: `DestinationEditorViewModel` dropped its private `LooksLikeNetworkPath` and calls the
+shared `SyncMaid.Core.IO.NetworkPath.IsNetwork`.
 
-### 8. Scheduled tasks don't show the next run
-`CronSchedule.NextOccurrenceUtc` exists and is tested; the card badge shows the raw cron
-string only. Show "next run in 2 h" (tooltip: absolute local time) on the trigger badge —
-cheap and makes Scheduled feel trustworthy. (Requires a lightweight refresh, e.g.
-recompute when the card renders or on a 1-minute UI timer.)
+### 8. Scheduled tasks don't show the next run — ✅ done (`0c33dbb`)
+Done: a scheduled task's card shows a live "next run in 2 h" badge (tooltip: absolute local
+time) computed from `CronSchedule.NextOccurrenceUtc`, refreshed by a one-minute view timer
+(`MainWindowViewModel.RefreshSchedules()` → each node's `RefreshNextRun()`).
 
 ### 9. Sync error text lacks the failing file — ✅ done (`acdb431`)
 Done: the per-operation `TransientRetry.Execute` call is wrapped so any surviving failure
@@ -77,15 +75,14 @@ becomes a `SyncOperationException` that prefixes the relative path and verb
 (e.g. `Failed to copy 'photos/img.jpg': <reason>`); that message is what the destination
 status stores. Cancellation still propagates untouched.
 
-### 10. Modal dialogs ignore the keyboard
-No Esc-to-cancel / Enter-to-default in the in-window modals. Handle `KeyDown` in the
-overlay (Esc → Cancel command of the current dialog VM; optionally Enter → OK when valid).
-Small a11y/UX win.
+### 10. Modal dialogs ignore the keyboard — ✅ done (`0c33dbb`)
+Done: a non-generic `IDialogViewModel` exposes `RequestCancel`/`RequestAccept`; the window
+routes Esc → cancel and Enter → the dialog's default action. Editors save on Enter when valid;
+the delete confirm ignores Enter on purpose (can't be accepted accidentally).
 
-### 11. Sidebar selection barely does anything
-Selecting a task in the sidebar expands its card but doesn't scroll it into view.
-`ScrollViewer.BringIntoView` on the selected card (or `ItemsControl` container lookup)
-makes the sidebar an actual navigator.
+### 11. Sidebar selection barely does anything — ✅ done (`0c33dbb`)
+Done: selecting a task in the sidebar scrolls its card into view
+(`ItemsControl.ContainerFromItem` + `BringIntoView`), so the sidebar is an actual navigator.
 
 ## ⚪ Noted, fine to defer
 
