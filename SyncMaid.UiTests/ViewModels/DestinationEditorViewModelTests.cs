@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
@@ -51,58 +52,59 @@ public class DestinationEditorViewModelTests
 
         Assert.False(vm.OKCommand.CanExecute(null));
 
-        vm.NewFilterPattern = "2024";
-        vm.SelectedFilterKind = FilterKind.Path;
-        vm.AddFilterCommand.Execute(null);
+        var group = Assert.Single(vm.Groups);
+        group.NewFilterPattern = "2024";
+        group.SelectedFilterKind = FilterKind.Path;
+        group.AddRuleCommand.Execute(null);
 
         Assert.True(vm.OKCommand.CanExecute(null));
     }
 
     [Fact]
-    public void AddFilter_maps_kind_to_the_concrete_rule_and_clears_the_pattern()
+    public void AddRule_maps_kind_to_the_concrete_rule_and_clears_the_pattern()
     {
-        var vm = New();
+        var group = Assert.Single(New().Groups);
 
-        vm.SelectedFilterKind = FilterKind.Path;
-        vm.NewFilterPattern = "photos/2024";
-        vm.AddFilterCommand.Execute(null);
+        group.SelectedFilterKind = FilterKind.Path;
+        group.NewFilterPattern = "photos/2024";
+        group.AddRuleCommand.Execute(null);
 
-        vm.SelectedFilterKind = FilterKind.Extension;
-        vm.NewFilterPattern = "jpg";
-        vm.AddFilterCommand.Execute(null);
+        group.SelectedFilterKind = FilterKind.Extension;
+        group.NewFilterPattern = "jpg";
+        group.AddRuleCommand.Execute(null);
 
-        Assert.Equal(string.Empty, vm.NewFilterPattern);
+        Assert.Equal(string.Empty, group.NewFilterPattern);
         Assert.Collection(
-            vm.Filters,
+            group.Rules,
             f => Assert.Equal("photos/2024", Assert.IsType<PathFilter>(f.Rule).Prefix),
             f => Assert.Equal("jpg", Assert.IsType<ExtensionFilter>(f.Rule).Extension));
     }
 
     [Fact]
-    public void AddFilter_is_disabled_without_a_pattern()
+    public void AddRule_is_disabled_without_a_pattern()
     {
-        var vm = New();
-        Assert.False(vm.AddFilterCommand.CanExecute(null));
+        var group = Assert.Single(New().Groups);
+        Assert.False(group.AddRuleCommand.CanExecute(null));
 
-        vm.NewFilterPattern = "jpg";
-        Assert.True(vm.AddFilterCommand.CanExecute(null));
+        group.NewFilterPattern = "jpg";
+        Assert.True(group.AddRuleCommand.CanExecute(null));
     }
 
     [Fact]
-    public void RemoveFilter_drops_the_rule()
+    public void RemoveRule_drops_the_rule()
     {
-        var vm = New();
-        vm.NewFilterPattern = "jpg";
-        vm.AddFilterCommand.Execute(null);
-        var added = vm.Filters.Single();
+        var group = Assert.Single(New().Groups);
+        group.NewFilterPattern = "jpg";
+        group.AddRuleCommand.Execute(null);
+        var added = group.Rules.Single();
 
-        vm.RemoveFilterCommand.Execute(added);
+        group.RemoveRuleCommand.Execute(added);
 
-        Assert.Empty(vm.Filters);
+        Assert.Empty(group.Rules);
     }
 
     [Fact]
-    public void Editing_a_filtered_destination_loads_its_rules()
+    public void Editing_a_filtered_destination_loads_its_rules_into_one_group()
     {
         var existing = new Destination(
             "Backup",
@@ -114,7 +116,11 @@ public class DestinationEditorViewModelTests
 
         Assert.False(vm.SyncAll);
         Assert.Equal(SyncStrategy.AddOnly, vm.SelectedStrategy);
-        Assert.Equal(2, vm.Filters.Count);
+        // A legacy flat list is one ANY group — the group-less simple editor.
+        var group = Assert.Single(vm.Groups);
+        Assert.False(group.MatchAll);
+        Assert.False(vm.HasMultipleGroups);
+        Assert.Equal(2, group.Rules.Count);
     }
 
     [Fact]
@@ -125,7 +131,170 @@ public class DestinationEditorViewModelTests
         var vm = New(existing: existing);
 
         Assert.True(vm.SyncAll);
-        Assert.Empty(vm.Filters);
+        Assert.Empty(Assert.Single(vm.Groups).Rules);
+    }
+
+    // ---- composition (groups, connectives, exclusion) ----
+
+    private static DestinationEditorViewModel NewValid()
+    {
+        var vm = New();
+        vm.Name = "Backup";
+        vm.Path = @"D:\backup";
+        vm.SyncAll = false;
+        return vm;
+    }
+
+    private static void AddRule(FilterGroupViewModel group, FilterKind kind, string pattern)
+    {
+        group.SelectedFilterKind = kind;
+        group.NewFilterPattern = pattern;
+        group.AddRuleCommand.Execute(null);
+    }
+
+    private static IReadOnlyList<FilterRule> Save(DestinationEditorViewModel vm)
+    {
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+        return result!.Filters;
+    }
+
+    [Fact]
+    public void A_single_any_group_saves_as_the_legacy_flat_list()
+    {
+        var vm = NewValid();
+        AddRule(vm.Groups[0], FilterKind.Path, "docs");
+        AddRule(vm.Groups[0], FilterKind.Extension, "jpg");
+
+        var filters = Save(vm);
+
+        // Collapse-on-save: today's shape, no composite wrapper.
+        Assert.Collection(
+            filters,
+            f => Assert.IsType<PathFilter>(f),
+            f => Assert.IsType<ExtensionFilter>(f));
+    }
+
+    [Fact]
+    public void A_single_all_group_saves_as_one_AllOf()
+    {
+        var vm = NewValid();
+        vm.Groups[0].MatchAll = true;
+        AddRule(vm.Groups[0], FilterKind.Path, "docs");
+        AddRule(vm.Groups[0], FilterKind.Extension, "jpg");
+
+        var allOf = Assert.IsType<AllOfFilter>(Assert.Single(Save(vm)));
+        Assert.Equal(2, allOf.Rules.Count);
+    }
+
+    [Fact]
+    public void Two_groups_matched_all_build_docs_or_photos_and_jpg()
+    {
+        // (docs OR photos) AND jpg — the guide's first canonical example.
+        var vm = NewValid();
+        AddRule(vm.Groups[0], FilterKind.Path, "docs");
+        AddRule(vm.Groups[0], FilterKind.Path, "photos");
+        vm.AddGroupCommand.Execute(null);
+        AddRule(vm.Groups[1], FilterKind.Extension, "jpg");
+        vm.MatchAllGroups = true;
+
+        var allOf = Assert.IsType<AllOfFilter>(Assert.Single(Save(vm)));
+        Assert.Collection(
+            allOf.Rules,
+            f => Assert.Equal(2, Assert.IsType<AnyOfFilter>(f).Rules.Count),
+            f => Assert.IsType<ExtensionFilter>(f));
+    }
+
+    [Fact]
+    public void Two_groups_matched_any_build_md_or_docs_and_jpg()
+    {
+        // md OR (docs AND jpg) — the guide's second canonical example.
+        var vm = NewValid();
+        AddRule(vm.Groups[0], FilterKind.Extension, "md");
+        vm.AddGroupCommand.Execute(null);
+        vm.Groups[1].MatchAll = true;
+        AddRule(vm.Groups[1], FilterKind.Path, "docs");
+        AddRule(vm.Groups[1], FilterKind.Extension, "jpg");
+
+        var filters = Save(vm); // top-level ANY → flat OR list
+        Assert.Collection(
+            filters,
+            f => Assert.IsType<ExtensionFilter>(f),
+            f => Assert.Equal(2, Assert.IsType<AllOfFilter>(f).Rules.Count));
+    }
+
+    [Fact]
+    public void Empty_groups_are_skipped_on_save()
+    {
+        var vm = NewValid();
+        AddRule(vm.Groups[0], FilterKind.Extension, "jpg");
+        vm.AddGroupCommand.Execute(null); // second group left empty
+        vm.MatchAllGroups = true;
+
+        Assert.IsType<ExtensionFilter>(Assert.Single(Save(vm))); // no wrapper for one real group
+    }
+
+    [Fact]
+    public void Excluding_a_rule_saves_it_as_Not()
+    {
+        var vm = NewValid();
+        vm.Groups[0].MatchAll = true;
+        AddRule(vm.Groups[0], FilterKind.Path, "docs");
+        AddRule(vm.Groups[0], FilterKind.Extension, "tmp");
+        vm.Groups[0].Rules[1].IsExcluded = true; // docs, but not tmp files
+
+        var allOf = Assert.IsType<AllOfFilter>(Assert.Single(Save(vm)));
+        var not = Assert.IsType<NotFilter>(allOf.Rules[1]);
+        Assert.IsType<ExtensionFilter>(not.Rule);
+    }
+
+    [Fact]
+    public void A_composed_destination_raises_back_into_the_same_groups_and_saves_identically()
+    {
+        var expression = new AllOfFilter(
+        [
+            new AnyOfFilter([new PathFilter("docs"), new PathFilter("photos")]),
+            new NotFilter(new ExtensionFilter("tmp")),
+        ]);
+        var existing = new Destination("D", @"D:\d", [expression], SyncStrategy.Mirror);
+
+        var vm = New(existing: existing);
+
+        // Raised: top ALL, two groups; the Not became the row's exclude toggle.
+        Assert.True(vm.MatchAllGroups);
+        Assert.Equal(2, vm.Groups.Count);
+        Assert.Equal(2, vm.Groups[0].Rules.Count);
+        Assert.True(Assert.Single(vm.Groups[1].Rules).IsExcluded);
+
+        // And lowering reproduces the identical AST (stable round-trip).
+        Assert.Equal(expression, Assert.Single(Save(vm)));
+    }
+
+    [Fact]
+    public void The_preview_renders_the_expression_as_plain_text()
+    {
+        var vm = NewValid();
+        Assert.Contains("No rules yet", vm.FilterPreview);
+
+        AddRule(vm.Groups[0], FilterKind.Path, "docs");
+        AddRule(vm.Groups[0], FilterKind.Path, "photos");
+        vm.AddGroupCommand.Execute(null);
+        AddRule(vm.Groups[1], FilterKind.Extension, "jpg");
+        vm.MatchAllGroups = true;
+
+        Assert.Equal("Syncs: (docs/ or photos/) and jpg", vm.FilterPreview);
+    }
+
+    [Fact]
+    public void Removing_the_last_group_leaves_a_fresh_empty_one()
+    {
+        var vm = NewValid();
+        vm.AddGroupCommand.Execute(null);
+        vm.RemoveGroupCommand.Execute(vm.Groups[0]);
+        vm.RemoveGroupCommand.Execute(vm.Groups[0]);
+
+        Assert.Empty(Assert.Single(vm.Groups).Rules); // the panel always has an add-rule input
     }
 
     [Fact]

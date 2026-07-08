@@ -94,34 +94,101 @@
                         </Grid>
 
                         <StackPanel IsVisible="{Binding !SyncAll}" Spacing="8" Margin="0,10,0,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}" SelectedItem="{Binding SelectedFilterKind}" Width="120" />
-                                <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path" PlaceholderText="e.g. photos/2024 or jpg" />
-                                <Button Grid.Column="2" Classes="primary" Command="{Binding AddFilterCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
-                                        <TextBlock Text="Add" />
-                                    </StackPanel>
-                                </Button>
+                            <!-- Top-level connective: how the groups combine (only shown once
+                                 there is more than one group). -->
+                            <Grid ColumnDefinitions="*,8,*" IsVisible="{Binding HasMultipleGroups}">
+                                <RadioButton Grid.Column="0" Classes="segment" GroupName="groupsConnective" IsChecked="{Binding !MatchAllGroups}"
+                                             ToolTip.Tip="Sync files that match at least one group">
+                                    <TextBlock Text="Match any group" />
+                                </RadioButton>
+                                <RadioButton Grid.Column="2" Classes="segment" GroupName="groupsConnective" IsChecked="{Binding MatchAllGroups}"
+                                             ToolTip.Tip="Sync only files that match every group">
+                                    <TextBlock Text="Match all groups" />
+                                </RadioButton>
                             </Grid>
 
-                            <ItemsControl ItemsSource="{Binding Filters}">
+                            <ItemsControl ItemsSource="{Binding Groups}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:FilterRuleViewModel">
-                                        <Border Classes="filterRow" Margin="0,0,0,6">
-                                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                                <mi:MaterialIcon Grid.Column="0" Kind="FilterOutline" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center" />
-                                                <Button Grid.Column="2" Classes="icon" Width="26" Height="26"
-                                                        Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveFilterCommand, FallbackValue={x:Null}}"
-                                                        CommandParameter="{Binding}" ToolTip.Tip="Remove">
-                                                    <mi:MaterialIcon Kind="Close" Width="13" Height="13" />
-                                                </Button>
-                                            </Grid>
+                                    <DataTemplate x:DataType="vm:FilterGroupViewModel">
+                                        <Border Classes="filterGroup" Margin="0,0,0,8">
+                                            <StackPanel Spacing="8">
+                                                <!-- Group header: its own ANY/ALL connective; removable
+                                                     when there are multiple groups. No GroupName on the
+                                                     radios — they group by parent, per card. -->
+                                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="Match" Classes="muted" VerticalAlignment="Center" Margin="2,0,8,0" />
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                        <RadioButton Classes="segment small" IsChecked="{Binding !MatchAll}"
+                                                                     ToolTip.Tip="A file matches this group when any rule matches (OR)">
+                                                            <TextBlock Text="any rule" />
+                                                        </RadioButton>
+                                                        <RadioButton Classes="segment small" IsChecked="{Binding MatchAll}"
+                                                                     ToolTip.Tip="A file matches this group only when every rule matches (AND)">
+                                                            <TextBlock Text="all rules" />
+                                                        </RadioButton>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="3" Classes="icon" Width="26" Height="26" ToolTip.Tip="Remove group"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).HasMultipleGroups, FallbackValue=False}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveGroupCommand, FallbackValue={x:Null}}"
+                                                            CommandParameter="{Binding}">
+                                                        <mi:MaterialIcon Kind="Close" Width="13" Height="13" />
+                                                    </Button>
+                                                </Grid>
+
+                                                <ItemsControl ItemsSource="{Binding Rules}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:FilterRuleViewModel">
+                                                            <Border Classes="filterRow" Margin="0,0,0,6">
+                                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                                                    <mi:MaterialIcon Grid.Column="0" Kind="FilterOutline" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}" />
+                                                                    <ToggleButton Grid.Column="2" Classes="exclude" IsChecked="{Binding IsExcluded}" Margin="0,0,4,0"
+                                                                                  ToolTip.Tip="Exclude — sync everything except files matching this rule">
+                                                                        <mi:MaterialIcon Kind="Cancel" Width="13" Height="13" />
+                                                                    </ToggleButton>
+                                                                    <Button Grid.Column="3" Classes="icon" Width="26" Height="26"
+                                                                            Command="{Binding $parent[ItemsControl].((vm:FilterGroupViewModel)DataContext).RemoveRuleCommand, FallbackValue={x:Null}}"
+                                                                            CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                                                        <mi:MaterialIcon Kind="Close" Width="13" Height="13" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}" SelectedItem="{Binding SelectedFilterKind}" Width="120" />
+                                                    <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path" PlaceholderText="e.g. photos/2024 or jpg" />
+                                                    <Button Grid.Column="2" Classes="primary" Command="{Binding AddRuleCommand}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                                            <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
+                                                            <TextBlock Text="Add" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+                                            </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <Button Classes="secondary" Command="{Binding AddGroupCommand}" HorizontalAlignment="Left"
+                                    ToolTip.Tip="Combine groups to express e.g. (docs or photos) and jpg">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
+                                    <TextBlock Text="Add group" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Live plain-text preview of the whole expression. -->
+                            <Border Classes="filterRow">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <mi:MaterialIcon Kind="EyeOutline" Width="14" Height="14" VerticalAlignment="Center"
+                                                     Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBlock Text="{Binding FilterPreview}" Classes="muted" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </StackPanel>
 

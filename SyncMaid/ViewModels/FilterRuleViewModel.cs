@@ -1,22 +1,45 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using SyncMaid.Core.Filtering;
 
 namespace SyncMaid.ViewModels;
 
 /// <summary>
-/// Wraps a domain <see cref="FilterRule"/> with a human-readable description for the
-/// destination editor's filter list. Keeps display strings out of the domain model.
+/// One rule row in a filter group: a domain <see cref="FilterRule"/> plus the row's exclude
+/// toggle (persisted as a <see cref="NotFilter"/> wrapper). The rule may be a leaf the editor
+/// created, or — from hand-edited JSON nested deeper than the two-level editor can represent —
+/// a composite, which renders as a read-only summary and is persisted back verbatim.
 /// </summary>
-public sealed class FilterRuleViewModel
+public sealed partial class FilterRuleViewModel : ViewModelBase
 {
-    public FilterRuleViewModel(FilterRule rule) => Rule = rule;
+    /// <summary>When on, the rule selects everything <b>except</b> its matches.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Description))]
+    private bool _isExcluded;
 
+    public FilterRuleViewModel(FilterRule rule, bool isExcluded = false)
+    {
+        Rule = rule;
+        _isExcluded = isExcluded;
+    }
+
+    /// <summary>The wrapped rule, without the exclusion applied.</summary>
     public FilterRule Rule { get; }
 
-    public string Description => Rule switch
+    /// <summary>The rule as persisted: wrapped in a <see cref="NotFilter"/> when excluded.</summary>
+    public FilterRule Lowered => IsExcluded ? new NotFilter(Rule) : Rule;
+
+    public string Description
     {
-        AllFilesFilter => "All files",
-        PathFilter path => $"Path: {path.Prefix}",
-        ExtensionFilter extension => $"Extension: {extension.Extension}",
-        _ => Rule.ToString() ?? string.Empty,
-    };
+        get
+        {
+            var body = Rule switch
+            {
+                AllFilesFilter => "All files",
+                PathFilter path => $"Path: {path.Prefix}",
+                ExtensionFilter extension => $"Extension: {extension.Extension}",
+                _ => FilterDescriber.Describe(Rule), // composite from hand-edited JSON
+            };
+            return IsExcluded ? $"Exclude — {body}" : body;
+        }
+    }
 }

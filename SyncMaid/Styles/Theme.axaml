@@ -253,16 +253,23 @@
     <Style Selector="RadioButton.segment">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="14,7" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Name="root" CornerRadius="6" BorderThickness="1" Padding="14,7"
+                <Border Name="root" CornerRadius="6" BorderThickness="1" Padding="{TemplateBinding Padding}"
                         BorderBrush="{StaticResource HairlineStrongBrush}" Background="Transparent">
                     <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+    <!-- Compact variant for in-card connective pickers (the filter groups' any/all). -->
+    <Style Selector="RadioButton.segment.small">
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
     </Style>
     <Style Selector="RadioButton.segment:pointerover /template/ Border#root">
         <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
@@ -311,6 +318,42 @@
         <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Padding" Value="10,6" />
+    </Style>
+
+    <!-- Filter group card (destination editor): a bordered container for a set of rule rows. -->
+    <Style Selector="Border.filterGroup">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10" />
+    </Style>
+
+    <!-- Exclude toggle on a filter rule row: quiet until checked, then warning-tinted.
+         Custom template so Fluent's checked chrome never paints its own filled box. -->
+    <Style Selector="ToggleButton.exclude">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="root" Background="Transparent" CornerRadius="6"
+                        BorderThickness="1" BorderBrush="Transparent">
+                    <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.exclude:pointerover /template/ Border#root">
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.exclude:checked /template/ Border#root">
+        <Setter Property="Background" Value="#FBEFD6" />
+        <Setter Property="BorderBrush" Value="{StaticResource WarningBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.exclude:checked">
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
     </Style>
 
     <!-- Sidebar list -->

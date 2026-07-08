@@ -126,7 +126,8 @@ public partial class DestinationNodeViewModel : ViewModelBase
         AllFilesFilter => "All files",
         PathFilter path => $"Path: {path.Prefix}",
         ExtensionFilter extension => $"Extension: {extension.Extension}",
-        _ => "1 filter",
+        // Composite expression → the compact plain-text form, e.g. "docs/ and (jpg or png)".
+        _ => FilterDescriber.Describe(rule),
     };
 
     private static string Relative(DateTimeOffset? when)
