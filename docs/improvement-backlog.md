@@ -95,11 +95,13 @@ makes the sidebar an actual navigator.
   persisted app *setting* (`AppSettings` + `JsonSettingsStore` → `settings.json`, fronted by
   `IAppSettingsService`); the hide-vs-exit decision lives in a testable `TrayController` behind
   an `IShellController` seam. Design: [guide-tray-icon.md](guide-tray-icon.md).
-- **OS-specific features the .NET-idiomatic way** (structural) — autostart is a single
-  Windows-only service with inline `OperatingSystem.IsWindows()` guards; move to the standard
-  pattern (neutral interface + `[SupportedOSPlatform]` per-OS impls + a DI selector + no-op
-  fallback) so macOS/Linux are drop-ins later. Full design in
-  [guide-os-specific-services.md](guide-os-specific-services.md).
+- **OS-specific features the .NET-idiomatic way** (structural) — ✅ done (`0b70c7f`).
+  `WindowsAutoStartService` now carries `[SupportedOSPlatform("windows")]` (inline guards
+  removed) and the composition root selects it via `OperatingSystem.IsWindows() ? … :
+  new NoOpAutoStartService()` — the guarded ternary the CA1416 analyzer recognizes, so it's
+  warning-free including under AOT. macOS (LaunchAgent) / Linux (XDG) drop in as extra
+  branches. (The Recycle Bin P/Invoke is the other candidate if cross-platform ever matters.)
+  Full design in [guide-os-specific-services.md](guide-os-specific-services.md).
 - **Move + Watch interplay** — a Move task with a Watch trigger re-fires after its own
   source deletions (debounced; next run plans zero ops). Harmless but wasteful; could
   suppress the watcher during an active run of the same task.
