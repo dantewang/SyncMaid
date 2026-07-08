@@ -1,3 +1,4 @@
+using SyncMaid.Core.Persistence;
 using SyncMaid.Services;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.ViewModels;
@@ -8,8 +9,14 @@ public class SettingsViewModelTests
 {
     private static SettingsViewModel New(
         FakeAutoStartService? autoStart = null,
-        FakeAppSettingsService? settings = null) =>
-        new(autoStart ?? new FakeAutoStartService(), settings ?? new FakeAppSettingsService());
+        FakeAppSettingsService? settings = null,
+        FakeConfigLocationService? configLocation = null,
+        FakeAppRestartService? restart = null) =>
+        new(
+            autoStart ?? new FakeAutoStartService(),
+            settings ?? new FakeAppSettingsService(),
+            configLocation ?? new FakeConfigLocationService(),
+            restart ?? new FakeAppRestartService());
 
     [Fact]
     public void Reflects_enabled_state_without_writing_on_load()
@@ -97,6 +104,57 @@ public class SettingsViewModelTests
         vm.CloseToTray = true;
 
         Assert.True(settings.CloseToTray);
+    }
+
+    [Fact]
+    public void Storage_section_reflects_the_current_location()
+    {
+        var vm = New(configLocation: new FakeConfigLocationService { CurrentMode = ConfigLocationMode.Portable });
+
+        Assert.Contains("portable", vm.StorageModeText, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("app data", vm.SwitchStorageText, System.StringComparison.OrdinalIgnoreCase); // switches to the other
+        Assert.False(vm.HasStorageError);
+    }
+
+    [Fact]
+    public void Switching_storage_migrates_and_restarts()
+    {
+        var location = new FakeConfigLocationService { CurrentMode = ConfigLocationMode.AppData };
+        var restart = new FakeAppRestartService();
+        var vm = New(configLocation: location, restart: restart);
+
+        vm.SwitchStorageCommand.Execute(null);
+
+        Assert.Equal(ConfigLocationMode.Portable, location.SwitchedTo);   // moved to the other mode
+        Assert.Equal(1, restart.RestartCount);                            // and relaunched
+        Assert.False(vm.HasStorageError);
+    }
+
+    [Fact]
+    public void Switching_to_an_unwritable_target_is_refused_without_restarting()
+    {
+        var location = new FakeConfigLocationService { CanUseResult = false };
+        var restart = new FakeAppRestartService();
+        var vm = New(configLocation: location, restart: restart);
+
+        vm.SwitchStorageCommand.Execute(null);
+
+        Assert.Null(location.SwitchedTo);        // never attempted the move
+        Assert.Equal(0, restart.RestartCount);   // no restart
+        Assert.True(vm.HasStorageError);
+    }
+
+    [Fact]
+    public void A_failed_migration_shows_an_error_and_does_not_restart()
+    {
+        var location = new FakeConfigLocationService { SwitchResult = false };
+        var restart = new FakeAppRestartService();
+        var vm = New(configLocation: location, restart: restart);
+
+        vm.SwitchStorageCommand.Execute(null);
+
+        Assert.Equal(0, restart.RestartCount);
+        Assert.True(vm.HasStorageError);
     }
 
     [Fact]

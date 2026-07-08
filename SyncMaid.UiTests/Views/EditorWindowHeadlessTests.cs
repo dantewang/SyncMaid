@@ -105,7 +105,9 @@ public class EditorWindowHeadlessTests
         var window = new MainWindow { DataContext = NewMainViewModel(new RecordingTaskStore(), new RecordingStatusStore(), host) };
         window.Show();
 
-        _ = host.ShowAsync(new SettingsViewModel(new FakeAutoStartService(), new FakeAppSettingsService()));
+        _ = host.ShowAsync(new SettingsViewModel(
+            new FakeAutoStartService(), new FakeAppSettingsService(),
+            new FakeConfigLocationService(), new FakeAppRestartService()));
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(host.IsOpen);
@@ -142,5 +144,5 @@ public class EditorWindowHeadlessTests
             new FakeDialogService(), store, statusStore, new FakeSyncEngine(),
             new FakeTriggerSourceFactory(), new FakeUiDispatcher(), host ?? new DialogHost(),
             new FakeAutoStartService(), new FakeMirrorDeleteConfirmer(), new FakeAppSettingsService(),
-            NullLoggerFactory.Instance);
+            new FakeConfigLocationService(), new FakeAppRestartService(), NullLoggerFactory.Instance);
 }

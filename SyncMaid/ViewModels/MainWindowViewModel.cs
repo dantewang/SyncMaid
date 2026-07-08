@@ -27,6 +27,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IAutoStartService _autoStart;
     private readonly IMirrorDeleteConfirmer _confirmer;
     private readonly IAppSettingsService _appSettings;
+    private readonly IConfigLocationService _configLocation;
+    private readonly IAppRestartService _restart;
     private readonly ILogger _logger;
     private readonly ILogger _nodeLogger;
     private readonly Dictionary<Guid, DestinationSyncStatus> _statuses;
@@ -53,6 +55,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         IAutoStartService autoStart,
         IMirrorDeleteConfirmer confirmer,
         IAppSettingsService appSettings,
+        IConfigLocationService configLocation,
+        IAppRestartService restart,
         ILoggerFactory loggerFactory)
     {
         _dialogs = dialogs;
@@ -65,6 +69,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _autoStart = autoStart;
         _confirmer = confirmer;
         _appSettings = appSettings;
+        _configLocation = configLocation;
+        _restart = restart;
         _logger = loggerFactory.CreateLogger<MainWindowViewModel>();
         _nodeLogger = loggerFactory.CreateLogger<TaskNodeViewModel>();
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
@@ -90,7 +96,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     // Title-bar gear button → the in-window Settings modal (start with Windows, close to tray).
     [RelayCommand]
-    private async Task OpenSettings() => await _dialogHost.ShowAsync(new SettingsViewModel(_autoStart, _appSettings));
+    private async Task OpenSettings() =>
+        await _dialogHost.ShowAsync(new SettingsViewModel(_autoStart, _appSettings, _configLocation, _restart));
 
     [RelayCommand]
     private void ToggleExpandAll()

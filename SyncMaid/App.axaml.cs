@@ -118,9 +118,22 @@ public partial class App : Application
     // reflection-based activation) so the graph stays AOT/trim-safe.
     private static ServiceProvider ConfigureServices()
     {
-        var configDir = Path.Combine(
+        var fileSystem = new PhysicalFileSystem();
+
+        // Resolve where config/data lives (app-data by default, or a Data folder beside the
+        // executable in portable mode — decided by a marker file next to the exe). All the
+        // paths below derive from the resolved directory.
+        var exeDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+        var appDataDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "SyncMaid");
+        var configLocation = new ConfigLocationService(
+            fileSystem,
+            appDataDirectory,
+            Path.Combine(exeDirectory, "Data"),
+            Path.Combine(exeDirectory, "portable.marker"));
+
+        var configDir = configLocation.CurrentDirectory;
         var configPath = Path.Combine(configDir, "tasks.json");
         var statusPath = Path.Combine(configDir, "status.json");
         var settingsPath = Path.Combine(configDir, "settings.json");
@@ -129,11 +142,13 @@ public partial class App : Application
         var services = new ServiceCollection();
 
         // File logging via Microsoft.Extensions.Logging (custom file sink); the log lives
-        // next to the config files under the app-data folder.
+        // next to the config files, wherever those currently are.
         services.AddSingleton<ILoggerFactory>(_ =>
             new LoggerFactory(new ILoggerProvider[] { new FileLoggerProvider(logPath) }));
 
-        services.AddSingleton<IFileSystem>(_ => new PhysicalFileSystem());
+        services.AddSingleton<IFileSystem>(_ => fileSystem);
+        services.AddSingleton<IConfigLocationService>(_ => configLocation);
+        services.AddSingleton<IAppRestartService>(_ => new AppRestartService());
         services.AddSingleton<ITaskStore>(sp => new JsonTaskStore(sp.GetRequiredService<IFileSystem>(), configPath));
         services.AddSingleton<IStatusStore>(sp => new JsonStatusStore(sp.GetRequiredService<IFileSystem>(), statusPath));
         services.AddSingleton<ISettingsStore>(sp => new JsonSettingsStore(sp.GetRequiredService<IFileSystem>(), settingsPath));
@@ -165,6 +180,8 @@ public partial class App : Application
             sp.GetRequiredService<IAutoStartService>(),
             sp.GetRequiredService<IMirrorDeleteConfirmer>(),
             sp.GetRequiredService<IAppSettingsService>(),
+            sp.GetRequiredService<IConfigLocationService>(),
+            sp.GetRequiredService<IAppRestartService>(),
             sp.GetRequiredService<ILoggerFactory>()));
 
         return services.BuildServiceProvider();

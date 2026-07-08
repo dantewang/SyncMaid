@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SyncMaid.Core.Persistence;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -7,12 +8,15 @@ namespace SyncMaid.ViewModels;
 /// <summary>
 /// The Settings dialog. Each option is applied immediately on toggle (a registry write for
 /// autostart; a persisted setting for close-to-tray) — there is no separate save step. The
-/// dialog result is unused; it just closes.
+/// storage-location switch is the exception: it migrates the config files and restarts the app.
+/// The dialog result is unused; it just closes.
 /// </summary>
 public partial class SettingsViewModel : DialogViewModel<bool>
 {
     private readonly IAutoStartService _autoStart;
     private readonly IAppSettingsService _appSettings;
+    private readonly IConfigLocationService _configLocation;
+    private readonly IAppRestartService _restart;
 
     [ObservableProperty]
     private bool _startWithWindows;
@@ -26,16 +30,78 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private bool _closeToTray;
 
-    public SettingsViewModel(IAutoStartService autoStart, IAppSettingsService appSettings)
+    /// <summary>Set when a storage switch is refused (e.g. an unwritable target) or fails; shown
+    /// as an inline notice.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStorageError))]
+    private string? _storageError;
+
+    public SettingsViewModel(
+        IAutoStartService autoStart,
+        IAppSettingsService appSettings,
+        IConfigLocationService configLocation,
+        IAppRestartService restart)
     {
         _autoStart = autoStart;
         _appSettings = appSettings;
+        _configLocation = configLocation;
+        _restart = restart;
         var state = autoStart.GetState();
         // Set the backing fields directly so seeding the initial state does not fire the
         // toggle handlers (which would perform a redundant registry / settings write).
         _startWithWindows = state == AutoStartState.Enabled;
         _isDisabledByWindows = state == AutoStartState.DisabledByWindows;
         _closeToTray = appSettings.CloseToTray;
+    }
+
+    /// <summary>The mode the target of a switch would be — the opposite of the current one.</summary>
+    private ConfigLocationMode OtherMode =>
+        _configLocation.CurrentMode == ConfigLocationMode.Portable
+            ? ConfigLocationMode.AppData
+            : ConfigLocationMode.Portable;
+
+    /// <summary>Human label for where data currently lives.</summary>
+    public string StorageModeText =>
+        _configLocation.CurrentMode == ConfigLocationMode.Portable
+            ? "Next to the app (portable)"
+            : "App data folder";
+
+    /// <summary>The absolute folder currently in use, shown read-only.</summary>
+    public string StoragePath => _configLocation.CurrentDirectory;
+
+    /// <summary>Label for the switch button, naming the destination mode.</summary>
+    public string SwitchStorageText =>
+        OtherMode == ConfigLocationMode.Portable
+            ? "Move data next to the app (portable)"
+            : "Move data to the app data folder";
+
+    /// <summary>True when a storage notice should be shown.</summary>
+    public bool HasStorageError => !string.IsNullOrEmpty(StorageError);
+
+    // Migrates the config files to the other location and restarts so the new paths take
+    // effect. Refuses (with a notice, no restart) if the target is not writable or the move
+    // fails, leaving the current location intact.
+    [RelayCommand]
+    private void SwitchStorage()
+    {
+        StorageError = null;
+        var target = OtherMode;
+
+        if (!_configLocation.CanUse(target))
+        {
+            StorageError = $"Can't use {_configLocation.DirectoryFor(target)} — the folder is not writable " +
+                           "(a portable install under Program Files needs a writable location).";
+            return;
+        }
+
+        if (_configLocation.SwitchTo(target))
+        {
+            _restart.Restart();
+        }
+        else
+        {
+            StorageError = "Couldn't move your data — it was left where it is.";
+        }
     }
 
     partial void OnStartWithWindowsChanged(bool value)

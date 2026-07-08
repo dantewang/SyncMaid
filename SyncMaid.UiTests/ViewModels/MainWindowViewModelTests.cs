@@ -35,6 +35,8 @@ public class MainWindowViewModelTests
             autoStart ?? new FakeAutoStartService(),
             new FakeMirrorDeleteConfirmer(),
             new FakeAppSettingsService(),
+            new FakeConfigLocationService(),
+            new FakeAppRestartService(),
             NullLoggerFactory.Instance);
 
     [Fact]
@@ -156,7 +158,7 @@ public class MainWindowViewModelTests
             new FakeDialogService(), new RecordingTaskStore([runnable, empty]), new RecordingStatusStore(),
             engine, new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost(),
             new FakeAutoStartService(), new FakeMirrorDeleteConfirmer(), new FakeAppSettingsService(),
-            NullLoggerFactory.Instance);
+            new FakeConfigLocationService(), new FakeAppRestartService(), NullLoggerFactory.Instance);
 
         vm.RunAllCommand.Execute(null);
 

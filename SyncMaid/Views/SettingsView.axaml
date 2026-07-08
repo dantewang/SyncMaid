@@ -37,6 +37,24 @@
                            Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
             </StackPanel>
 
+            <StackPanel>
+                <TextBlock Text="Storage" Classes="label" />
+                <TextBlock Text="{Binding StorageModeText}" />
+                <TextBlock Text="{Binding StoragePath}" Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
+                <Button Classes="secondary" Content="{Binding SwitchStorageText}"
+                        Command="{Binding SwitchStorageCommand}" Margin="0,8,0,0" />
+                <TextBlock Text="Moves your tasks and settings to the new location and restarts SyncMaid."
+                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                <Border IsVisible="{Binding HasStorageError}" Classes="filterRow" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
+                                         Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
+                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding StorageError}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
                 <Button Classes="primary" Content="Done" Command="{Binding DoneCommand}" />
             </StackPanel>
