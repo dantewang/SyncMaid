@@ -51,12 +51,12 @@ one-shot, non-persisted override; the empty-source guard stays a non-overridable
 failure. The mass-delete threshold is now editable per destination (percentage + off
 toggle) in the Mirror section.
 
-### 6. Destructive UI actions have no confirmation
-Task delete and destination delete are single-click with no undo. Add a small confirm
-dialog (the `DialogHost` pattern makes this cheap), or an inline two-step button.
-Related: deleting a task/destination leaves its entries in `status.json` forever —
-prune statuses for unknown destination ids on save (one-line cleanup in
-`MainWindowViewModel.OnStatusesUpdated` / `Persist`).
+### 6. Destructive UI actions have no confirmation — ✅ done (`3e86f47`)
+Done: task-delete and destination-delete now open a modal confirmation (a reusable
+`ConfirmViewModel`/`ConfirmView` shown via the in-window `DialogHost` — correct here since
+deletes only fire from the visible main window) with a red destructive button; both delete
+commands `await` it. Also done: `Persist` prunes statuses whose destination no longer exists,
+so `status.json` no longer accumulates orphans (rewritten only when something was removed).
 
 ## 🟡 Polish / hygiene
 
@@ -71,11 +71,11 @@ string only. Show "next run in 2 h" (tooltip: absolute local time) on the trigge
 cheap and makes Scheduled feel trustworthy. (Requires a lightweight refresh, e.g.
 recompute when the card renders or on a 1-minute UI timer.)
 
-### 9. Sync error text lacks the failing file
-`SyncEngine.ExecuteDestination` catches per-destination exceptions and stores
-`exception.Message` — but not *which file/operation* failed. Wrap the per-operation
-`TransientRetry.Execute` call so the caught exception is annotated with
-`operation.RelativePath` before becoming the status error.
+### 9. Sync error text lacks the failing file — ✅ done (`acdb431`)
+Done: the per-operation `TransientRetry.Execute` call is wrapped so any surviving failure
+becomes a `SyncOperationException` that prefixes the relative path and verb
+(e.g. `Failed to copy 'photos/img.jpg': <reason>`); that message is what the destination
+status stores. Cancellation still propagates untouched.
 
 ### 10. Modal dialogs ignore the keyboard
 No Esc-to-cancel / Enter-to-default in the in-window modals. Handle `KeyDown` in the
