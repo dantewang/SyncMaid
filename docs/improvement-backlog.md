@@ -110,9 +110,13 @@ makes the sidebar an actual navigator.
   ring buffer (last N runs) would enable a history flyout; goes well with the log in #2.
 - **Editor validation polish** — task editor accepts any path string; a gentle
   "folder does not exist" hint (non-blocking) would catch typos before first run.
-- **Configurable config/data location (portable mode)** — let the user keep everything in
-  the default `%APPDATA%\SyncMaid` or beside the executable for portable installs. Full
-  design in [guide-config-location.md](guide-config-location.md).
+- **Configurable config/data location (portable mode)** — ✅ done (`1ad72ed`). A Storage
+  section in Settings switches between the default `%APPDATA%\SyncMaid` and a `Data` folder
+  beside the executable; the mode is decided by a marker file next to the exe. Switching
+  migrates `tasks.json`/`status.json`/`settings.json` (+ `.bak`s) copy→verify→delete (marker
+  flipped last), refuses an unwritable target, and relaunches so the startup-wired paths take
+  effect. Core `ConfigLocationService` does the work behind `IConfigLocationService`; the app
+  adds `IAppRestartService`. Design: [guide-config-location.md](guide-config-location.md).
 
 ## Suggested order
 
