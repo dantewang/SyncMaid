@@ -16,6 +16,9 @@ namespace SyncMaid.Core.Filtering;
 [JsonDerivedType(typeof(AllFilesFilter), "all")]
 [JsonDerivedType(typeof(PathFilter), "path")]
 [JsonDerivedType(typeof(ExtensionFilter), "extension")]
+[JsonDerivedType(typeof(AllOfFilter), "allOf")]
+[JsonDerivedType(typeof(AnyOfFilter), "anyOf")]
+[JsonDerivedType(typeof(NotFilter), "not")]
 public abstract record FilterRule
 {
     /// <summary>Returns <c>true</c> when <paramref name="relativePath"/> is selected by this rule.</summary>
@@ -55,4 +58,36 @@ public sealed record ExtensionFilter(string Extension) : FilterRule
         return ext.Length > 0
                && relativePath.EndsWith('.' + ext, StringComparison.OrdinalIgnoreCase);
     }
+}
+
+/// <summary>Selects files matching <b>every</b> child rule (AND). Empty matches nothing —
+/// an accidental empty conjunction must not silently select the whole source.</summary>
+public sealed record AllOfFilter(IReadOnlyList<FilterRule> Rules) : FilterRule
+{
+    public override bool Matches(string relativePath) =>
+        Rules.Count > 0 && Rules.All(rule => rule.Matches(relativePath));
+
+    // Structural equality: the compiler-generated implementation compares the list by
+    // reference, which breaks record value semantics (and round-trip assertions).
+    public bool Equals(AllOfFilter? other) => other is not null && Rules.SequenceEqual(other.Rules);
+
+    public override int GetHashCode() => Rules.Aggregate(typeof(AllOfFilter).GetHashCode(), HashCode.Combine);
+}
+
+/// <summary>Selects files matching <b>any</b> child rule (OR). Empty matches nothing —
+/// the same convention as an empty <see cref="Model.Destination.Filters"/> list.</summary>
+public sealed record AnyOfFilter(IReadOnlyList<FilterRule> Rules) : FilterRule
+{
+    public override bool Matches(string relativePath) =>
+        Rules.Any(rule => rule.Matches(relativePath));
+
+    public bool Equals(AnyOfFilter? other) => other is not null && Rules.SequenceEqual(other.Rules);
+
+    public override int GetHashCode() => Rules.Aggregate(typeof(AnyOfFilter).GetHashCode(), HashCode.Combine);
+}
+
+/// <summary>Selects files <b>not</b> matched by the wrapped rule ("everything except…").</summary>
+public sealed record NotFilter(FilterRule Rule) : FilterRule
+{
+    public override bool Matches(string relativePath) => !Rule.Matches(relativePath);
 }

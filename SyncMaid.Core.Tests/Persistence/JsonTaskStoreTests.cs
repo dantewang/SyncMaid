@@ -91,6 +91,28 @@ public class JsonTaskStoreTests
     }
 
     [Fact]
+    public void A_nested_composite_filter_round_trips()
+    {
+        // AllOf[AnyOf[path, ext], Not[ext]] — recursive polymorphism through source-gen.
+        var expression = new AllOfFilter(
+        [
+            new AnyOfFilter([new PathFilter("docs"), new ExtensionFilter("jpg")]),
+            new NotFilter(new ExtensionFilter("tmp")),
+        ]);
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(
+        [
+            new SyncTask("T", @"C:\src", new ManualTrigger(),
+                [new Destination("D", @"D:\d", [expression], SyncStrategy.Mirror)]),
+        ]);
+
+        var loaded = Assert.Single(Assert.Single(store.Load()).Destinations).Filters;
+
+        Assert.Equal(expression, Assert.Single(loaded)); // records compare by value, recursively
+    }
+
+    [Fact]
     public void Saved_form_is_stable_across_a_load_save_cycle()
     {
         var fs = new InMemoryFileSystem();
