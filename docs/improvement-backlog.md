@@ -31,16 +31,16 @@ bad watch path / cron is visible, not just logged.
 
 ## 🟠 Real functional gaps
 
-### 3. No cancellation UI
-`ISyncEngine.ExecuteAsync` takes a `CancellationToken`, but the UI never passes one — a
-large or stuck sync (network destination!) cannot be stopped. Make the per-task Run button
-turn into a Stop button while running (`CancellationTokenSource` owned by
-`TaskNodeViewModel`; cancelled outcome shown as a neutral status, not a failure).
+### 3. No cancellation UI — ✅ done (`186999d`)
+Done: the per-task Run button turns into a Stop button while running; a
+`CancellationTokenSource` owned by `TaskNodeViewModel` is passed through
+`ISyncEngine.ExecuteAsync`, and a cancelled run reverts each destination to its prior
+status (a neutral outcome, not a failure).
 
-### 4. Progress is computed but never shown
-The engine reports `IProgress<SyncProgress>` (current file, N of M) and the UI ignores it.
-While running, show on the destination row: `Copying photos/2024/img_0042.jpg (3/120)`
-(marshal via the existing `IUiDispatcher`). Pairs naturally with #3.
+### 4. Progress is computed but never shown — ✅ done (`186999d`)
+Done: the engine's `IProgress<SyncProgress>` is marshaled via `IUiDispatcher` onto each
+destination row as a live `Copying photos/2024/img_0042.jpg (3/120)` line
+(`DisplayStatus` shows the progress while running, the status otherwise).
 
 ### 5. Mirror guard has no user-facing resolution path — ✅ done (`da1a08b`)
 Done: a blocked mass-delete now shows a `NeedsConfirmation` state (amber), and a Review
