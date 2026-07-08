@@ -206,6 +206,23 @@ public class DestinationEditorViewModelTests
     }
 
     [Fact]
+    public void Enter_saves_when_valid_and_is_ignored_otherwise()
+    {
+        var vm = New();
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+
+        Assert.False(vm.RequestAccept());   // invalid (no name/path) → not handled, stays open
+        Assert.Null(result);
+
+        vm.Name = "Backup";
+        vm.Path = @"D:\backup";
+
+        Assert.True(vm.RequestAccept());    // valid → handled, saved
+        Assert.NotNull(result);
+    }
+
+    [Fact]
     public void Network_verify_warning_shows_only_for_a_unc_path_with_verification_on()
     {
         var vm = New();

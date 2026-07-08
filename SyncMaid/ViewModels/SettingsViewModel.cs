@@ -125,4 +125,11 @@ public partial class SettingsViewModel : DialogViewModel<bool>
 
     [RelayCommand]
     private void Done() => Close(true);
+
+    /// <summary>Enter closes the settings dialog (all options apply live).</summary>
+    public override bool RequestAccept()
+    {
+        Done();
+        return true;
+    }
 }

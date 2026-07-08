@@ -1,16 +1,64 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Material.Icons;
 using Material.Icons.Avalonia;
+using SyncMaid.ViewModels;
 
 namespace SyncMaid.Views;
 
 public partial class MainWindow : Window
 {
+    // Refreshes the relative "next run in 2 h" badges once a minute (a single view-level timer
+    // rather than one per task).
+    private readonly DispatcherTimer _scheduleTimer;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        _scheduleTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _scheduleTimer.Tick += (_, _) => (DataContext as MainWindowViewModel)?.RefreshSchedules();
+        _scheduleTimer.Start();
+    }
+
+    // Keyboard for the in-window modal: Esc cancels, Enter performs the dialog's default action.
+    // Handled at the window since the overlay isn't focusable; the events bubble up here.
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm && vm.DialogHost.IsOpen
+            && vm.DialogHost.CurrentDialog is IDialogViewModel dialog)
+        {
+            if (e.Key == Key.Escape)
+            {
+                dialog.RequestCancel();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.Enter && dialog.RequestAccept())
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+
+        base.OnKeyDown(e);
+    }
+
+    // Selecting a task in the sidebar scrolls its card into view, so the sidebar acts as a
+    // navigator rather than just expanding the card off-screen.
+    private void OnTaskSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { SelectedTask: { } task }
+            && this.FindControl<ItemsControl>("TasksItemsControl") is { } items
+            && items.ContainerFromItem(task) is { } container)
+        {
+            container.BringIntoView();
+        }
     }
 
     // Caption-button plumbing: pure window state changes, so it lives in the view, not the

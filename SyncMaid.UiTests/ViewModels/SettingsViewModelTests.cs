@@ -158,6 +158,17 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public void Enter_closes_the_settings_dialog()
+    {
+        var vm = New();
+        var closed = false;
+        vm.CloseRequested += _ => closed = true;
+
+        Assert.True(vm.RequestAccept());
+        Assert.True(closed);
+    }
+
+    [Fact]
     public void Done_closes_the_dialog()
     {
         var vm = New();

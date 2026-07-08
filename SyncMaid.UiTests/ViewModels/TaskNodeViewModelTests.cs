@@ -79,6 +79,25 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
+    public void A_scheduled_task_shows_its_next_run()
+    {
+        var node = New(new SyncTask("A", @"C:\a", new ScheduledTrigger("*/5 * * * *"), [Dest("D")]));
+
+        Assert.True(node.HasNextRun);
+        Assert.Contains("next run", node.NextRunText);
+        Assert.NotNull(node.NextRunTooltip);
+    }
+
+    [Fact]
+    public void A_manual_task_has_no_next_run()
+    {
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]));
+
+        Assert.False(node.HasNextRun);
+        Assert.Equal(string.Empty, node.NextRunText);
+    }
+
+    [Fact]
     public void A_trigger_start_failure_surfaces_on_the_card()
     {
         var task = new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]);

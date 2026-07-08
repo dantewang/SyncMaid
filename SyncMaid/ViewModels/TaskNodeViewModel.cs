@@ -88,6 +88,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         };
 
         StartTrigger();
+        RefreshNextRun();
     }
 
     /// <summary>The current task. Replaced (immutably) whenever its destinations change.</summary>
@@ -119,6 +120,42 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     /// <summary>True when the trigger failed to start; drives the visibility of the error badge.</summary>
     public bool HasTriggerError => !string.IsNullOrEmpty(TriggerError);
+
+    // The next scheduled fire time (UTC), recomputed by RefreshNextRun; null for non-scheduled
+    // tasks or an expression with no future occurrence.
+    private DateTimeOffset? _nextRun;
+
+    /// <summary>True when this is a scheduled task with a known next run; drives the badge.</summary>
+    public bool HasNextRun => _nextRun is not null;
+
+    /// <summary>Relative next-run label for the badge, e.g. "next run in 2 h".</summary>
+    public string NextRunText => _nextRun is { } when ? $"next run {Humanize(when - DateTimeOffset.UtcNow)}" : string.Empty;
+
+    /// <summary>Absolute local next-run time, shown as the badge tooltip (never goes stale).</summary>
+    public string? NextRunTooltip => _nextRun?.ToLocalTime().ToString("f");
+
+    /// <summary>Recomputes the next scheduled run; called at construction and on a UI timer so the
+    /// relative label stays current.</summary>
+    public void RefreshNextRun()
+    {
+        _nextRun = Task.Trigger is ScheduledTrigger scheduled
+                   && CronSchedule.NextOccurrenceUtc(scheduled.CronExpression, DateTime.UtcNow) is { } next
+            ? new DateTimeOffset(next, TimeSpan.Zero)
+            : null;
+
+        OnPropertyChanged(nameof(HasNextRun));
+        OnPropertyChanged(nameof(NextRunText));
+        OnPropertyChanged(nameof(NextRunTooltip));
+    }
+
+    private static string Humanize(TimeSpan span)
+    {
+        if (span <= TimeSpan.Zero) return "due now";
+        if (span < TimeSpan.FromMinutes(1)) return "in under a minute";
+        if (span < TimeSpan.FromHours(1)) return $"in {(int)span.TotalMinutes} min";
+        if (span < TimeSpan.FromDays(1)) return $"in {(int)span.TotalHours} h";
+        return $"in {(int)span.TotalDays} d";
+    }
 
     /// <summary>At-a-glance health shown on the (possibly collapsed) card header.</summary>
     public SyncOutcome HealthOutcome

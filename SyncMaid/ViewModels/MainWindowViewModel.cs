@@ -91,6 +91,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     public string ExpandCollapseLabel => AllExpanded ? "Collapse all" : "Expand all";
 
+    /// <summary>Recomputes every task's next-run label. Driven by a one-minute UI timer in the
+    /// view so the relative "next run in 2 h" badges stay current without per-node timers.</summary>
+    public void RefreshSchedules()
+    {
+        foreach (var node in Nodes)
+        {
+            node.RefreshNextRun();
+        }
+    }
+
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarVisible = !IsSidebarVisible;
 

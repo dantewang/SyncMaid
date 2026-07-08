@@ -88,6 +88,18 @@ public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
     [RelayCommand]
     private void Cancel() => Close(null);
 
+    /// <summary>Enter saves when the form is valid.</summary>
+    public override bool RequestAccept()
+    {
+        if (!OKCommand.CanExecute(null))
+        {
+            return false;
+        }
+
+        OKCommand.Execute(null);
+        return true;
+    }
+
     [RelayCommand]
     private async Task Browse()
     {

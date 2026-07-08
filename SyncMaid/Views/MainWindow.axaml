@@ -92,7 +92,8 @@
                             <mi:MaterialIcon Kind="ChevronLeft" Width="16" Height="16" />
                         </Button>
                     </Grid>
-                    <ListBox Classes="sidebar" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}">
+                    <ListBox Classes="sidebar" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedTask}"
+                             SelectionChanged="OnTaskSelected">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:TaskNodeViewModel">
                                 <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding SidebarTooltip}">
@@ -145,7 +146,7 @@
                 </Grid>
 
                 <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding Nodes}">
+                    <ItemsControl x:Name="TasksItemsControl" ItemsSource="{Binding Nodes}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:TaskNodeViewModel">
                                 <Border Classes="card">
@@ -169,6 +170,15 @@
                                                                 <mi:MaterialIcon Kind="{Binding TriggerIconKind}" Width="12" Height="12"
                                                                                  Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                                                 <TextBlock Text="{Binding TriggerText}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <!-- Next scheduled run (relative; tooltip = absolute local time). -->
+                                                        <Border Classes="badge live" IsVisible="{Binding HasNextRun}"
+                                                                ToolTip.Tip="{Binding NextRunTooltip}">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <mi:MaterialIcon Kind="ClockOutline" Width="12" Height="12"
+                                                                                 Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding NextRunText}" />
                                                             </StackPanel>
                                                         </Border>
                                                         <!-- Trigger failed to start: this task won't run automatically. -->

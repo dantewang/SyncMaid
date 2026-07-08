@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Filtering;
+using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 using SyncMaid.Services;
 
@@ -112,7 +113,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     /// <summary>True when the destination path is a mounted network location (UNC or a
     /// mapped network drive), where content verification means re-reading over the network.</summary>
-    public bool IsNetworkPath => LooksLikeNetworkPath(Path);
+    public bool IsNetworkPath => NetworkPath.IsNetwork(Path);
 
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
@@ -133,32 +134,6 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
         });
     }
 
-    // UNC paths and mapped network drives mean content verification re-reads over the
-    // network. Computed in the VM so the editor can warn; tolerant of partial input.
-    private static bool LooksLikeNetworkPath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
-
-        if (path.StartsWith(@"\\", StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        try
-        {
-            var root = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(path));
-            return !string.IsNullOrEmpty(root)
-                   && new System.IO.DriveInfo(root).DriveType == System.IO.DriveType.Network;
-        }
-        catch
-        {
-            return false; // mid-typing or invalid path — not yet a known network path
-        }
-    }
-
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
@@ -166,6 +141,18 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     [RelayCommand]
     private void Cancel() => Close(null);
+
+    /// <summary>Enter saves when the form is valid.</summary>
+    public override bool RequestAccept()
+    {
+        if (!OKCommand.CanExecute(null))
+        {
+            return false;
+        }
+
+        OKCommand.Execute(null);
+        return true;
+    }
 
     [RelayCommand]
     private async Task Browse()
