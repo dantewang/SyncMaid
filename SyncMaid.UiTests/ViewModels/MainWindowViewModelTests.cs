@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -202,5 +204,47 @@ public class MainWindowViewModelTests
         var node = Assert.Single(vm.Nodes);
         Assert.Equal("A-renamed", node.Name);
         Assert.Single(node.Task.Destinations);   // destinations carried over
+    }
+
+    [Fact]
+    public async Task Deleting_a_task_confirms_first_and_keeps_it_when_cancelled()
+    {
+        var store = new RecordingTaskStore([Task("A"), Task("B")]);
+        var dialogs = new FakeDialogService { ConfirmResult = false };
+        var vm = New(dialogs, store);
+
+        await vm.Nodes[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, dialogs.ConfirmCount);
+        Assert.Equal(2, vm.Nodes.Count);   // cancelled → both remain
+    }
+
+    [Fact]
+    public async Task Confirming_a_task_delete_removes_it()
+    {
+        var store = new RecordingTaskStore([Task("A"), Task("B")]);
+        var dialogs = new FakeDialogService { ConfirmResult = true };
+        var vm = New(dialogs, store);
+
+        await vm.Nodes[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal("B", Assert.Single(vm.Nodes).Name);
+    }
+
+    [Fact]
+    public async Task Deleting_a_task_prunes_its_orphaned_statuses()
+    {
+        var dest = new Destination("D", @"D:\d", [new SyncMaid.Core.Filtering.AllFilesFilter()], SyncStrategy.Mirror);
+        var task = Task("A") with { Destinations = [dest] };
+        var statusStore = new RecordingStatusStore(
+            new Dictionary<Guid, DestinationSyncStatus> { [dest.Id] = DestinationSyncStatus.Never(dest.Id) });
+        var vm = New(
+            new FakeDialogService { ConfirmResult = true },
+            new RecordingTaskStore([task]),
+            statusStore: statusStore);
+
+        await vm.Nodes[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.DoesNotContain(dest.Id, statusStore.Saved.Keys);   // orphan pruned on save
     }
 }

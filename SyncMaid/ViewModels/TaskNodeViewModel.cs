@@ -22,7 +22,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly ITriggerSourceFactory _triggerFactory;
     private readonly IUiDispatcher _dispatcher;
     private readonly Func<TaskNodeViewModel, Task> _onEdit;
-    private readonly Action<TaskNodeViewModel> _onDelete;
+    private readonly Func<TaskNodeViewModel, Task> _onDelete;
     private readonly Action _onChanged;
     private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
     private readonly ILogger _logger;
@@ -54,7 +54,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         ITriggerSourceFactory triggerFactory,
         IUiDispatcher dispatcher,
         Func<TaskNodeViewModel, Task> onEdit,
-        Action<TaskNodeViewModel> onDelete,
+        Func<TaskNodeViewModel, Task> onDelete,
         Action onChanged,
         Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated,
         ILogger logger,
@@ -162,7 +162,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private Task Edit() => _onEdit(this);
 
     [RelayCommand]
-    private void Delete() => _onDelete(this);
+    private Task Delete() => _onDelete(this);
 
     [RelayCommand]
     private async Task AddDestination()
@@ -186,8 +186,17 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void DeleteLeaf(DestinationNodeViewModel node)
+    private async Task DeleteLeaf(DestinationNodeViewModel node)
     {
+        var confirmed = await _dialogs.ConfirmAsync(
+            "Delete destination?",
+            $"Remove the destination \"{node.Name}\" from this task? This can't be undone.",
+            "Delete");
+        if (!confirmed)
+        {
+            return;
+        }
+
         Children.Remove(node);
         RebuildAndPersist();
     }

@@ -11,6 +11,7 @@
         <DataTemplate DataType="vm:TaskEditorViewModel"><views:TaskEditorView /></DataTemplate>
         <DataTemplate DataType="vm:DestinationEditorViewModel"><views:DestinationEditorView /></DataTemplate>
         <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+        <DataTemplate DataType="vm:ConfirmViewModel"><views:ConfirmView /></DataTemplate>
     </Application.DataTemplates>
 
     <!-- System tray icon. Declared here (rather than built in code) since TrayIcon is a

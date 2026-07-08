@@ -147,8 +147,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void DeleteTask(TaskNodeViewModel node)
+    private async Task DeleteTask(TaskNodeViewModel node)
     {
+        var count = node.Children.Count;
+        var suffix = count == 1 ? "its 1 destination" : $"its {count} destinations";
+        var confirmed = await _dialogs.ConfirmAsync(
+            "Delete task?",
+            $"Delete the task \"{node.Name}\" and {suffix}? This can't be undone.",
+            "Delete");
+        if (!confirmed)
+        {
+            return;
+        }
+
         Nodes.Remove(node);
         node.Dispose();
         Persist();
@@ -186,13 +197,47 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void Persist()
     {
+        var tasks = Nodes.Select(node => node.Task).ToList();
+        PruneOrphanedStatuses(tasks);
+
         try
         {
-            _store.Save(Nodes.Select(node => node.Task).ToList());
+            _store.Save(tasks);
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Failed to save tasks.");
+        }
+    }
+
+    // Drops persisted statuses whose destination no longer exists (a deleted task/destination),
+    // so status.json doesn't accumulate orphans forever. Only rewrites the file if something
+    // was actually removed.
+    private void PruneOrphanedStatuses(IReadOnlyList<SyncTask> tasks)
+    {
+        var knownIds = tasks.SelectMany(task => task.Destinations).Select(destination => destination.Id).ToHashSet();
+
+        lock (_statusGate)
+        {
+            var orphans = _statuses.Keys.Where(id => !knownIds.Contains(id)).ToList();
+            if (orphans.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var id in orphans)
+            {
+                _statuses.Remove(id);
+            }
+
+            try
+            {
+                _statusStore.Save(_statuses);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to prune orphaned sync statuses.");
+            }
         }
     }
 

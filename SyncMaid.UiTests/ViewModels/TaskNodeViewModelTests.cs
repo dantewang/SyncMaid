@@ -36,7 +36,7 @@ public class TaskNodeViewModelTests
             triggers ?? new FakeTriggerSourceFactory(),
             new FakeUiDispatcher(),
             _ => Task.CompletedTask,
-            _ => { },
+            _ => Task.CompletedTask,
             onChanged ?? (() => { }),
             onStatuses ?? (_ => { }),
             logger ?? NullLogger.Instance,
@@ -71,7 +71,7 @@ public class TaskNodeViewModelTests
         var node = new TaskNodeViewModel(
             task, new Dictionary<Guid, DestinationSyncStatus>(),
             new FakeDialogService(), new FakeSyncEngine(), new ThrowingTriggerSourceFactory(),
-            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { }, logger,
+            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => Task.CompletedTask, () => { }, _ => { }, logger,
             new FakeMirrorDeleteConfirmer());
 
         Assert.NotNull(node); // degrades to manual-only rather than throwing from the ctor
@@ -86,7 +86,7 @@ public class TaskNodeViewModelTests
         var node = new TaskNodeViewModel(
             task, new Dictionary<Guid, DestinationSyncStatus>(),
             new FakeDialogService(), new FakeSyncEngine(), new ThrowingTriggerSourceFactory(),
-            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => { }, () => { }, _ => { },
+            new FakeUiDispatcher(), _ => Task.CompletedTask, _ => Task.CompletedTask, () => { }, _ => { },
             NullLogger.Instance, new FakeMirrorDeleteConfirmer());
 
         Assert.True(node.HasTriggerError);
@@ -174,6 +174,39 @@ public class TaskNodeViewModelTests
         Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
         Assert.Contains("boom", node.Children[0].StatusText);
         Assert.Equal("1 of 1 failed", node.HealthText);
+    }
+
+    [Fact]
+    public async Task Deleting_a_destination_asks_first_and_keeps_it_when_cancelled()
+    {
+        var persisted = 0;
+        var dialogs = new FakeDialogService { ConfirmResult = false };
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]),
+            dialogs,
+            onChanged: () => persisted++);
+
+        await node.Children[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, dialogs.ConfirmCount);
+        Assert.Single(node.Children);   // cancelled → still there
+        Assert.Equal(0, persisted);
+    }
+
+    [Fact]
+    public async Task Confirming_removes_the_destination_and_persists()
+    {
+        var persisted = 0;
+        var dialogs = new FakeDialogService { ConfirmResult = true };
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]),
+            dialogs,
+            onChanged: () => persisted++);
+
+        await node.Children[0].DeleteCommand.ExecuteAsync(null);
+
+        Assert.Empty(node.Children);
+        Assert.Equal(1, persisted);
     }
 
     [Fact]

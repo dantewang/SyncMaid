@@ -11,7 +11,7 @@ namespace SyncMaid.ViewModels;
 public partial class DestinationNodeViewModel : ViewModelBase
 {
     private readonly Func<DestinationNodeViewModel, Task> _onEdit;
-    private readonly Action<DestinationNodeViewModel> _onDelete;
+    private readonly Func<DestinationNodeViewModel, Task> _onDelete;
     private readonly Func<DestinationNodeViewModel, Task> _onConfirm;
 
     [ObservableProperty]
@@ -30,7 +30,7 @@ public partial class DestinationNodeViewModel : ViewModelBase
         Destination destination,
         DestinationSyncStatus status,
         Func<DestinationNodeViewModel, Task> onEdit,
-        Action<DestinationNodeViewModel> onDelete,
+        Func<DestinationNodeViewModel, Task> onDelete,
         Func<DestinationNodeViewModel, Task> onConfirm)
     {
         Destination = destination;
@@ -104,7 +104,7 @@ public partial class DestinationNodeViewModel : ViewModelBase
     private Task Edit() => _onEdit(this);
 
     [RelayCommand]
-    private void Delete() => _onDelete(this);
+    private Task Delete() => _onDelete(this);
 
     /// <summary>Opens the independent confirmation window for a blocked mass-delete.</summary>
     [RelayCommand]
