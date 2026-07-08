@@ -1,6 +1,6 @@
 # Guide: Composable filter expressions
 
-**Status:** implementation guide — not yet implemented
+**Status:** ✅ implemented (`a46b8e4` Core composites, `abd771c` group editor)
 
 ## Current behavior (answering "AND or OR?")
 

@@ -125,4 +125,9 @@ Done: selecting a task in the sidebar scrolls its card into view
 4. Title bar guide → Settings guide (feature track)
 5. #5 mirror-guard confirmation flow
 6. #6, #7, #8, #9, #10, #11 as filler between larger items
-7. Filter composition guide (feature track, independent)
+7. Filter composition guide (feature track, independent) — ✅ done (`a46b8e4` + `abd771c`):
+   AllOf/AnyOf/Not composite rules in Core (legacy flat lists unchanged) and a two-level
+   group editor with per-rule exclude toggles and a live plain-text expression preview.
+   Design: [guide-filter-composition.md](guide-filter-composition.md).
+
+**Everything above is done** — new findings start a fresh list.
