@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.Versioning;
 using Microsoft.Win32;
 
 namespace SyncMaid.Services;
@@ -11,10 +12,14 @@ namespace SyncMaid.Services;
 /// of truth; no settings file is involved. See docs/guide-settings-autostart.md.
 /// </summary>
 /// <remarks>
-/// The registry calls are guarded by <see cref="OperatingSystem.IsWindows"/> — the app only
-/// ever runs on Windows, but the guard satisfies the platform-compatibility analyzer and
-/// makes the service a harmless no-op anywhere else.
+/// Marked <see cref="SupportedOSPlatformAttribute"/> "windows" rather than guarding each method
+/// with <see cref="OperatingSystem.IsWindows"/>: the composition root only constructs this
+/// inside an <c>OperatingSystem.IsWindows()</c> branch (falling back to
+/// <see cref="NoOpAutoStartService"/> elsewhere), which the platform-compatibility analyzer
+/// recognizes — so the registry calls need no internal guards. See
+/// docs/guide-os-specific-services.md.
 /// </remarks>
+[SupportedOSPlatform("windows")]
 public sealed class WindowsAutoStartService : IAutoStartService
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -24,11 +29,6 @@ public sealed class WindowsAutoStartService : IAutoStartService
     /// <inheritdoc />
     public AutoStartState GetState()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return AutoStartState.Disabled;
-        }
-
         using var run = Registry.CurrentUser.OpenSubKey(RunKeyPath);
         if (run?.GetValue(ValueName) is not string value || string.IsNullOrEmpty(value))
         {
@@ -50,11 +50,6 @@ public sealed class WindowsAutoStartService : IAutoStartService
     /// <inheritdoc />
     public void Enable()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         var exePath = Environment.ProcessPath;
         if (string.IsNullOrEmpty(exePath))
         {
@@ -69,11 +64,6 @@ public sealed class WindowsAutoStartService : IAutoStartService
     /// <inheritdoc />
     public void Disable()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         using var run = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
         run?.DeleteValue(ValueName, throwOnMissingValue: false);
     }

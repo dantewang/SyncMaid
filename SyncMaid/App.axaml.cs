@@ -163,7 +163,13 @@ public partial class App : Application
         services.AddSingleton<ITriggerSourceFactory>(sp => new TriggerSourceFactory(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IUiDispatcher>(_ => new AvaloniaUiDispatcher());
         services.AddSingleton<IDialogHost>(_ => new DialogHost());
-        services.AddSingleton<IAutoStartService>(_ => new WindowsAutoStartService());
+        // Platform selector for OS-specific autostart: the Windows Run-key service on Windows,
+        // a no-op fallback elsewhere. The OperatingSystem.IsWindows() guard is what lets the
+        // analyzer accept constructing the [SupportedOSPlatform("windows")] service here.
+        // macOS/Linux implementations would slot in as extra branches — see
+        // docs/guide-os-specific-services.md.
+        services.AddSingleton<IAutoStartService>(_ =>
+            OperatingSystem.IsWindows() ? new WindowsAutoStartService() : new NoOpAutoStartService());
         services.AddSingleton<IMirrorDeleteConfirmer>(_ => new MirrorDeleteConfirmer());
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(
