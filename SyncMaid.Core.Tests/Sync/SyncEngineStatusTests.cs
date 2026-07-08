@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.IO;
@@ -84,5 +85,7 @@ public class SyncEngineStatusTests
         var badStatus = statuses.Single(s => s.DestinationId == bad.Id);
         Assert.Equal(SyncOutcome.Failed, badStatus.Outcome);
         Assert.NotNull(badStatus.Error);
+        Assert.Contains("a.txt", badStatus.Error!);   // the error names the file that failed (#9)
+        Assert.Contains("copy", badStatus.Error!, StringComparison.OrdinalIgnoreCase);
     }
 }

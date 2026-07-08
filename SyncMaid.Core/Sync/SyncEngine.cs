@@ -146,17 +146,25 @@ public sealed class SyncEngine : ISyncEngine
                 progress?.Report(new SyncProgress(destination, operation, i, plan.Count));
 
                 // Retry transient I/O (a locked file, a brief sharing violation) before
-                // failing the whole destination on one momentarily-unavailable file.
-                TransientRetry.Execute(
-                    () => SyncApplier.Apply(_fileSystem, provider, operation),
-                    _retry.MaxAttempts,
-                    attempt =>
-                    {
-                        if (_retry.BaseDelay > TimeSpan.Zero)
+                // failing the whole destination on one momentarily-unavailable file. Annotate
+                // any surviving failure with the file/operation so the status names the culprit.
+                try
+                {
+                    TransientRetry.Execute(
+                        () => SyncApplier.Apply(_fileSystem, provider, operation),
+                        _retry.MaxAttempts,
+                        attempt =>
                         {
-                            Thread.Sleep(_retry.BaseDelay * attempt);
-                        }
-                    });
+                            if (_retry.BaseDelay > TimeSpan.Zero)
+                            {
+                                Thread.Sleep(_retry.BaseDelay * attempt);
+                            }
+                        });
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    throw new SyncOperationException(operation, exception);
+                }
 
                 if (operation is CopyOperation or MoveOperation)
                 {
