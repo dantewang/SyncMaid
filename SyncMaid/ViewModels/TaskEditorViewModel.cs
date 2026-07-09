@@ -21,6 +21,7 @@ public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowPathHint))]
     private string _path = string.Empty;
 
     [ObservableProperty]
@@ -34,11 +35,19 @@ public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
     private string _cronExpression = string.Empty;
 
     private readonly IFolderPickerService _folderPicker;
+    private readonly Func<string, bool> _directoryExists;
     private readonly Guid _id;
 
-    public TaskEditorViewModel(IFolderPickerService folderPicker, SyncTask? existing = null)
+    /// <param name="directoryExists">Directory probe, injectable for tests;
+    /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
+    /// for invalid/partial input, so it is safe to call while the user types).</param>
+    public TaskEditorViewModel(
+        IFolderPickerService folderPicker,
+        SyncTask? existing = null,
+        Func<string, bool>? directoryExists = null)
     {
         _folderPicker = folderPicker;
+        _directoryExists = directoryExists ?? System.IO.Directory.Exists;
         TriggerTypes = Enum.GetValues<TaskTriggerType>();
 
         if (existing != null)
@@ -57,6 +66,10 @@ public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
     public TaskTriggerType[] TriggerTypes { get; }
 
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
+
+    /// <summary>Non-blocking typo guard: the source folder doesn't exist (yet). The task can
+    /// still be saved — the folder may appear later — but nothing will sync until it does.</summary>
+    public bool ShowPathHint => !string.IsNullOrWhiteSpace(Path) && !_directoryExists(Path);
 
     /// <summary>Plain-language feedback for the cron field: validity and the next run time.</summary>
     public string CronPreview

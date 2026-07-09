@@ -31,6 +31,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     [NotifyPropertyChangedFor(nameof(IsNetworkPath))]
     [NotifyPropertyChangedFor(nameof(ShowVerifyNetworkWarning))]
+    [NotifyPropertyChangedFor(nameof(ShowPathHint))]
     private string _path = string.Empty;
 
     [ObservableProperty]
@@ -61,11 +62,19 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     private bool _matchAllGroups;
 
     private readonly IFolderPickerService _folderPicker;
+    private readonly Func<string, bool> _directoryExists;
     private readonly Guid _id;
 
-    public DestinationEditorViewModel(IFolderPickerService folderPicker, Destination? existing = null)
+    /// <param name="directoryExists">Directory probe, injectable for tests;
+    /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
+    /// for invalid/partial input, so it is safe to call while the user types).</param>
+    public DestinationEditorViewModel(
+        IFolderPickerService folderPicker,
+        Destination? existing = null,
+        Func<string, bool>? directoryExists = null)
     {
         _folderPicker = folderPicker;
+        _directoryExists = directoryExists ?? System.IO.Directory.Exists;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
         Groups = new ObservableCollection<FilterGroupViewModel>();
@@ -138,6 +147,10 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
+
+    /// <summary>Non-blocking typo guard: the destination folder doesn't exist (yet). Saving is
+    /// fine — the first run creates it — but a typo would silently sync somewhere unintended.</summary>
+    public bool ShowPathHint => !string.IsNullOrWhiteSpace(Path) && !_directoryExists(Path);
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()

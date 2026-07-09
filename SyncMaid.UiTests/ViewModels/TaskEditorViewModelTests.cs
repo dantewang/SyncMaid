@@ -11,6 +11,24 @@ public class TaskEditorViewModelTests
         new(new FakeFolderPickerService(folder), existing);
 
     [Fact]
+    public void Missing_source_folder_shows_a_hint_without_blocking_save()
+    {
+        var vm = new TaskEditorViewModel(
+            new FakeFolderPickerService(), existing: null,
+            directoryExists: path => path == @"C:\exists");
+        vm.Name = "T";
+
+        Assert.False(vm.ShowPathHint);      // empty path — nothing to hint about yet
+
+        vm.Path = @"C:\typo";
+        Assert.True(vm.ShowPathHint);       // flagged…
+        Assert.True(vm.OKCommand.CanExecute(null)); // …but saving is still allowed
+
+        vm.Path = @"C:\exists";
+        Assert.False(vm.ShowPathHint);      // clears once the folder resolves
+    }
+
+    [Fact]
     public void Editing_preserves_the_task_id()
     {
         var existing = new SyncTask("n", @"C:\s", new ManualTrigger(), []);

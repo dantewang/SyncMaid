@@ -392,6 +392,22 @@ public class DestinationEditorViewModelTests
     }
 
     [Fact]
+    public void Missing_destination_folder_shows_a_hint_without_blocking_save()
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(), existing: null,
+            directoryExists: path => path == @"D:\exists");
+        vm.Name = "D";
+
+        vm.Path = @"D:\typo";
+        Assert.True(vm.ShowPathHint);               // flagged…
+        Assert.True(vm.OKCommand.CanExecute(null)); // …but saving is still allowed
+
+        vm.Path = @"D:\exists";
+        Assert.False(vm.ShowPathHint);
+    }
+
+    [Fact]
     public void Network_verify_warning_shows_only_for_a_unc_path_with_verification_on()
     {
         var vm = New();
