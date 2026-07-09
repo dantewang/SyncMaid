@@ -102,13 +102,17 @@ Done: selecting a task in the sidebar scrolls its card into view
 - **Move + Watch interplay** — a Move task with a Watch trigger re-fires after its own
   source deletions (debounced; next run plans zero ops). Harmless but wasteful; could
   suppress the watcher during an active run of the same task.
-- **`RunAll` fire-and-forget** — executes nodes without awaiting; per-task locking makes
-  this safe, but exceptions from the async void path rely on each node's own catch.
-  Covered by #2's error surfacing.
-- **Status history** — `status.json` keeps only the last outcome per destination. A small
-  ring buffer (last N runs) would enable a history flyout; goes well with the log in #2.
-- **Editor validation polish** — task editor accepts any path string; a gentle
-  "folder does not exist" hint (non-blocking) would catch typos before first run.
+  ✅ done: the task's trigger source is suppressed (`ITriggerSource.Stop()`) for the duration
+  of a run and resumed after; the polling source re-baselines on resume (absorbing the run's
+  own changes) and a resume failure surfaces as the trigger-error badge. Also fixed en route:
+  `WatchTriggerSource.Start()` after `Stop()` was a silent no-op (resume never re-enabled
+  events).
+- **`RunAll` fire-and-forget** — ❎ closed, no change needed. Per-task locking makes the
+  unawaited execution safe, and each node's run logs its own failures (#2) — nothing left
+  that could vanish silently.
+- **Editor validation polish** — ✅ done. Both editors show a non-blocking
+  "folder doesn't exist" hint under the path field (source: nothing will sync / watch can't
+  start; destination: will be created on first run — check for typos). Saving stays allowed.
 - **Configurable config/data location (portable mode)** — ✅ done (`1ad72ed`). A Storage
   section in Settings switches between the default `%APPDATA%\SyncMaid` and a `Data` folder
   beside the executable; the mode is decided by a marker file next to the exe. Switching
@@ -116,6 +120,11 @@ Done: selecting a task in the sidebar scrolls its card into view
   flipped last), refuses an unwritable target, and relaunches so the startup-wired paths take
   effect. Core `ConfigLocationService` does the work behind `IConfigLocationService`; the app
   adds `IAppRestartService`. Design: [guide-config-location.md](guide-config-location.md).
+
+## Lower priority
+
+- **Status history** — `status.json` keeps only the last outcome per destination. A small
+  ring buffer (last N runs) would enable a history flyout; goes well with the file log.
 
 ## Suggested order
 
@@ -130,4 +139,5 @@ Done: selecting a task in the sidebar scrolls its card into view
    group editor with per-rule exclude toggles and a live plain-text expression preview.
    Design: [guide-filter-composition.md](guide-filter-composition.md).
 
-**Everything above is done** — new findings start a fresh list.
+**Everything above is done or closed**, except the "Lower priority" section (status history)
+— new findings start a fresh list.

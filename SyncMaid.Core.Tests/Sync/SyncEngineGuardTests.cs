@@ -65,7 +65,7 @@ public class SyncEngineGuardTests
             Mirror(fs, dest), confirmedMassDeletes: new HashSet<Guid> { dest.Id });
 
         Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
-        Assert.Equal(1, fs.EnumerateFiles(@"D:\dst").Count()); // only keep.txt remains
+        Assert.Single(fs.EnumerateFiles(@"D:\dst")); // only keep.txt remains
     }
 
     [Fact]
