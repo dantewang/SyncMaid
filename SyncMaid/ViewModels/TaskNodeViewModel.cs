@@ -319,6 +319,13 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         // neutral — not a failure) rather than leaving rows stuck on "Syncing…".
         var priorStatuses = Children.ToDictionary(child => child.Id, child => child.Status);
 
+        // Suppress the task's own trigger while it runs: a Move task deletes from the watched
+        // source, so its own changes would otherwise re-fire the watcher (debounced past run
+        // end) and queue a pointless follow-up run. Fires *during* a run were already dropped
+        // by the interlock above; stopping the source also swallows the debounce tail, and the
+        // polling source re-baselines on resume, absorbing the run's own changes.
+        _triggerSource?.Stop();
+
         try
         {
             _dispatcher.Post(() =>
@@ -375,6 +382,24 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             cts.Dispose();
             _dispatcher.Post(() => IsRunning = false);
             Interlocked.Exchange(ref _running, 0);
+            ResumeTrigger(); // after the run-lock releases, so a fire can start a fresh run
+        }
+    }
+
+    // Resumes the trigger suppressed at the start of the run. Resuming can fail (e.g. the
+    // watched folder disappeared during the run) — degrade to manual-only and surface it the
+    // same way as a failed initial start. Marshaled: this runs on a background thread.
+    private void ResumeTrigger()
+    {
+        try
+        {
+            _triggerSource?.Start();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to resume the trigger for task '{Task}'.", Task.Name);
+            _dispatcher.Post(() => TriggerError =
+                $"This task's trigger failed to start, so it only runs when you run it manually. ({exception.Message})");
         }
     }
 

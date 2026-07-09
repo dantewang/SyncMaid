@@ -60,4 +60,25 @@ public class PollingWatchTriggerSourceTests
         source.Start();
         Assert.False(source.PollOnce());
     }
+
+    [Fact]
+    public void Changes_made_while_stopped_are_absorbed_on_resume()
+    {
+        // A Move run deletes from the watched source with the trigger suppressed; resuming
+        // must re-baseline so the run's own deletions don't fire a pointless follow-up run.
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        fs.AddFile($@"{Root}\b.txt", "b");
+        using var source = Source(fs);
+        source.Start();
+
+        source.Stop();
+        fs.DeleteFile($@"{Root}\a.txt"); // the run's own change, made while suppressed
+        source.Start();
+
+        Assert.False(source.PollOnce()); // absorbed — no fire for our own deletions
+
+        fs.AddFile($@"{Root}\c.txt", "c");
+        Assert.True(source.PollOnce());  // a genuine later change still fires
+    }
 }

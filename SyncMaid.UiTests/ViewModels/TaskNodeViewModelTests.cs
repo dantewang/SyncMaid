@@ -152,6 +152,26 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
+    public async Task The_trigger_is_suppressed_while_a_run_is_active_and_resumed_after()
+    {
+        // A Move task's own source deletions must not re-fire its watcher into a pointless
+        // follow-up run: the trigger source is stopped for the duration and resumed after.
+        var engine = new FakeSyncEngine { HangUntilCancelled = true };
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]), engine: engine, triggers: triggers);
+        var source = triggers.Created.Single();
+        Assert.True(source.Started);
+
+        node.ExecuteCommand.Execute(null);
+        Assert.False(source.Started);   // suppressed during the run
+
+        node.CancelCommand.Execute(null);
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.True(source.Started);    // resumed once the run finished
+    }
+
+    [Fact]
     public void Disposing_the_node_stops_and_disposes_its_trigger_source()
     {
         var triggers = new FakeTriggerSourceFactory();

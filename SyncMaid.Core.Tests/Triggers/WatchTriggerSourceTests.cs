@@ -56,4 +56,35 @@ public class WatchTriggerSourceTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Fires_again_after_stop_then_start()
+    {
+        // Resume-after-suppression (used around a sync run): Start() after Stop() must
+        // re-enable the existing watcher, not silently no-op.
+        var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            using var source = new WatchTriggerSource(directory);
+            var fired = new TaskCompletionSource();
+            source.Fired += (_, _) => fired.TrySetResult();
+
+            source.Start();
+            source.Stop();
+            source.Start();
+
+            await Task.Delay(100);
+            await File.WriteAllTextAsync(Path.Combine(directory, "new.txt"), "hi");
+
+            var completed = await Task.WhenAny(fired.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+
+            Assert.True(ReferenceEquals(completed, fired.Task), "Watcher did not fire after resume.");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

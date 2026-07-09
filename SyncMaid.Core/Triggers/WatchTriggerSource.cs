@@ -26,8 +26,16 @@ public sealed class WatchTriggerSource : ITriggerSource
     {
         lock (_gate)
         {
-            if (_disposed || _watcher is not null)
+            if (_disposed)
             {
+                return;
+            }
+
+            if (_watcher is not null)
+            {
+                // Resume after Stop(): the watcher survives a stop with events disabled, so
+                // re-enable rather than early-return (which would make resume a silent no-op).
+                _watcher.EnableRaisingEvents = true;
                 return;
             }
 
