@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Filtering;
@@ -21,20 +20,8 @@ namespace SyncMaid.ViewModels;
 /// as before (a flat OR list). Raises <see cref="CloseRequested"/> instead of touching the
 /// window.
 /// </summary>
-public partial class DestinationEditorViewModel : DialogViewModel<Destination>
+public partial class DestinationEditorViewModel : EditorDialogViewModel<Destination>
 {
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
-    private string _name = string.Empty;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
-    [NotifyPropertyChangedFor(nameof(IsNetworkPath))]
-    [NotifyPropertyChangedFor(nameof(ShowVerifyNetworkWarning))]
-    [NotifyPropertyChangedFor(nameof(ShowPathHint))]
-    [NotifyPropertyChangedFor(nameof(PathHintText))]
-    private string _path = string.Empty;
-
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private bool _syncAll = true;
@@ -65,10 +52,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     [NotifyPropertyChangedFor(nameof(FilterPreview))]
     private bool _matchAllGroups;
 
-    private readonly IFolderPickerService _folderPicker;
-    private readonly Func<string, bool> _directoryExists;
     private readonly string _sourcePath;
-    private readonly Guid _id;
 
     /// <param name="directoryExists">Directory probe, injectable for tests;
     /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
@@ -78,9 +62,14 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
         Destination? existing = null,
         string sourcePath = "",
         Func<string, bool>? directoryExists = null)
+        : base(
+            folderPicker,
+            "Select Destination Folder",
+            existing?.Id,
+            existing?.Name,
+            existing?.LocalPath,
+            directoryExists)
     {
-        _folderPicker = folderPicker;
-        _directoryExists = directoryExists ?? System.IO.Directory.Exists;
         _sourcePath = sourcePath;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
@@ -93,9 +82,6 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
         if (existing != null)
         {
-            _id = existing.Id;   // preserve identity so status stays linked across edits
-            _name = existing.Name;
-            _path = existing.LocalPath;
             _selectedStrategy = existing.Strategy;
             _verifyContents = existing.VerifyContents;
             _selectedDeleteMode = existing.DeleteMode;
@@ -115,11 +101,6 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
                 _matchAllGroups = LoadFilters(existing.Filters);
             }
         }
-        else
-        {
-            _id = Guid.NewGuid();
-        }
-
         if (Groups.Count == 0)
         {
             AddGroup(); // the editor always shows at least one (possibly empty) group
@@ -155,11 +136,6 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
 
-    /// <summary>Non-blocking typo guard: the destination folder doesn't exist (yet). Saving is
-    /// fine — the first run creates it — but a typo would silently sync somewhere unintended.</summary>
-    public bool ShowPathHint => HasUnsafeMovePath
-        || (!string.IsNullOrWhiteSpace(Path) && !_directoryExists(Path));
-
     /// <summary>Explains either a destructive Move path or the non-blocking missing-folder hint.</summary>
     public string PathHintText => HasUnsafeMovePath
         ? "Move destination must be different from and outside the source folder."
@@ -172,12 +148,14 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
         Close(new Destination(Name, Path, filters, SelectedStrategy)
         {
-            Id = _id,
+            Id = EditorId,
             VerifyContents = VerifyContents,
             DeleteMode = SelectedDeleteMode,
             MassDeleteThreshold = ConfirmLargeDeletions ? (double)Math.Clamp(MassDeletePercent, 1, 100) / 100.0 : 0,
         });
     }
+
+    protected override IRelayCommand AcceptCommand => OKCommand;
 
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
@@ -192,29 +170,13 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
         && (RelativePaths.AreEquivalent(Path, _sourcePath)
             || RelativePaths.IsDescendantOf(Path, _sourcePath));
 
-    [RelayCommand]
-    private void Cancel() => Close(null);
+    protected override bool HasAdditionalPathWarning => HasUnsafeMovePath;
 
-    /// <summary>Enter saves when the form is valid.</summary>
-    public override bool RequestAccept()
+    protected override void OnEditorPathChanged()
     {
-        if (!OKCommand.CanExecute(null))
-        {
-            return false;
-        }
-
-        OKCommand.Execute(null);
-        return true;
-    }
-
-    [RelayCommand]
-    private async Task Browse()
-    {
-        var folder = await _folderPicker.PickFolderAsync("Select Destination Folder");
-        if (folder != null)
-        {
-            Path = folder;
-        }
+        OnPropertyChanged(nameof(IsNetworkPath));
+        OnPropertyChanged(nameof(ShowVerifyNetworkWarning));
+        OnPropertyChanged(nameof(PathHintText));
     }
 
     [RelayCommand]
