@@ -441,6 +441,33 @@ public class DestinationEditorViewModelTests
         Assert.False(vm.OKCommand.CanExecute(null));
     }
 
+    // Typing a UNC destination passes through prefixes GetFullPath rejects ("\\", "\\nas");
+    // every keystroke re-evaluates the Move-safety check, which must not throw mid-typing.
+    [Theory]
+    [InlineData(@"\\")]
+    [InlineData(@"\\nas")]
+    public void Typing_a_partial_unc_move_destination_does_not_break_the_editor(string partialPath)
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(),
+            sourcePath: @"C:\Source",
+            directoryExists: _ => true)
+        {
+            Name = "Network move",
+            SelectedStrategy = SyncStrategy.Move,
+        };
+
+        var escaped = Record.Exception(() =>
+        {
+            vm.Path = partialPath;
+            _ = vm.ShowPathHint;
+            _ = vm.PathHintText;
+            _ = vm.OKCommand.CanExecute(null);
+        });
+
+        Assert.Null(escaped);
+    }
+
     [Fact]
     public void Network_verify_warning_shows_only_for_a_unc_path_with_verification_on()
     {
