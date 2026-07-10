@@ -131,6 +131,23 @@ public class SyncPlannerTests
     }
 
     [Fact]
+    public void AddOnly_treats_a_missing_candidate_as_new_without_requesting_a_throwing_stamp()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\new.txt", "new");
+        var provider = new ChurningProvider(
+            new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase))
+        {
+            ThrowForMissingStamp = true,
+        };
+
+        var plan = SyncPlanner.Plan(
+            fs, SourceRoot, provider, Dest(SyncStrategy.AddOnly), ["new.txt"]);
+
+        Assert.Single(plan.Operations.OfType<CopyOperation>());
+    }
+
+    [Fact]
     public void Mirror_snapshot_ignores_files_that_vanish_while_being_stamped()
     {
         var fs = new InMemoryFileSystem();
@@ -157,6 +174,7 @@ public class SyncPlannerTests
     {
         public bool FailEnumeration { get; init; }
         public string? VanishOnStamp { get; init; }
+        public bool ThrowForMissingStamp { get; init; }
         public int EnumerationCount { get; private set; }
         public List<string> StampRequests { get; } = [];
         public DestinationCapabilities Capabilities => new(IsRemote: false, SupportsRecycle: false);
@@ -183,7 +201,15 @@ public class SyncPlannerTests
 
             return stamps.TryGetValue(relativePath, out var stamp)
                 ? stamp
-                : throw new FileNotFoundException("Destination file is missing.", relativePath);
+                : ThrowForMissingStamp
+                    ? throw new InvalidOperationException("Missing stamps must use the non-throwing lookup.")
+                    : throw new FileNotFoundException("Destination file is missing.", relativePath);
+        }
+
+        public bool TryGetStamp(string relativePath, out FileStamp stamp)
+        {
+            StampRequests.Add(relativePath);
+            return stamps.TryGetValue(relativePath, out stamp);
         }
 
         public void Write(string relativePath, ISourceFile source, bool verifyContents) =>

@@ -33,6 +33,10 @@ public interface IDestinationProvider
     /// Throws <see cref="FileNotFoundException"/> when the file does not exist.</summary>
     FileStamp GetStamp(string relativePath);
 
+    /// <summary>Attempts to read the destination stamp without using an exception to report
+    /// that <paramref name="relativePath"/> does not exist.</summary>
+    bool TryGetStamp(string relativePath, out FileStamp stamp);
+
     /// <summary>
     /// Writes <paramref name="source"/> to <paramref name="relativePath"/>, committing
     /// atomically and verifying (length always; contents when <paramref name="verifyContents"/>)

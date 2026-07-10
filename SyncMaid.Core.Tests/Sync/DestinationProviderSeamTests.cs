@@ -57,6 +57,9 @@ public class DestinationProviderSeamTests
                 ? stamp
                 : throw new FileNotFoundException("Destination file is missing.", relativePath);
 
+        public bool TryGetStamp(string relativePath, out FileStamp stamp) =>
+            _files.TryGetValue(relativePath, out stamp);
+
         public void Write(string relativePath, ISourceFile source, bool verifyContents)
         {
             Written.Add(relativePath);

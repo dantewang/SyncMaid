@@ -58,7 +58,9 @@ public static class SyncPlanner
                     sourceRoot,
                     destination,
                     filteredRelativePaths,
-                    relativePath => GetStampOrMissing(destinationProvider, relativePath)),
+                    relativePath => destinationProvider.TryGetStamp(relativePath, out var stamp)
+                        ? stamp
+                        : null),
                 DestinationFileCount: 0);
         }
 
@@ -157,18 +159,6 @@ public static class SyncPlanner
         }
 
         return sourceFileSystem.GetStamp(sourceFull) != destinationStamp.Value;
-    }
-
-    private static FileStamp? GetStampOrMissing(IDestinationProvider provider, string relativePath)
-    {
-        try
-        {
-            return provider.GetStamp(relativePath);
-        }
-        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
-        {
-            return null;
-        }
     }
 
     /// <summary>One stable view of the destination for existence, stamp, delete, and guard decisions.</summary>

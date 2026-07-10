@@ -29,6 +29,27 @@ public sealed class LocalDestinationProvider : IDestinationProvider
 
     public FileStamp GetStamp(string relativePath) => _fileSystem.GetStamp(Full(relativePath));
 
+    public bool TryGetStamp(string relativePath, out FileStamp stamp)
+    {
+        var fullPath = Full(relativePath);
+        if (!_fileSystem.FileExists(fullPath))
+        {
+            stamp = default;
+            return false;
+        }
+
+        try
+        {
+            stamp = _fileSystem.GetStamp(fullPath);
+            return true;
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            stamp = default;
+            return false;
+        }
+    }
+
     public void Write(string relativePath, ISourceFile source, bool verifyContents)
     {
         // The source is local (LocalPath present), so use the atomic path-to-path copy,
