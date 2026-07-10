@@ -16,7 +16,7 @@ public class SyncPlannerTests
 
     private static IReadOnlyList<SyncOperation> PlanFor(
         InMemoryFileSystem fs, SyncStrategy strategy, params string[] filtered) =>
-        SyncPlanner.Plan(fs, SourceRoot, new LocalDestinationProvider(fs, DestRoot), Dest(strategy), filtered);
+        SyncPlanner.Plan(fs, SourceRoot, new LocalDestinationProvider(fs, DestRoot), Dest(strategy), filtered).Operations;
 
     [Fact]
     public void AddOnly_copies_only_new_and_changed_files()
@@ -105,5 +105,90 @@ public class SyncPlannerTests
         _ = PlanFor(fs, SyncStrategy.Mirror, "a.txt");
 
         Assert.Equal(before, fs.AllPaths.OrderBy(p => p).ToList());
+    }
+
+    [Fact]
+    public void AddOnly_reads_only_candidate_stamps_and_does_not_walk_the_destination()
+    {
+        var fs = new InMemoryFileSystem();
+        var stamp = FileStamp.Create(4, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        fs.AddFile(@"S:\src\same.txt", "same");
+        var provider = new ChurningProvider(
+            new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["same.txt"] = stamp,
+            })
+        {
+            FailEnumeration = true,
+        };
+
+        var plan = SyncPlanner.Plan(
+            fs, SourceRoot, provider, Dest(SyncStrategy.AddOnly), ["same.txt"]);
+
+        Assert.Empty(plan.Operations);
+        Assert.Equal(0, provider.EnumerationCount);
+        Assert.Equal(["same.txt"], provider.StampRequests);
+    }
+
+    [Fact]
+    public void Mirror_snapshot_ignores_files_that_vanish_while_being_stamped()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\keep.txt", "keep");
+        var provider = new ChurningProvider(
+            new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["keep.txt"] = fs.GetStamp(@"S:\src\keep.txt"),
+                ["vanished.txt"] = FileStamp.Create(1, DateTime.UtcNow),
+            })
+        {
+            VanishOnStamp = "vanished.txt",
+        };
+
+        var plan = SyncPlanner.Plan(
+            fs, SourceRoot, provider, Dest(SyncStrategy.Mirror), ["keep.txt"]);
+
+        Assert.Empty(plan.Operations);
+        Assert.Equal(1, plan.DestinationFileCount);
+        Assert.Equal(1, provider.EnumerationCount);
+    }
+
+    private sealed class ChurningProvider(Dictionary<string, FileStamp> stamps) : IDestinationProvider
+    {
+        public bool FailEnumeration { get; init; }
+        public string? VanishOnStamp { get; init; }
+        public int EnumerationCount { get; private set; }
+        public List<string> StampRequests { get; } = [];
+        public DestinationCapabilities Capabilities => new(IsRemote: false, SupportsRecycle: false);
+
+        public IEnumerable<string> Enumerate()
+        {
+            EnumerationCount++;
+            if (FailEnumeration)
+            {
+                throw new IOException("Unrelated destination tree is unavailable.");
+            }
+
+            return stamps.Keys.ToList();
+        }
+
+        public FileStamp GetStamp(string relativePath)
+        {
+            StampRequests.Add(relativePath);
+            if (string.Equals(relativePath, VanishOnStamp, StringComparison.OrdinalIgnoreCase))
+            {
+                stamps.Remove(relativePath);
+                throw new FileNotFoundException("Destination file vanished.", relativePath);
+            }
+
+            return stamps.TryGetValue(relativePath, out var stamp)
+                ? stamp
+                : throw new FileNotFoundException("Destination file is missing.", relativePath);
+        }
+
+        public void Write(string relativePath, ISourceFile source, bool verifyContents) =>
+            throw new NotSupportedException();
+
+        public void Delete(string relativePath, DeleteMode mode) => throw new NotSupportedException();
     }
 }

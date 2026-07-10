@@ -52,8 +52,10 @@ public class DestinationProviderSeamTests
 
         public DestinationCapabilities Capabilities => new(IsRemote: true, SupportsRecycle: false);
         public IEnumerable<string> Enumerate() => _files.Keys;
-        public bool Exists(string relativePath) => _files.ContainsKey(relativePath);
-        public FileStamp GetStamp(string relativePath) => _files[relativePath];
+        public FileStamp GetStamp(string relativePath) =>
+            _files.TryGetValue(relativePath, out var stamp)
+                ? stamp
+                : throw new FileNotFoundException("Destination file is missing.", relativePath);
 
         public void Write(string relativePath, ISourceFile source, bool verifyContents)
         {

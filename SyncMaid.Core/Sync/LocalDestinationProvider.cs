@@ -27,8 +27,6 @@ public sealed class LocalDestinationProvider : IDestinationProvider
 
     public IEnumerable<string> Enumerate() => _fileSystem.EnumerateFiles(_root);
 
-    public bool Exists(string relativePath) => _fileSystem.FileExists(Full(relativePath));
-
     public FileStamp GetStamp(string relativePath) => _fileSystem.GetStamp(Full(relativePath));
 
     public void Write(string relativePath, ISourceFile source, bool verifyContents)

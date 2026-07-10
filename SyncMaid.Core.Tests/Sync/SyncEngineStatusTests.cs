@@ -47,6 +47,42 @@ public class SyncEngineStatusTests
         }
     }
 
+    private sealed class CountingFileSystem(InMemoryFileSystem inner) : IFileSystem
+    {
+        private readonly Dictionary<string, int> _enumerations = new(StringComparer.OrdinalIgnoreCase);
+
+        public int FileExistsCalls { get; private set; }
+
+        public int EnumerationCount(string root) => _enumerations.GetValueOrDefault(root);
+
+        public IEnumerable<string> EnumerateFiles(string root)
+        {
+            _enumerations[root] = EnumerationCount(root) + 1;
+            foreach (var relativePath in inner.EnumerateFiles(root))
+            {
+                yield return relativePath;
+            }
+        }
+
+        public bool FileExists(string path)
+        {
+            FileExistsCalls++;
+            return inner.FileExists(path);
+        }
+
+        public FileStamp GetStamp(string path) => inner.GetStamp(path);
+        public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
+        public void WriteAllBytes(string path, byte[] contents) => inner.WriteAllBytes(path, contents);
+        public void DeleteFile(string path) => inner.DeleteFile(path);
+        public void Recycle(string path) => inner.Recycle(path);
+        public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
+        public Stream OpenRead(string path) => inner.OpenRead(path);
+        public Stream CreateWriteThrough(string path) => inner.CreateWriteThrough(path);
+        public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);
+        public void Replace(string source, string destination) => inner.Replace(source, destination);
+        public long GetAvailableFreeSpace(string path) => inner.GetAvailableFreeSpace(path);
+    }
+
     [Fact]
     public async Task Returns_success_status_with_files_copied()
     {
@@ -85,5 +121,46 @@ public class SyncEngineStatusTests
         Assert.NotNull(badStatus.Error);
         Assert.Contains("a.txt", badStatus.Error!);   // the error names the file that failed (#9)
         Assert.Contains("copy", badStatus.Error!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_run_walks_the_source_once_and_each_mirror_destination_once()
+    {
+        var inner = new InMemoryFileSystem();
+        var stamp = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        inner.AddFile(@"C:\src\a.txt", "a", stamp);
+        inner.AddFile(@"C:\src\b.txt", "b", stamp);
+        foreach (var root in new[] { @"D:\one", @"D:\two" })
+        {
+            inner.AddFile($@"{root}\a.txt", "a", stamp);
+            inner.AddFile($@"{root}\b.txt", "b", stamp);
+            inner.AddFile($@"{root}\orphan.txt", "old", stamp);
+        }
+
+        var fileSystem = new CountingFileSystem(inner);
+        var destinations = new[]
+        {
+            new Destination("one", @"D:\one", [new AllFilesFilter()], SyncStrategy.Mirror)
+            {
+                MassDeleteThreshold = 0.9,
+                DeleteMode = DeleteMode.Permanent,
+            },
+            new Destination("two", @"D:\two", [new AllFilesFilter()], SyncStrategy.Mirror)
+            {
+                MassDeleteThreshold = 0.9,
+                DeleteMode = DeleteMode.Permanent,
+            },
+        };
+        var task = new SyncTask("T", @"C:\src", new ManualTrigger(), destinations);
+
+        var statuses = await new SyncEngine(fileSystem, RetryOptions.None).ExecuteAsync(task);
+
+        Assert.All(statuses, status => Assert.Equal(SyncOutcome.Success, status.Outcome));
+        Assert.Equal(1, fileSystem.EnumerationCount(@"C:\src"));
+        Assert.Equal(1, fileSystem.EnumerationCount(@"D:\one"));
+        Assert.Equal(1, fileSystem.EnumerationCount(@"D:\two"));
+        Assert.Equal(0, fileSystem.FileExistsCalls);
+        Assert.False(inner.FileExists(@"D:\one\orphan.txt"));
+        Assert.False(inner.FileExists(@"D:\two\orphan.txt"));
     }
 }

@@ -28,39 +28,61 @@ public static class SyncPlanner
     /// <param name="filteredRelativePaths">
     /// Source files (relative paths, forward slashes) that passed the destination's filters.
     /// </param>
-    public static IReadOnlyList<SyncOperation> Plan(
+    public static SyncPlan Plan(
         IFileSystem sourceFileSystem,
         string sourceRoot,
         IDestinationProvider destinationProvider,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths)
     {
-        return destination.Strategy switch
+        if (destination.Strategy == SyncStrategy.Move)
         {
-            SyncStrategy.Mirror => PlanMirror(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths),
-            SyncStrategy.AddOnly => PlanCopies(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths),
-            SyncStrategy.Move => PlanMove(sourceRoot, destination, filteredRelativePaths),
-            _ => throw new ArgumentOutOfRangeException(
+            return new SyncPlan(
+                PlanMove(sourceRoot, destination, filteredRelativePaths),
+                DestinationFileCount: 0);
+        }
+
+        if (destination.Strategy is not (SyncStrategy.Mirror or SyncStrategy.AddOnly))
+        {
+            throw new ArgumentOutOfRangeException(
                 nameof(destination),
                 destination.Strategy,
-                "Unknown sync strategy."),
-        };
+                "Unknown sync strategy.");
+        }
+
+        if (destination.Strategy == SyncStrategy.AddOnly)
+        {
+            return new SyncPlan(
+                PlanCopies(
+                    sourceFileSystem,
+                    sourceRoot,
+                    destination,
+                    filteredRelativePaths,
+                    relativePath => GetStampOrMissing(destinationProvider, relativePath)),
+                DestinationFileCount: 0);
+        }
+
+        var snapshot = DestinationSnapshot.Create(destinationProvider);
+        var operations = PlanMirror(
+            sourceFileSystem, sourceRoot, destination, filteredRelativePaths, snapshot);
+
+        return new SyncPlan(operations, snapshot.FileCount);
     }
 
     // AddOnly: copy new and changed files; never delete from the destination.
     private static List<SyncOperation> PlanCopies(
         IFileSystem sourceFileSystem,
         string sourceRoot,
-        IDestinationProvider destinationProvider,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths)
+        IReadOnlyCollection<string> filteredRelativePaths,
+        Func<string, FileStamp?> destinationStamp)
     {
         var operations = new List<SyncOperation>();
         foreach (var relativePath in filteredRelativePaths)
         {
             var sourceFull = RelativePaths.Join(sourceRoot, relativePath);
 
-            if (NeedsCopy(sourceFileSystem, sourceFull, destinationProvider, relativePath))
+            if (NeedsCopy(sourceFileSystem, sourceFull, destinationStamp(relativePath)))
             {
                 operations.Add(new CopyOperation(relativePath, sourceFull)
                 {
@@ -76,14 +98,21 @@ public static class SyncPlanner
     private static List<SyncOperation> PlanMirror(
         IFileSystem sourceFileSystem,
         string sourceRoot,
-        IDestinationProvider destinationProvider,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths)
+        IReadOnlyCollection<string> filteredRelativePaths,
+        DestinationSnapshot destinationSnapshot)
     {
-        var operations = PlanCopies(sourceFileSystem, sourceRoot, destinationProvider, destination, filteredRelativePaths);
+        var operations = PlanCopies(
+            sourceFileSystem,
+            sourceRoot,
+            destination,
+            filteredRelativePaths,
+            relativePath => destinationSnapshot.Stamps.TryGetValue(relativePath, out var stamp)
+                ? stamp
+                : null);
 
         var keep = new HashSet<string>(filteredRelativePaths, StringComparer.OrdinalIgnoreCase);
-        foreach (var destRelative in destinationProvider.Enumerate())
+        foreach (var destRelative in destinationSnapshot.RelativePaths)
         {
             if (!keep.Contains(destRelative))
             {
@@ -120,15 +149,62 @@ public static class SyncPlanner
     private static bool NeedsCopy(
         IFileSystem sourceFileSystem,
         string sourceFull,
-        IDestinationProvider destinationProvider,
-        string relativePath)
+        FileStamp? destinationStamp)
     {
-        if (!destinationProvider.Exists(relativePath))
+        if (destinationStamp is null)
         {
             return true;
         }
 
-        return sourceFileSystem.GetStamp(sourceFull) != destinationProvider.GetStamp(relativePath);
+        return sourceFileSystem.GetStamp(sourceFull) != destinationStamp.Value;
     }
 
+    private static FileStamp? GetStampOrMissing(IDestinationProvider provider, string relativePath)
+    {
+        try
+        {
+            return provider.GetStamp(relativePath);
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>One stable view of the destination for existence, stamp, delete, and guard decisions.</summary>
+    private sealed class DestinationSnapshot
+    {
+        private DestinationSnapshot(
+            IReadOnlyList<string> relativePaths,
+            IReadOnlyDictionary<string, FileStamp> stamps)
+        {
+            RelativePaths = relativePaths;
+            Stamps = stamps;
+        }
+
+        public IReadOnlyList<string> RelativePaths { get; }
+        public IReadOnlyDictionary<string, FileStamp> Stamps { get; }
+        public int FileCount => RelativePaths.Count;
+
+        public static DestinationSnapshot Create(IDestinationProvider provider)
+        {
+            var relativePaths = new List<string>();
+            var stamps = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
+            foreach (var relativePath in provider.Enumerate())
+            {
+                try
+                {
+                    stamps[relativePath] = provider.GetStamp(relativePath);
+                    relativePaths.Add(relativePath);
+                }
+                catch (Exception exception) when (
+                    exception is FileNotFoundException or DirectoryNotFoundException)
+                {
+                    // Destination churn: it no longer exists, so exclude it from this snapshot.
+                }
+            }
+
+            return new DestinationSnapshot(relativePaths, stamps);
+        }
+    }
 }

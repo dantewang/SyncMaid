@@ -29,10 +29,8 @@ public interface IDestinationProvider
     /// <summary>Enumerates existing files under the destination as relative paths (forward slashes).</summary>
     IEnumerable<string> Enumerate();
 
-    /// <summary>True when a file exists at <paramref name="relativePath"/> in the destination.</summary>
-    bool Exists(string relativePath);
-
-    /// <summary>The change-detection stamp of the destination file at <paramref name="relativePath"/>.</summary>
+    /// <summary>The change-detection stamp of the destination file at <paramref name="relativePath"/>.
+    /// Throws <see cref="FileNotFoundException"/> when the file does not exist.</summary>
     FileStamp GetStamp(string relativePath);
 
     /// <summary>

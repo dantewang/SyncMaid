@@ -4,9 +4,9 @@ using SyncMaid.Core.Model;
 namespace SyncMaid.Core.Sync;
 
 /// <summary>
-/// Runs a <see cref="SyncTask"/>: for each destination it enumerates the source,
-/// applies the destination's filters, plans the operations for that destination's
-/// strategy, then applies them. Planning and applying are delegated to
+/// Runs a <see cref="SyncTask"/>: it enumerates the source once, then for each destination
+/// applies its filters, plans the operations for its strategy, and applies them. Planning
+/// and applying are delegated to
 /// <see cref="SyncPlanner"/> and <see cref="SyncApplier"/> so this type only
 /// orchestrates: enumerate → filter → plan → apply, with cancellation and progress.
 /// </summary>
@@ -69,7 +69,10 @@ public sealed class SyncEngine : ISyncEngine
                 var filtered = _fileSystem.EnumerateFiles(task.SourcePath).Where(destination.Includes).ToList();
                 var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
-                var deletions = plan.OfType<DeleteOperation>().Select(operation => operation.RelativePath).ToList();
+                var deletions = plan.Operations
+                    .OfType<DeleteOperation>()
+                    .Select(operation => operation.RelativePath)
+                    .ToList();
                 return new MirrorDeletePreview(deletions.Count, deletions.Take(PreviewSampleSize).ToList());
             },
             cancellationToken);
@@ -83,11 +86,33 @@ public sealed class SyncEngine : ISyncEngine
         IProgress<SyncProgress>? progress,
         IReadOnlySet<Guid>? confirmedMassDeletes)
     {
+        IReadOnlyList<string> sourceFiles = [];
+        Exception? sourceEnumerationError = null;
+        try
+        {
+            sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            sourceEnumerationError = exception;
+        }
+
         var statuses = new List<DestinationSyncStatus>(task.Destinations.Count);
         foreach (var destination in task.Destinations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            statuses.Add(ExecuteDestination(task, destination, cancellationToken, progress, confirmedMassDeletes));
+            statuses.Add(ExecuteDestination(
+                task,
+                destination,
+                sourceFiles,
+                sourceEnumerationError,
+                cancellationToken,
+                progress,
+                confirmedMassDeletes));
         }
 
         return statuses;
@@ -96,6 +121,8 @@ public sealed class SyncEngine : ISyncEngine
     private DestinationSyncStatus ExecuteDestination(
         SyncTask task,
         Destination destination,
+        IReadOnlyList<string> sourceFiles,
+        Exception? sourceEnumerationError,
         CancellationToken cancellationToken,
         IProgress<SyncProgress>? progress,
         IReadOnlySet<Guid>? confirmedMassDeletes)
@@ -112,7 +139,11 @@ public sealed class SyncEngine : ISyncEngine
                     "Move destination must be different from and outside the source folder; no files were changed.");
             }
 
-            var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
+            if (sourceEnumerationError is not null)
+            {
+                throw sourceEnumerationError;
+            }
+
             var filtered = sourceFiles.Where(destination.Includes).ToList();
             if (destination.Strategy == SyncStrategy.Mirror && filtered.Count == 0)
             {
@@ -129,13 +160,12 @@ public sealed class SyncEngine : ISyncEngine
 
             // Guard Mirror deletions before applying anything: an empty/unavailable source is
             // refused; a mass-delete needs the user's confirmation (unless already given).
-            var deleteCount = plan.Count(operation => operation is DeleteOperation);
+            var deleteCount = plan.Operations.Count(operation => operation is DeleteOperation);
             if (deleteCount > 0)
             {
-                var destinationFileCount = provider.Enumerate().Count();
                 var verdict = MirrorGuard.Evaluate(
                     deleteCount,
-                    destinationFileCount,
+                    plan.DestinationFileCount,
                     sourceIsEmpty: false, // handled before planning so no deletes are even proposed
                     destination.MassDeleteThreshold,
                     overrideMassDelete: confirmedMassDeletes?.Contains(destination.Id) ?? false);
@@ -149,12 +179,12 @@ public sealed class SyncEngine : ISyncEngine
             }
 
             var filesCopied = 0;
-            for (var i = 0; i < plan.Count; i++)
+            for (var i = 0; i < plan.Operations.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var operation = plan[i];
-                progress?.Report(new SyncProgress(destination, operation, i, plan.Count));
+                var operation = plan.Operations[i];
+                progress?.Report(new SyncProgress(destination, operation, i, plan.Operations.Count));
 
                 // Retry transient I/O (a locked file, a brief sharing violation) before
                 // failing the whole destination on one momentarily-unavailable file. Annotate
