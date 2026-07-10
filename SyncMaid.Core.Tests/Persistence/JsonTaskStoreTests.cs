@@ -113,6 +113,24 @@ public class JsonTaskStoreTests
     }
 
     [Fact]
+    public void Slash_only_path_filter_remains_match_none_after_round_trip()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(
+        [
+            new SyncTask("T", @"C:\src", new ManualTrigger(),
+                [new Destination("D", @"D:\d", [new PathFilter("/")], SyncStrategy.Mirror)]),
+        ]);
+
+        var loaded = Assert.IsType<PathFilter>(
+            Assert.Single(Assert.Single(Assert.Single(store.Load()).Destinations).Filters));
+
+        Assert.False(loaded.Matches("file.txt"));
+        Assert.False(loaded.Matches("nested/file.txt"));
+    }
+
+    [Fact]
     public void Saved_form_is_stable_across_a_load_save_cycle()
     {
         var fs = new InMemoryFileSystem();

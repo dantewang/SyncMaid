@@ -44,10 +44,11 @@ public class FilterRuleTests
     }
 
     [Theory]
+    [InlineData("")]
     [InlineData("/")]
     [InlineData(@"\")]
     [InlineData(@"///\\")]
-    public void Slash_only_path_filter_matches_nothing(string pattern)
+    public void Empty_or_slash_only_path_filter_matches_nothing(string pattern)
     {
         var rule = new PathFilter(pattern);
 
