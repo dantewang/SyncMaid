@@ -142,4 +142,23 @@ public class ConfigLocationServiceTests
         Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{Portable}/tasks.json")));
         Assert.True(fs.FileExists(sourceFile));
     }
+
+    [Fact]
+    public void Unexpected_cleanup_failure_cannot_report_failure_after_the_marker_commits()
+    {
+        var sourceFile = $@"{AppData}\tasks.json";
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(sourceFile, Encoding.UTF8.GetBytes("[tasks]"));
+        fs.FailDeletePath = sourceFile;
+        fs.DeleteFailure = () => new InvalidOperationException("unexpected cleanup failure");
+
+        var service = New(fs);
+        var switched = service.SwitchTo(ConfigLocationMode.Portable);
+
+        Assert.True(switched);
+        Assert.Equal(ConfigLocationMode.Portable, service.CurrentMode);
+        Assert.True(fs.FileExists(Marker));
+        Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{Portable}/tasks.json")));
+        Assert.True(fs.FileExists(sourceFile));
+    }
 }

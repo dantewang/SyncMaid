@@ -129,7 +129,7 @@ public sealed class ConfigLocationService : IConfigLocationService
                 {
                     _fileSystem.DeleteFile(sourceFile);
                 }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                catch
                 {
                     // Best effort: the active target already contains the verified copy.
                 }

@@ -39,6 +39,10 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
+    /// <summary>Creates the exception used for an injected <see cref="DeleteFile"/> failure.</summary>
+    public Func<Exception> DeleteFailure { get; set; } =
+        () => new IOException("Simulated delete failure.");
+
     /// <summary>When contained in a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePathFragment { get; set; }
 
@@ -149,7 +153,7 @@ public sealed class InMemoryFileSystem : IFileSystem
             || (FailDeletePathFragment is not null
                 && path.Contains(FailDeletePathFragment, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new IOException("Simulated delete failure.");
+            throw DeleteFailure();
         }
 
         _files.Remove(Normalize(path));
