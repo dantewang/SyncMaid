@@ -35,7 +35,7 @@ public static class MirrorGuard
     /// </summary>
     /// <param name="deleteCount">How many files the plan would delete.</param>
     /// <param name="destinationFileCount">How many files the destination currently holds.</param>
-    /// <param name="sourceIsEmpty">True when the source enumerated to zero files (missing or empty).</param>
+    /// <param name="sourceIsEmpty">True when the effective filtered source contains zero files.</param>
     /// <param name="massDeleteThreshold">
     /// Fraction (0–1) of the destination that, if exceeded, needs confirmation. 0 disables the ratio guard.
     /// </param>

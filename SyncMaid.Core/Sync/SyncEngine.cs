@@ -112,10 +112,18 @@ public sealed class SyncEngine : ISyncEngine
                     "Move destination must be different from and outside the source folder; no files were changed.");
             }
 
-            var provider = _destinations.Create(destination.Target);
-
             var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
             var filtered = sourceFiles.Where(destination.Includes).ToList();
+            if (destination.Strategy == SyncStrategy.Mirror && filtered.Count == 0)
+            {
+                var error = sourceFiles.Count == 0
+                    ? "Source is empty or unavailable; skipped deletions to avoid wiping the destination."
+                    : "Filters matched no files; skipped deletions to avoid wiping the destination.";
+                return new DestinationSyncStatus(
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0, error);
+            }
+
+            var provider = _destinations.Create(destination.Target);
 
             var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
@@ -128,16 +136,9 @@ public sealed class SyncEngine : ISyncEngine
                 var verdict = MirrorGuard.Evaluate(
                     deleteCount,
                     destinationFileCount,
-                    sourceIsEmpty: sourceFiles.Count == 0,
+                    sourceIsEmpty: false, // handled before planning so no deletes are even proposed
                     destination.MassDeleteThreshold,
                     overrideMassDelete: confirmedMassDeletes?.Contains(destination.Id) ?? false);
-
-                if (verdict == MirrorGuardVerdict.EmptySource)
-                {
-                    return new DestinationSyncStatus(
-                        destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
-                        "Source is empty or unavailable; skipped deletions to avoid wiping the destination.");
-                }
 
                 if (verdict == MirrorGuardVerdict.NeedsConfirmation)
                 {

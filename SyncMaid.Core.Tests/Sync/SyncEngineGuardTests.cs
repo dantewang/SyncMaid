@@ -49,6 +49,34 @@ public class SyncEngineGuardTests
         Assert.True(fs.FileExists(@"D:\dst\important2.txt"));
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 0)]
+    [InlineData(20, 0.5)]
+    public async Task Mirror_with_no_filtered_source_files_fails_without_deletions(
+        int destinationFileCount,
+        double massDeleteThreshold)
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\photo.jpg", "source exists");
+        for (var i = 0; i < destinationFileCount; i++)
+        {
+            fs.AddFile($@"D:\dst\important{i}.txt", "keep");
+        }
+
+        var destination = new Destination(
+            "filtered mirror", @"D:\dst", [new ExtensionFilter("pdf")], SyncStrategy.Mirror)
+        {
+            MassDeleteThreshold = massDeleteThreshold,
+        };
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("filters matched no files", status.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(destinationFileCount, fs.EnumerateFiles(@"D:\dst").Count());
+    }
+
     private static InMemoryFileSystem MassDeleteScenario(out Destination dest)
     {
         var fs = new InMemoryFileSystem();
