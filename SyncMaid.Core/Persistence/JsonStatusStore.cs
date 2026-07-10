@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 
@@ -25,8 +23,8 @@ public sealed class JsonStatusStore : IStatusStore
     /// <inheritdoc />
     public IReadOnlyDictionary<Guid, DestinationSyncStatus> Load()
     {
-        // Fall back to the .bak snapshot if the main file is missing or corrupt.
-        var list = TryLoad(_path) ?? TryLoad(_path + AtomicFile.BackupSuffix);
+        var list = JsonConfigFile.TryLoadWithBackup(
+            _fileSystem, _path, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
         if (list is null)
         {
             return new Dictionary<Guid, DestinationSyncStatus>();
@@ -41,34 +39,11 @@ public sealed class JsonStatusStore : IStatusStore
         return byId;
     }
 
-    private List<DestinationSyncStatus>? TryLoad(string path)
-    {
-        if (!_fileSystem.FileExists(path))
-        {
-            return null;
-        }
-
-        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(path));
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
-        }
-        catch (JsonException)
-        {
-            return null; // corrupt file — let the caller try the backup
-        }
-    }
-
     /// <inheritdoc />
     public void Save(IReadOnlyDictionary<Guid, DestinationSyncStatus> statuses)
     {
         var list = new List<DestinationSyncStatus>(statuses.Values);
-        var json = JsonSerializer.Serialize(list, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
-        AtomicFile.Write(_fileSystem, _path, Encoding.UTF8.GetBytes(json));
+        JsonConfigFile.Save(
+            _fileSystem, _path, list, TaskStoreJsonContext.Default.ListDestinationSyncStatus);
     }
 }

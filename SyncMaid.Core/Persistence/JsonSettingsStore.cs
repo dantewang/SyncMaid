@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 
@@ -25,36 +23,12 @@ public sealed class JsonSettingsStore : ISettingsStore
 
     /// <inheritdoc />
     public AppSettings Load() =>
-        // Fall back to the .bak snapshot if the main file is missing or corrupt, then to defaults.
-        TryLoad(_path) ?? TryLoad(_path + AtomicFile.BackupSuffix) ?? new AppSettings();
-
-    private AppSettings? TryLoad(string path)
-    {
-        if (!_fileSystem.FileExists(path))
-        {
-            return null;
-        }
-
-        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(path));
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.AppSettings);
-        }
-        catch (JsonException)
-        {
-            return null; // corrupt file — let the caller try the backup
-        }
-    }
+        JsonConfigFile.TryLoadWithBackup(
+            _fileSystem, _path, TaskStoreJsonContext.Default.AppSettings) ?? new AppSettings();
 
     /// <inheritdoc />
     public void Save(AppSettings settings)
     {
-        var json = JsonSerializer.Serialize(settings, TaskStoreJsonContext.Default.AppSettings);
-        AtomicFile.Write(_fileSystem, _path, Encoding.UTF8.GetBytes(json));
+        JsonConfigFile.Save(_fileSystem, _path, settings, TaskStoreJsonContext.Default.AppSettings);
     }
 }

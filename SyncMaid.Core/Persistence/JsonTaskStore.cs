@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 
@@ -25,38 +23,14 @@ public sealed class JsonTaskStore : ITaskStore
 
     /// <inheritdoc />
     public IReadOnlyList<SyncTask> Load() =>
-        // Fall back to the .bak snapshot if the main file is missing or corrupt.
-        TryLoad(_path) ?? TryLoad(_path + AtomicFile.BackupSuffix) ?? [];
-
-    private IReadOnlyList<SyncTask>? TryLoad(string path)
-    {
-        if (!_fileSystem.FileExists(path))
-        {
-            return null;
-        }
-
-        var json = Encoding.UTF8.GetString(_fileSystem.ReadAllBytes(path));
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize(json, TaskStoreJsonContext.Default.ListSyncTask);
-        }
-        catch (JsonException)
-        {
-            return null; // corrupt file — let the caller try the backup
-        }
-    }
+        JsonConfigFile.TryLoadWithBackup(
+            _fileSystem, _path, TaskStoreJsonContext.Default.ListSyncTask) ?? [];
 
     /// <inheritdoc />
     public void Save(IReadOnlyList<SyncTask> tasks)
     {
         // The source-generated contract is typed to List<SyncTask>; materialize once.
         var list = tasks as List<SyncTask> ?? [.. tasks];
-        var json = JsonSerializer.Serialize(list, TaskStoreJsonContext.Default.ListSyncTask);
-        AtomicFile.Write(_fileSystem, _path, Encoding.UTF8.GetBytes(json));
+        JsonConfigFile.Save(_fileSystem, _path, list, TaskStoreJsonContext.Default.ListSyncTask);
     }
 }
