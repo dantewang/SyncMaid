@@ -301,6 +301,44 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
+    public async Task Approvals_for_different_destinations_during_one_run_are_all_preserved()
+    {
+        var first = Dest("A");
+        var second = Dest("B");
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine
+        {
+            ExecutionGate = gate.Task,
+            NeedsConfirmation = true,
+            PreviewResult = new MirrorDeletePreview(19, ["orphan.txt"]),
+        };
+        var confirmer = new FakeMirrorDeleteConfirmer { Approve = true };
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [first, second]),
+            engine: engine,
+            confirmer: confirmer,
+            triggers: triggers,
+            statuses: new Dictionary<Guid, DestinationSyncStatus>
+            {
+                [first.Id] = new(first.Id, SyncOutcome.NeedsConfirmation, DateTimeOffset.UtcNow, 0, null),
+                [second.Id] = new(second.Id, SyncOutcome.NeedsConfirmation, DateTimeOffset.UtcNow, 0, null),
+            });
+
+        node.ExecuteCommand.Execute(null);
+        await node.Children[0].ConfirmCommand.ExecuteAsync(null);
+        await node.Children[1].ConfirmCommand.ExecuteAsync(null); // must not erase A's approval
+        gate.SetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Equal(2, engine.Executed.Count); // the queued approvals coalesce to one follow-up
+        Assert.Contains(first.Id, engine.LastConfirmed!);
+        Assert.Contains(second.Id, engine.LastConfirmed!);
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
+        Assert.Equal(SyncOutcome.Success, node.Children[1].Outcome);
+    }
+
+    [Fact]
     public void Disposing_the_node_stops_and_disposes_its_trigger_source()
     {
         var triggers = new FakeTriggerSourceFactory();

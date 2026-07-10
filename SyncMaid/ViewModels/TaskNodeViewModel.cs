@@ -381,11 +381,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
             if (_runActive)
             {
-                var alreadyPending = _hasPendingRun;
                 _hasPendingRun = true;
-                if (confirmedMassDeletes is not null || !alreadyPending)
+                if (confirmedMassDeletes is not null)
                 {
-                    _pendingConfirmedMassDeletes = confirmedMassDeletes;
+                    // Union rather than replace: approvals for different destinations can
+                    // queue during the same active run, and each one must survive.
+                    _pendingConfirmedMassDeletes = _pendingConfirmedMassDeletes is null
+                        ? confirmedMassDeletes
+                        : _pendingConfirmedMassDeletes.Union(confirmedMassDeletes).ToHashSet();
                 }
 
                 return System.Threading.Tasks.Task.CompletedTask;
