@@ -123,6 +123,7 @@ public sealed class WatchTriggerSource : ITriggerSource
                                | NotifyFilters.DirectoryName
                                | NotifyFilters.LastWrite
                                | NotifyFilters.Size;
+        watcher.InternalBufferSize = 64 * 1024;
         watcher.Created += OnChanged;
         watcher.Changed += OnChanged;
         watcher.Deleted += OnChanged;

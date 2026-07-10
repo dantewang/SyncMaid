@@ -24,10 +24,12 @@ public class WatchTriggerSourceTests
             source.Start();
 
             Assert.True(Assert.Single(created).EnableRaisingEvents);
+            Assert.Equal(64 * 1024, created[0].InternalBufferSize);
             created[0].RaiseError(new InternalBufferOverflowException("overflow"));
 
             Assert.Equal(2, created.Count);
             Assert.True(created[1].EnableRaisingEvents);
+            Assert.Equal(64 * 1024, created[1].InternalBufferSize);
             Assert.Null(reported);
         }
         finally
