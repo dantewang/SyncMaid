@@ -295,9 +295,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             // watch path or cron would otherwise never run with no explanation. Surface it
             // both to the log and to the card (an amber badge) so the user knows the task
             // won't run automatically.
-            _logger.LogError(exception, "Failed to start the trigger for task '{Task}'.", Task.Name);
-            TriggerError =
-                $"This task's trigger failed to start, so it only runs when you run it manually. ({exception.Message})";
+            ReportTriggerFailure(exception, mayRecover: false);
         }
     }
 
@@ -305,10 +303,17 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private void OnTriggerError(Exception exception)
     {
+        ReportTriggerFailure(exception, mayRecover: true);
+    }
+
+    private void ReportTriggerFailure(Exception exception, bool mayRecover)
+    {
         _logger.LogError(exception, "Trigger failed for task '{Task}'.", Task.Name);
-        _dispatcher.Post(() => TriggerError =
-            $"Automatic trigger error; automatic runs may be temporarily unavailable. " +
-            $"You can still run the task manually. ({exception.Message})");
+        _dispatcher.Post(() => TriggerError = mayRecover
+            ? $"Automatic trigger error; automatic runs may be temporarily unavailable. " +
+              $"You can still run the task manually. ({exception.Message})"
+            : $"This task's trigger failed to start, so it only runs when you run it manually. " +
+              $"({exception.Message})");
     }
 
     private void OnTriggerRecovered() => _dispatcher.Post(() => TriggerError = null);
@@ -424,9 +429,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to resume the trigger for task '{Task}'.", Task.Name);
-            _dispatcher.Post(() => TriggerError =
-                $"This task's trigger failed to start, so it only runs when you run it manually. ({exception.Message})");
+            ReportTriggerFailure(exception, "failed to start");
         }
     }
 
