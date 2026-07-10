@@ -58,7 +58,7 @@ public static class SyncPlanner
         var operations = new List<SyncOperation>();
         foreach (var relativePath in filteredRelativePaths)
         {
-            var sourceFull = Combine(sourceRoot, relativePath);
+            var sourceFull = RelativePaths.Join(sourceRoot, relativePath);
 
             if (NeedsCopy(sourceFileSystem, sourceFull, destinationProvider, relativePath))
             {
@@ -103,7 +103,7 @@ public static class SyncPlanner
         var operations = new List<SyncOperation>();
         foreach (var relativePath in filteredRelativePaths)
         {
-            operations.Add(new MoveOperation(relativePath, Combine(sourceRoot, relativePath))
+            operations.Add(new MoveOperation(relativePath, RelativePaths.Join(sourceRoot, relativePath))
             {
                 Verify = destination.VerifyContents,
             });
@@ -131,11 +131,4 @@ public static class SyncPlanner
         return sourceFileSystem.GetStamp(sourceFull) != destinationProvider.GetStamp(relativePath);
     }
 
-    // Joins a root with a forward-slash relative path. Used to build source full paths in
-    // the plan; the resulting separators are normalized by the IFileSystem implementation.
-    private static string Combine(string root, string relativePath)
-    {
-        var trimmedRoot = root.TrimEnd('/', '\\');
-        return $"{trimmedRoot}/{relativePath}";
-    }
 }

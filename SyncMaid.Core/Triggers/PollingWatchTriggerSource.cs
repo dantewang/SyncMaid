@@ -92,7 +92,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         {
             try
             {
-                snapshot[relative] = _fileSystem.GetStamp(Combine(_path, relative));
+                snapshot[relative] = _fileSystem.GetStamp(RelativePaths.Join(_path, relative));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -120,12 +120,6 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         }
 
         return false;
-    }
-
-    private static string Combine(string root, string relativePath)
-    {
-        var trimmedRoot = root.TrimEnd('/', '\\');
-        return $"{trimmedRoot}/{relativePath}";
     }
 
     /// <inheritdoc />

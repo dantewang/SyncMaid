@@ -51,11 +51,5 @@ public sealed class LocalDestinationProvider : IDestinationProvider
         }
     }
 
-    // Joins the root with a forward-slash relative path; separators are normalized by the
-    // filesystem. Mirrors SyncPlanner's path building.
-    private string Full(string relativePath)
-    {
-        var trimmedRoot = _root.TrimEnd('/', '\\');
-        return $"{trimmedRoot}/{relativePath}";
-    }
+    private string Full(string relativePath) => RelativePaths.Join(_root, relativePath);
 }
