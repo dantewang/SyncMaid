@@ -162,6 +162,7 @@ public sealed class WatchTriggerSource : ITriggerSource
     private void OnWatcherError(object sender, ErrorEventArgs e)
     {
         FileSystemWatcher? failedWatcher;
+        IDebounceTimer? debounce;
         long generation;
         lock (_gate)
         {
@@ -173,8 +174,12 @@ public sealed class WatchTriggerSource : ITriggerSource
             failedWatcher = _watcher;
             _watcher = null;
             generation = ++_generation;
+            _debounceArm++;
+            debounce = _debounce;
+            _debounce = null;
         }
 
+        DisposeDebounce(debounce);
         try
         {
             failedWatcher.Dispose();

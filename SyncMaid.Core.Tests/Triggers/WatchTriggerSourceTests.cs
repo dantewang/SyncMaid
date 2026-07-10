@@ -269,6 +269,38 @@ public class WatchTriggerSourceTests
     }
 
     [Fact]
+    public void Armed_debounce_cannot_fire_or_report_recovery_after_restart_failure()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory);
+        FakeDebounceTimer? timer = null;
+        var attempts = 0;
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => ++attempts == 1 ? watcher : throw new IOException("restart failed"),
+                callback => timer = new FakeDebounceTimer(callback));
+            var fires = 0;
+            var recoveries = 0;
+            source.Fired += (_, _) => fires++;
+            source.Recovered += () => recoveries++;
+            source.Start();
+            watcher.RaiseChanged();
+
+            watcher.RaiseError(new IOException("watcher stopped"));
+            timer!.Fire();
+
+            Assert.Equal(0, fires);
+            Assert.Equal(0, recoveries);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Failed_watcher_disposal_is_contained_at_the_error_callback_boundary()
     {
         var directory = NewDirectory();
