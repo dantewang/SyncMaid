@@ -31,6 +31,9 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When set, the run throws this unexpected failure after it is recorded.</summary>
     public Exception? ExceptionToThrow { get; set; }
 
+    /// <summary>When set, executions wait here until the test releases the gate.</summary>
+    public Task? ExecutionGate { get; set; }
+
     /// <summary>The confirmed-mass-delete set passed to the most recent run.</summary>
     public IReadOnlySet<Guid>? LastConfirmed { get; private set; }
 
@@ -49,6 +52,11 @@ public sealed class FakeSyncEngine : ISyncEngine
         if (ExceptionToThrow is not null)
         {
             throw ExceptionToThrow;
+        }
+
+        if (ExecutionGate is not null)
+        {
+            await ExecutionGate.WaitAsync(cancellationToken);
         }
 
         if (progress is not null && ProgressToReport is not null)

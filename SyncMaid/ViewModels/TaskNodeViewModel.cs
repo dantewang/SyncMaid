@@ -27,10 +27,13 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
     private readonly ILogger _logger;
     private readonly IMirrorDeleteConfirmer _confirmer;
+    private readonly Lock _runGate = new();
 
     private ITriggerSource? _triggerSource;
-    private int _running;   // 0 = idle, 1 = a sync is in progress (manual or triggered)
     private CancellationTokenSource? _cts;
+    private bool _runActive;
+    private bool _hasPendingRun;
+    private IReadOnlySet<Guid>? _pendingConfirmedMassDeletes;
 
     [ObservableProperty]
     private bool _isExpanded = true;
@@ -318,18 +321,75 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private void OnTriggerRecovered() => _dispatcher.Post(() => TriggerError = null);
 
-    // Single entry point for both manual and triggered runs; skips if one is already in
-    // flight so overlapping triggers don't run concurrent syncs of the same task. VM
-    // mutations are marshaled to the UI thread since triggers fire on background threads.
+    // Single entry point for both manual and triggered runs. Requests received during an
+    // active run coalesce into one follow-up; a confirmed request takes priority so a user's
+    // approved deletion set can never be overwritten by a plain trigger.
     // <paramref name="confirmedMassDeletes"/> carries destinations whose mass-delete the user
     // just approved, so this run applies their deletions.
-    private async Task RunAsync(IReadOnlySet<Guid>? confirmedMassDeletes = null)
+    private Task RunAsync(IReadOnlySet<Guid>? confirmedMassDeletes = null)
     {
-        if (Interlocked.Exchange(ref _running, 1) == 1)
+        lock (_runGate)
         {
-            return;
+            if (_runActive)
+            {
+                var alreadyPending = _hasPendingRun;
+                _hasPendingRun = true;
+                if (confirmedMassDeletes is not null || !alreadyPending)
+                {
+                    _pendingConfirmedMassDeletes = confirmedMassDeletes;
+                }
+
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            _runActive = true;
         }
 
+        return DrainRunsAsync(confirmedMassDeletes);
+    }
+
+    private async Task DrainRunsAsync(IReadOnlySet<Guid>? confirmedMassDeletes)
+    {
+        var releasedNormally = false;
+        try
+        {
+            var currentRequest = confirmedMassDeletes;
+            while (true)
+            {
+                await RunOnceAsync(currentRequest);
+
+                lock (_runGate)
+                {
+                    if (_hasPendingRun)
+                    {
+                        currentRequest = _pendingConfirmedMassDeletes;
+                        _hasPendingRun = false;
+                        _pendingConfirmedMassDeletes = null;
+                        continue;
+                    }
+
+                    _runActive = false;
+                    releasedNormally = true;
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            if (!releasedNormally)
+            {
+                lock (_runGate)
+                {
+                    _runActive = false;
+                    _hasPendingRun = false;
+                    _pendingConfirmedMassDeletes = null;
+                }
+            }
+        }
+    }
+
+    private async Task RunOnceAsync(IReadOnlySet<Guid>? confirmedMassDeletes)
+    {
         CancellationTokenSource? cts = null;
         IReadOnlyList<DestinationNodeViewModel> runChildren = [];
         IReadOnlyDictionary<Guid, DestinationSyncStatus> priorStatuses =
@@ -343,13 +403,6 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             // stable list after this point so trigger-thread runs never race add/edit/remove.
             runChildren = await _dispatcher.InvokeAsync(() => Children.ToList());
             priorStatuses = runChildren.ToDictionary(child => child.Id, child => child.Status);
-
-            // Suppress the task's own trigger while it runs: a Move task deletes from the watched
-            // source, so its own changes would otherwise re-fire the watcher (debounced past run
-            // end) and queue a pointless follow-up run. Fires *during* a run were already dropped
-            // by the interlock above; stopping the source also swallows the debounce tail, and the
-            // polling source re-baselines on resume, absorbing the run's own changes.
-            _triggerSource?.Stop();
 
             _dispatcher.Post(() =>
             {
@@ -413,23 +466,6 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         {
             _cts = null;
             _dispatcher.Post(() => IsRunning = false);
-            Interlocked.Exchange(ref _running, 0);
-            ResumeTrigger(); // after the run-lock releases, so a fire can start a fresh run
-        }
-    }
-
-    // Resumes the trigger suppressed at the start of the run. Resuming can fail (e.g. the
-    // watched folder disappeared during the run) — degrade to manual-only and surface it the
-    // same way as a failed initial start. Marshaled: this runs on a background thread.
-    private void ResumeTrigger()
-    {
-        try
-        {
-            _triggerSource?.Start();
-        }
-        catch (Exception exception)
-        {
-            ReportTriggerFailure(exception, "failed to start");
         }
     }
 

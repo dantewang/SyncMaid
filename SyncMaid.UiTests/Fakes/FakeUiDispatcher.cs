@@ -11,12 +11,18 @@ namespace SyncMaid.UiTests.Fakes;
 public sealed class FakeUiDispatcher : IUiDispatcher
 {
     public int InvokeCount { get; private set; }
+    public Exception? InvokeException { get; set; }
 
     public void Post(Action action) => action();
 
     public Task<T> InvokeAsync<T>(Func<T> action)
     {
         InvokeCount++;
+        if (InvokeException is not null)
+        {
+            throw InvokeException;
+        }
+
         return Task.FromResult(action());
     }
 }

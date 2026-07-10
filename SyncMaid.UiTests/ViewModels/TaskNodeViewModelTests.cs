@@ -176,10 +176,9 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
-    public async Task The_trigger_is_suppressed_while_a_run_is_active_and_resumed_after()
+    public async Task The_trigger_remains_started_while_a_run_is_active()
     {
-        // A Move task's own source deletions must not re-fire its watcher into a pointless
-        // follow-up run: the trigger source is stopped for the duration and resumed after.
+        // Run coalescing retains external changes, so trigger sources stay live throughout.
         var engine = new FakeSyncEngine { HangUntilCancelled = true };
         var triggers = new FakeTriggerSourceFactory();
         var node = New(new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]), engine: engine, triggers: triggers);
@@ -187,12 +186,68 @@ public class TaskNodeViewModelTests
         Assert.True(source.Started);
 
         node.ExecuteCommand.Execute(null);
-        Assert.False(source.Started);   // suppressed during the run
+        Assert.True(source.Started);
 
         node.CancelCommand.Execute(null);
         await node.ExecuteCommand.ExecutionTask!;
 
-        Assert.True(source.Started);    // resumed once the run finished
+        Assert.True(source.Started);
+    }
+
+    [Fact]
+    public async Task Triggers_during_an_active_run_coalesce_to_exactly_one_follow_up()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine { ExecutionGate = gate.Task };
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            engine: engine,
+            triggers: triggers);
+        var source = triggers.Created.Single();
+
+        node.ExecuteCommand.Execute(null);
+        source.Raise();
+        source.Raise();
+        source.Raise();
+        gate.SetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Equal(2, engine.Executed.Count);
+        Assert.True(source.Started);
+    }
+
+    [Fact]
+    public async Task Mass_delete_approval_during_an_active_run_is_preserved_for_the_follow_up()
+    {
+        var destination = Dest("D");
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine
+        {
+            ExecutionGate = gate.Task,
+            NeedsConfirmation = true,
+            PreviewResult = new MirrorDeletePreview(19, ["orphan.txt"]),
+        };
+        var confirmer = new FakeMirrorDeleteConfirmer { Approve = true };
+        var triggers = new FakeTriggerSourceFactory();
+        var blocked = new DestinationSyncStatus(
+            destination.Id, SyncOutcome.NeedsConfirmation, DateTimeOffset.UtcNow, 0, null);
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [destination]),
+            engine: engine,
+            confirmer: confirmer,
+            triggers: triggers,
+            statuses: new Dictionary<Guid, DestinationSyncStatus> { [destination.Id] = blocked });
+
+        node.ExecuteCommand.Execute(null);
+        await node.Children[0].ConfirmCommand.ExecuteAsync(null);
+        triggers.Created.Single().Raise(); // a later plain trigger must not erase the approval
+        gate.SetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Equal(2, engine.Executed.Count);
+        Assert.Contains(destination.Id, engine.LastConfirmed!);
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
     }
 
     [Fact]
@@ -367,18 +422,16 @@ public class TaskNodeViewModelTests
     public async Task Prologue_failure_releases_the_run_lock_for_a_follow_up_run()
     {
         var engine = new FakeSyncEngine();
-        var triggers = new FakeTriggerSourceFactory();
+        var dispatcher = new FakeUiDispatcher { InvokeException = new IOException("snapshot failed") };
         var node = New(
-            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]),
             engine: engine,
-            triggers: triggers);
-        var trigger = triggers.Created.Single();
-        trigger.StopException = new IOException("stop failed");
+            dispatcher: dispatcher);
 
         await node.ExecuteCommand.ExecuteAsync(null);
-        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+        Assert.Empty(engine.Executed);
 
-        trigger.StopException = null;
+        dispatcher.InvokeException = null;
         await node.ExecuteCommand.ExecuteAsync(null);
 
         Assert.Single(engine.Executed);
