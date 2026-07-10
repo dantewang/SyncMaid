@@ -284,6 +284,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         {
             _triggerSource = _triggerFactory.Create(Task.Trigger, Task.SourcePath);
             _triggerSource.Fired += OnTriggerFired;
+            _triggerSource.Error += OnTriggerError;
+            _triggerSource.Recovered += OnTriggerRecovered;
             _triggerSource.Start();
             TriggerError = null;
         }
@@ -300,6 +302,16 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     }
 
     private async void OnTriggerFired(object? sender, EventArgs e) => await RunAsync();
+
+    private void OnTriggerError(Exception exception)
+    {
+        _logger.LogError(exception, "Trigger failed for task '{Task}'.", Task.Name);
+        _dispatcher.Post(() => TriggerError =
+            $"Automatic trigger error; automatic runs may be temporarily unavailable. " +
+            $"You can still run the task manually. ({exception.Message})");
+    }
+
+    private void OnTriggerRecovered() => _dispatcher.Post(() => TriggerError = null);
 
     // Single entry point for both manual and triggered runs; skips if one is already in
     // flight so overlapping triggers don't run concurrent syncs of the same task. VM
@@ -440,6 +452,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         if (_triggerSource != null)
         {
             _triggerSource.Fired -= OnTriggerFired;
+            _triggerSource.Error -= OnTriggerError;
+            _triggerSource.Recovered -= OnTriggerRecovered;
             _triggerSource.Dispose();
             _triggerSource = null;
         }

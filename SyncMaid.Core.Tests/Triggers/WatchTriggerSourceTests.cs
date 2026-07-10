@@ -5,6 +5,69 @@ namespace SyncMaid.Core.Tests.Triggers;
 public class WatchTriggerSourceTests
 {
     [Fact]
+    public void Watcher_error_recreates_and_reenables_the_watcher()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var created = new List<TestFileSystemWatcher>();
+
+        try
+        {
+            using var source = new WatchTriggerSource(directory, path =>
+            {
+                var watcher = new TestFileSystemWatcher(path);
+                created.Add(watcher);
+                return watcher;
+            });
+            Exception? reported = null;
+            source.Error += exception => reported = exception;
+            source.Start();
+
+            Assert.True(Assert.Single(created).EnableRaisingEvents);
+            created[0].RaiseError(new InternalBufferOverflowException("overflow"));
+
+            Assert.Equal(2, created.Count);
+            Assert.True(created[1].EnableRaisingEvents);
+            Assert.Null(reported);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Failed_watcher_restart_reports_the_error()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var created = new TestFileSystemWatcher(directory);
+        var attempts = 0;
+
+        try
+        {
+            using var source = new WatchTriggerSource(directory, _ =>
+            {
+                attempts++;
+                return attempts == 1 ? created : throw new IOException("restart failed");
+            });
+            Exception? reported = null;
+            source.Error += exception => reported = exception;
+            source.Start();
+
+            created.RaiseError(new IOException("watcher stopped"));
+
+            Assert.Equal(2, attempts);
+            Assert.NotNull(reported);
+            Assert.Contains("restart", reported.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Fires_when_a_file_appears_in_the_watched_directory()
     {
         var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
@@ -86,5 +149,10 @@ public class WatchTriggerSourceTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private sealed class TestFileSystemWatcher(string path) : FileSystemWatcher(path)
+    {
+        public void RaiseError(Exception exception) => OnError(new ErrorEventArgs(exception));
     }
 }

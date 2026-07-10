@@ -11,15 +11,23 @@ public sealed class WatchTriggerSource : ITriggerSource
     private static readonly TimeSpan DebounceWindow = TimeSpan.FromMilliseconds(500);
 
     private readonly string _path;
+    private readonly Func<string, FileSystemWatcher> _watcherFactory;
     private readonly Lock _gate = new();
     private FileSystemWatcher? _watcher;
     private Timer? _debounce;
     private bool _disposed;
 
-    public WatchTriggerSource(string path) => _path = path;
+    public WatchTriggerSource(string path, Func<string, FileSystemWatcher>? watcherFactory = null)
+    {
+        _path = path;
+        _watcherFactory = watcherFactory ?? (watchPath => new FileSystemWatcher(watchPath));
+    }
 
     /// <inheritdoc />
     public event EventHandler? Fired;
+
+    /// <inheritdoc />
+    public event Action<Exception>? Error;
 
     /// <inheritdoc />
     public void Start()
@@ -40,19 +48,7 @@ public sealed class WatchTriggerSource : ITriggerSource
             }
 
             _debounce ??= new Timer(OnDebounceElapsed, state: null, Timeout.Infinite, Timeout.Infinite);
-            _watcher = new FileSystemWatcher(_path)
-            {
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName
-                               | NotifyFilters.DirectoryName
-                               | NotifyFilters.LastWrite
-                               | NotifyFilters.Size,
-            };
-
-            _watcher.Created += OnChanged;
-            _watcher.Changed += OnChanged;
-            _watcher.Deleted += OnChanged;
-            _watcher.Renamed += OnChanged;
+            _watcher = CreateWatcher();
             _watcher.EnableRaisingEvents = true;
         }
     }
@@ -80,6 +76,68 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
     }
 
+    private void OnWatcherError(object sender, ErrorEventArgs e)
+    {
+        Exception? restartFailure = null;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                DisposeWatcher();
+                _watcher = CreateWatcher();
+                _watcher.EnableRaisingEvents = true;
+            }
+            catch (Exception exception)
+            {
+                try
+                {
+                    DisposeWatcher();
+                }
+                catch
+                {
+                    // Preserve the restart failure; the watcher is already unusable.
+                }
+
+                restartFailure = new IOException(
+                    $"The filesystem watcher stopped and its restart failed: {exception.Message}",
+                    new AggregateException(e.GetException(), exception));
+            }
+        }
+
+        if (restartFailure is not null)
+        {
+            Error?.Invoke(restartFailure);
+        }
+    }
+
+    private FileSystemWatcher CreateWatcher()
+    {
+        var watcher = _watcherFactory(_path);
+        watcher.IncludeSubdirectories = true;
+        watcher.NotifyFilter = NotifyFilters.FileName
+                               | NotifyFilters.DirectoryName
+                               | NotifyFilters.LastWrite
+                               | NotifyFilters.Size;
+        watcher.Created += OnChanged;
+        watcher.Changed += OnChanged;
+        watcher.Deleted += OnChanged;
+        watcher.Renamed += OnChanged;
+        watcher.Error += OnWatcherError;
+        return watcher;
+    }
+
+    private void DisposeWatcher()
+    {
+        var watcher = _watcher;
+        _watcher = null;
+        watcher?.Dispose();
+    }
+
     private void OnDebounceElapsed(object? state) => Fired?.Invoke(this, EventArgs.Empty);
 
     /// <inheritdoc />
@@ -88,12 +146,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         lock (_gate)
         {
             _disposed = true;
-            if (_watcher is not null)
-            {
-                _watcher.EnableRaisingEvents = false;
-                _watcher.Dispose();
-                _watcher = null;
-            }
+            DisposeWatcher();
 
             _debounce?.Dispose();
             _debounce = null;

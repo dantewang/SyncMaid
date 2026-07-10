@@ -11,6 +11,20 @@ public interface ITriggerSource : IDisposable
     /// <summary>Raised when the task should run now.</summary>
     event EventHandler? Fired;
 
+    /// <summary>Raised when a background trigger boundary fails and automatic runs may stop.</summary>
+    event Action<Exception>? Error
+    {
+        add { }
+        remove { }
+    }
+
+    /// <summary>Raised after a recoverable background error has cleared.</summary>
+    event Action? Recovered
+    {
+        add { }
+        remove { }
+    }
+
     /// <summary>Begins watching/scheduling. No-op for a manual trigger.</summary>
     void Start();
 

@@ -121,6 +121,28 @@ public class TaskNodeViewModelTests
         Assert.Null(node.TriggerError);
     }
 
+    [Fact]
+    public void A_runtime_trigger_failure_surfaces_on_the_existing_error_badge()
+    {
+        var logger = new RecordingLogger();
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            triggers: triggers,
+            logger: logger);
+
+        triggers.Created.Single().RaiseError(new IOException("watcher restart failed"));
+
+        Assert.True(node.HasTriggerError);
+        Assert.Contains("watcher restart failed", node.TriggerError);
+        Assert.Contains(logger.Entries, entry =>
+            entry.Level == LogLevel.Error && entry.Exception?.Message == "watcher restart failed");
+
+        triggers.Created.Single().RaiseRecovered();
+        Assert.False(node.HasTriggerError);
+        Assert.Null(node.TriggerError);
+    }
+
     private sealed class ThrowingTriggerSourceFactory : ITriggerSourceFactory
     {
         public ITriggerSource Create(Trigger trigger, string sourcePath) =>

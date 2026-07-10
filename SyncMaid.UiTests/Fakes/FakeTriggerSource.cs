@@ -13,6 +13,8 @@ public sealed class FakeTriggerSource : ITriggerSource
     public bool Disposed { get; private set; }
 
     public event EventHandler? Fired;
+    public event Action<Exception>? Error;
+    public event Action? Recovered;
 
     public void Start() => Started = true;
 
@@ -20,6 +22,12 @@ public sealed class FakeTriggerSource : ITriggerSource
 
     /// <summary>Simulates the trigger firing (a watch event, a schedule tick).</summary>
     public void Raise() => Fired?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Simulates a background failure in the trigger source.</summary>
+    public void RaiseError(Exception exception) => Error?.Invoke(exception);
+
+    /// <summary>Simulates a recoverable trigger returning to healthy operation.</summary>
+    public void RaiseRecovered() => Recovered?.Invoke();
 
     public void Dispose() => Disposed = true;
 }
