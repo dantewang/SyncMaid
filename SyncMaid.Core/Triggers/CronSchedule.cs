@@ -9,6 +9,8 @@ namespace SyncMaid.Core.Triggers;
 /// </summary>
 public static class CronSchedule
 {
+    internal static TimeZoneInfo DefaultTimeZone => TimeZoneInfo.Local;
+
     /// <summary>Returns <c>true</c> if <paramref name="cronExpression"/> is a valid 5-field cron expression.</summary>
     public static bool IsValid(string cronExpression)
     {
@@ -29,16 +31,26 @@ public static class CronSchedule
     }
 
     /// <summary>
-    /// Computes the next time the expression fires strictly after <paramref name="afterUtc"/>,
-    /// in UTC. Returns <c>null</c> when the expression has no future occurrence.
+    /// Computes the next time the expression fires strictly after <paramref name="afterUtc"/>.
+    /// Cron fields use the machine's local wall-clock time; the result is UTC. Returns
+    /// <c>null</c> when the expression has no future occurrence.
     /// </summary>
     /// <exception cref="CronFormatException">The expression is not valid.</exception>
-    public static DateTime? NextOccurrenceUtc(string cronExpression, DateTime afterUtc)
+    public static DateTime? NextOccurrenceUtc(string cronExpression, DateTime afterUtc) =>
+        NextOccurrenceUtc(cronExpression, afterUtc, DefaultTimeZone);
+
+    /// <summary>Computes the next UTC occurrence using an explicit wall-clock time zone.</summary>
+    public static DateTime? NextOccurrenceUtc(
+        string cronExpression,
+        DateTime afterUtc,
+        TimeZoneInfo timeZone)
     {
         var from = afterUtc.Kind == DateTimeKind.Utc
             ? afterUtc
             : DateTime.SpecifyKind(afterUtc, DateTimeKind.Utc);
 
-        return CronExpression.Parse(cronExpression).GetNextOccurrence(from);
+        return CronExpression.Parse(cronExpression).GetNextOccurrence(
+            from,
+            timeZone);
     }
 }

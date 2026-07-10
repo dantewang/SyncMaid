@@ -1,8 +1,9 @@
 namespace SyncMaid.Core.Triggers;
 
 /// <summary>
-/// Fires on a cron schedule. Uses a one-shot <see cref="Timer"/> that re-arms itself
-/// for the next occurrence after each fire, so drift does not accumulate. The
+/// Fires on a cron schedule interpreted in the machine's local time zone. Uses a
+/// one-shot <see cref="Timer"/> that re-arms itself for the next occurrence after each
+/// fire, so drift does not accumulate. The
 /// occurrence math lives in <see cref="CronSchedule"/> (pure, unit-tested); this type
 /// only owns the timer.
 /// </summary>
@@ -13,6 +14,7 @@ public sealed class ScheduledTriggerSource : ITriggerSource
     private readonly string _cronExpression;
     private readonly Func<DateTime> _utcNow;
     private readonly Func<Action, IOneShotTimer> _timerFactory;
+    private readonly TimeZoneInfo _timeZone;
     private readonly Lock _gate = new();
     private IOneShotTimer? _timer;
     private DateTime? _nextOccurrenceUtc;
@@ -27,11 +29,13 @@ public sealed class ScheduledTriggerSource : ITriggerSource
     internal ScheduledTriggerSource(
         string cronExpression,
         Func<DateTime> utcNow,
-        Func<Action, IOneShotTimer> timerFactory)
+        Func<Action, IOneShotTimer> timerFactory,
+        TimeZoneInfo? timeZone = null)
     {
         _cronExpression = cronExpression;
         _utcNow = utcNow;
         _timerFactory = timerFactory;
+        _timeZone = timeZone ?? TimeZoneInfo.Local;
     }
 
     /// <inheritdoc />
@@ -131,7 +135,7 @@ public sealed class ScheduledTriggerSource : ITriggerSource
     private void ArmNext()
     {
         var now = _utcNow();
-        _nextOccurrenceUtc = CronSchedule.NextOccurrenceUtc(_cronExpression, now);
+        _nextOccurrenceUtc = CronSchedule.NextOccurrenceUtc(_cronExpression, now, _timeZone);
         if (_nextOccurrenceUtc is { } next)
         {
             ArmUntil(next, now);

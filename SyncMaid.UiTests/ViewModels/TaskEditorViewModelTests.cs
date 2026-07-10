@@ -49,9 +49,11 @@ public class TaskEditorViewModelTests
 
         vm.CronExpression = "nonsense";
         Assert.Contains("valid", vm.CronPreview);   // "Enter a valid cron expression…"
+        Assert.Contains("local time", vm.CronPreview);
 
         vm.CronExpression = "*/5 * * * *";
         Assert.Contains("Next run", vm.CronPreview);
+        Assert.Contains("local time", vm.CronPreview);
     }
 
     [Fact]

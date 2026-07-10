@@ -78,13 +78,13 @@ public partial class TaskEditorViewModel : DialogViewModel<SyncTask>
         {
             if (!CronSchedule.IsValid(CronExpression))
             {
-                return "Enter a valid cron expression (e.g. */5 * * * *)";
+                return "Enter a valid cron expression (e.g. */5 * * * *); times use local time";
             }
 
             var next = CronSchedule.NextOccurrenceUtc(CronExpression, DateTime.UtcNow);
             return next is null
-                ? "Valid, but has no upcoming runs"
-                : $"Next run: {next.Value.ToLocalTime():yyyy-MM-dd HH:mm}";
+                ? "Valid in local time, but has no upcoming runs"
+                : $"Next run (local time): {next.Value.ToLocalTime():yyyy-MM-dd HH:mm}";
         }
     }
 

@@ -140,7 +140,8 @@ public class ScheduledTriggerSourceTests
                 var timer = new FakeTimer(callback);
                 capture(timer);
                 return timer;
-            });
+            },
+            TimeZoneInfo.Utc);
     }
 
     private sealed class FakeTimer(Action callback) : ScheduledTriggerSource.IOneShotTimer
