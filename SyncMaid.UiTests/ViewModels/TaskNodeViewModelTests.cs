@@ -218,6 +218,56 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
+    public async Task Cancelling_drops_queued_follow_ups_but_allows_a_later_new_run()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine { ExecutionGate = gate.Task };
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            engine: engine,
+            triggers: triggers);
+
+        node.ExecuteCommand.Execute(null);
+        triggers.Created.Single().Raise();
+        node.CancelCommand.Execute(null);
+        gate.TrySetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Single(engine.Executed);
+        await node.ExecuteCommand.ExecuteAsync(null);
+        Assert.Equal(2, engine.Executed.Count);
+    }
+
+    [Fact]
+    public async Task CancelAndWait_rejects_triggers_that_arrive_while_cancellation_drains()
+    {
+        var cancellationExit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine
+        {
+            HangUntilCancelled = true,
+            CancellationExitGate = cancellationExit.Task,
+        };
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            engine: engine,
+            triggers: triggers);
+        var source = triggers.Created.Single();
+        node.ExecuteCommand.Execute(null);
+
+        var cancellation = node.CancelAndWaitAsync();
+        Assert.True(engine.LastCancellationToken.IsCancellationRequested);
+        engine.HangUntilCancelled = false;
+        source.Raise();
+        cancellationExit.SetResult();
+        await cancellation;
+
+        Assert.Single(engine.Executed);
+        Assert.False(source.Started);
+    }
+
+    [Fact]
     public async Task Mass_delete_approval_during_an_active_run_is_preserved_for_the_follow_up()
     {
         var destination = Dest("D");

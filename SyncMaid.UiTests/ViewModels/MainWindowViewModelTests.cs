@@ -293,6 +293,72 @@ public class MainWindowViewModelTests
         Assert.Equal(SyncOutcome.Success, vm.Nodes[1].Children[0].Outcome);
     }
 
+    [Fact]
+    public async Task Deleting_a_running_task_cancels_its_in_flight_run()
+    {
+        var destination = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [destination]);
+        var engine = new FakeSyncEngine { HangUntilCancelled = true };
+        var vm = New(
+            dialogs: new FakeDialogService { ConfirmResult = true },
+            store: new RecordingTaskStore([task]),
+            engine: engine);
+        var node = vm.Nodes[0];
+        node.ExecuteCommand.Execute(null);
+
+        try
+        {
+            await node.DeleteCommand.ExecuteAsync(null);
+
+            Assert.True(engine.LastCancellationToken.IsCancellationRequested);
+            Assert.Empty(vm.Nodes);
+        }
+        finally
+        {
+            node.CancelCommand.Execute(null);
+            if (node.ExecuteCommand.ExecutionTask is { } run)
+            {
+                await run;
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Editing_a_running_task_waits_before_the_replacement_can_run()
+    {
+        var destination = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [destination]);
+        var engine = new FakeSyncEngine { HangUntilCancelled = true };
+        var dialogs = new FakeDialogService
+        {
+            OnEditTask = existing => existing! with { Name = "A edited" },
+        };
+        var vm = New(dialogs: dialogs, store: new RecordingTaskStore([task]), engine: engine);
+        var original = vm.Nodes[0];
+        original.ExecuteCommand.Execute(null);
+        var originalToken = engine.LastCancellationToken;
+
+        try
+        {
+            await original.EditCommand.ExecuteAsync(null);
+            engine.HangUntilCancelled = false;
+            var replacement = Assert.Single(vm.Nodes);
+            await replacement.ExecuteCommand.ExecuteAsync(null);
+
+            Assert.Equal(1, engine.MaxConcurrentExecutions);
+            Assert.True(originalToken.IsCancellationRequested);
+            Assert.Equal(SyncOutcome.Success, replacement.Children[0].Outcome);
+        }
+        finally
+        {
+            original.CancelCommand.Execute(null);
+            if (original.ExecuteCommand.ExecutionTask is { } run)
+            {
+                await run;
+            }
+        }
+    }
+
     private sealed class BlockingStatusStore : IStatusStore
     {
         public ManualResetEventSlim SaveEntered { get; } = new();

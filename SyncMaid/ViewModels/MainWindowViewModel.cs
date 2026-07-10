@@ -152,9 +152,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // The editor preserves the id and edits task fields only; carry destinations.
             var merged = edited with { Destinations = node.Task.Destinations };
             var index = Nodes.IndexOf(node);
+            await node.CancelAndWaitAsync();
+            node.Dispose();
             var replacement = CreateNode(merged);
             Nodes[index] = replacement;
-            node.Dispose();
             if (ReferenceEquals(SelectedTask, node))
             {
                 SelectedTask = replacement;
@@ -177,8 +178,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        Nodes.Remove(node);
+        await node.CancelAndWaitAsync();
         node.Dispose();
+        Nodes.Remove(node);
         Persist();
     }
 

@@ -14,6 +14,9 @@ namespace SyncMaid.UiTests.Fakes;
 /// </summary>
 public sealed class FakeSyncEngine : ISyncEngine
 {
+    private int _activeExecutions;
+    private int _maxConcurrentExecutions;
+
     public List<SyncTask> Executed { get; } = [];
 
     /// <summary>When set, returned from the next run instead of the default successes.</summary>
@@ -34,6 +37,12 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When set, executions wait here until the test releases the gate.</summary>
     public Task? ExecutionGate { get; set; }
 
+    /// <summary>When set, cancellation waits here before the fake exits the active run.</summary>
+    public Task? CancellationExitGate { get; set; }
+
+    public CancellationToken LastCancellationToken { get; private set; }
+    public int MaxConcurrentExecutions => Volatile.Read(ref _maxConcurrentExecutions);
+
     /// <summary>The confirmed-mass-delete set passed to the most recent run.</summary>
     public IReadOnlySet<Guid>? LastConfirmed { get; private set; }
 
@@ -48,46 +57,75 @@ public sealed class FakeSyncEngine : ISyncEngine
     {
         Executed.Add(task);
         LastConfirmed = confirmedMassDeletes;
-
-        if (ExceptionToThrow is not null)
+        LastCancellationToken = cancellationToken;
+        var active = Interlocked.Increment(ref _activeExecutions);
+        var observedMaximum = Volatile.Read(ref _maxConcurrentExecutions);
+        while (active > observedMaximum)
         {
-            throw ExceptionToThrow;
-        }
-
-        if (ExecutionGate is not null)
-        {
-            await ExecutionGate.WaitAsync(cancellationToken);
-        }
-
-        if (progress is not null && ProgressToReport is not null)
-        {
-            foreach (var report in ProgressToReport)
+            var original = Interlocked.CompareExchange(
+                ref _maxConcurrentExecutions, active, observedMaximum);
+            if (original == observedMaximum)
             {
-                progress.Report(report);
+                break;
             }
+
+            observedMaximum = original;
         }
 
-        if (HangUntilCancelled)
+        try
         {
-            await Task.Delay(Timeout.Infinite, cancellationToken); // throws OperationCanceledException on cancel
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (Result is not null)
-        {
-            return Result;
-        }
-
-        return task.Destinations
-            .Select(d =>
+            if (ExceptionToThrow is not null)
             {
-                var confirmed = confirmedMassDeletes?.Contains(d.Id) ?? false;
-                var outcome = NeedsConfirmation && !confirmed ? SyncOutcome.NeedsConfirmation : SyncOutcome.Success;
-                return new DestinationSyncStatus(d.Id, outcome, DateTimeOffset.UtcNow,
-                    outcome == SyncOutcome.Success ? 1 : 0, null);
-            })
-            .ToList();
+                throw ExceptionToThrow;
+            }
+
+            try
+            {
+                if (ExecutionGate is not null)
+                {
+                    await ExecutionGate.WaitAsync(cancellationToken);
+                }
+
+                if (progress is not null && ProgressToReport is not null)
+                {
+                    foreach (var report in ProgressToReport)
+                    {
+                        progress.Report(report);
+                    }
+                }
+
+                if (HangUntilCancelled)
+                {
+                    await Task.Delay(Timeout.Infinite, cancellationToken); // throws on cancel
+                }
+            }
+            catch (OperationCanceledException) when (CancellationExitGate is not null)
+            {
+                await CancellationExitGate;
+                throw;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (Result is not null)
+            {
+                return Result;
+            }
+
+            return task.Destinations
+                .Select(d =>
+                {
+                    var confirmed = confirmedMassDeletes?.Contains(d.Id) ?? false;
+                    var outcome = NeedsConfirmation && !confirmed ? SyncOutcome.NeedsConfirmation : SyncOutcome.Success;
+                    return new DestinationSyncStatus(d.Id, outcome, DateTimeOffset.UtcNow,
+                        outcome == SyncOutcome.Success ? 1 : 0, null);
+                })
+                .ToList();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeExecutions);
+        }
     }
 
     public Task<MirrorDeletePreview> PreviewMirrorDeletionsAsync(

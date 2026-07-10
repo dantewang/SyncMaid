@@ -33,7 +33,10 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private CancellationTokenSource? _cts;
     private bool _runActive;
     private bool _hasPendingRun;
+    private bool _acceptRunRequests = true;
+    private bool _cancelUntilIdle;
     private IReadOnlySet<Guid>? _pendingConfirmedMassDeletes;
+    private TaskCompletionSource? _runCompletion;
 
     [ObservableProperty]
     private bool _isExpanded = true;
@@ -196,7 +199,47 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     /// <summary>Requests cancellation of the in-flight run (the Stop button).</summary>
     [RelayCommand]
-    private void Cancel() => _cts?.Cancel();
+    private void Cancel()
+    {
+        CancellationTokenSource? cts;
+        lock (_runGate)
+        {
+            if (!_runActive)
+            {
+                return;
+            }
+
+            _cancelUntilIdle = true;
+            _hasPendingRun = false;
+            _pendingConfirmedMassDeletes = null;
+            cts = _cts;
+        }
+
+        cts?.Cancel();
+    }
+
+    /// <summary>Cancels the current run, drops queued follow-ups, and waits for cleanup.</summary>
+    public async Task CancelAndWaitAsync()
+    {
+        CancellationTokenSource? cts;
+        Task? activeRun;
+        lock (_runGate)
+        {
+            _acceptRunRequests = false;
+            _cancelUntilIdle = true;
+            _hasPendingRun = false;
+            _pendingConfirmedMassDeletes = null;
+            cts = _cts;
+            activeRun = _runCompletion?.Task;
+        }
+
+        DetachTrigger();
+        cts?.Cancel();
+        if (activeRun is not null)
+        {
+            await activeRun;
+        }
+    }
 
     [RelayCommand]
     private Task Edit() => _onEdit(this);
@@ -328,8 +371,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     // just approved, so this run applies their deletions.
     private Task RunAsync(IReadOnlySet<Guid>? confirmedMassDeletes = null)
     {
+        TaskCompletionSource completion;
         lock (_runGate)
         {
+            if (!_acceptRunRequests || _cancelUntilIdle)
+            {
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
             if (_runActive)
             {
                 var alreadyPending = _hasPendingRun;
@@ -343,9 +392,27 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             }
 
             _runActive = true;
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runCompletion = completion;
         }
 
-        return DrainRunsAsync(confirmedMassDeletes);
+        _ = CompleteDrainAsync(confirmedMassDeletes, completion);
+        return completion.Task;
+    }
+
+    private async Task CompleteDrainAsync(
+        IReadOnlySet<Guid>? confirmedMassDeletes,
+        TaskCompletionSource completion)
+    {
+        try
+        {
+            await DrainRunsAsync(confirmedMassDeletes);
+            completion.TrySetResult();
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
     }
 
     private async Task DrainRunsAsync(IReadOnlySet<Guid>? confirmedMassDeletes)
@@ -360,7 +427,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
                 lock (_runGate)
                 {
-                    if (_hasPendingRun)
+                    if (_hasPendingRun && _acceptRunRequests && !_cancelUntilIdle)
                     {
                         currentRequest = _pendingConfirmedMassDeletes;
                         _hasPendingRun = false;
@@ -368,7 +435,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
                         continue;
                     }
 
+                    _hasPendingRun = false;
+                    _pendingConfirmedMassDeletes = null;
                     _runActive = false;
+                    if (_acceptRunRequests)
+                    {
+                        _cancelUntilIdle = false;
+                    }
+
                     releasedNormally = true;
                     return;
                 }
@@ -383,6 +457,10 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
                     _runActive = false;
                     _hasPendingRun = false;
                     _pendingConfirmedMassDeletes = null;
+                    if (_acceptRunRequests)
+                    {
+                        _cancelUntilIdle = false;
+                    }
                 }
             }
         }
@@ -397,7 +475,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         try
         {
             cts = new CancellationTokenSource();
-            _cts = cts;
+            lock (_runGate)
+            {
+                _cts = cts;
+                if (!_acceptRunRequests || _cancelUntilIdle)
+                {
+                    cts.Cancel();
+                }
+            }
 
             // ObservableCollection may only be enumerated on the UI thread. Work from the
             // stable list after this point so trigger-thread runs never race add/edit/remove.
@@ -464,7 +549,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            _cts = null;
+            lock (_runGate)
+            {
+                if (ReferenceEquals(_cts, cts))
+                {
+                    _cts = null;
+                }
+            }
+
             _dispatcher.Post(() => IsRunning = false);
         }
     }
@@ -503,13 +595,37 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        if (_triggerSource != null)
+        CancellationTokenSource? cts;
+        lock (_runGate)
         {
-            _triggerSource.Fired -= OnTriggerFired;
-            _triggerSource.Error -= OnTriggerError;
-            _triggerSource.Recovered -= OnTriggerRecovered;
-            _triggerSource.Dispose();
+            _acceptRunRequests = false;
+            _cancelUntilIdle = true;
+            _hasPendingRun = false;
+            _pendingConfirmedMassDeletes = null;
+            cts = _cts;
+        }
+
+        cts?.Cancel();
+        DetachTrigger();
+    }
+
+    private void DetachTrigger()
+    {
+        ITriggerSource? triggerSource;
+        lock (_runGate)
+        {
+            triggerSource = _triggerSource;
             _triggerSource = null;
         }
+
+        if (triggerSource is null)
+        {
+            return;
+        }
+
+        triggerSource.Fired -= OnTriggerFired;
+        triggerSource.Error -= OnTriggerError;
+        triggerSource.Recovered -= OnTriggerRecovered;
+        triggerSource.Dispose();
     }
 }
