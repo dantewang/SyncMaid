@@ -32,13 +32,7 @@ public sealed partial class FilterRuleViewModel : ViewModelBase
     {
         get
         {
-            var body = Rule switch
-            {
-                AllFilesFilter => "All files",
-                PathFilter path => $"Path: {path.Prefix}",
-                ExtensionFilter extension => $"Extension: {extension.Extension}",
-                _ => FilterDescriber.Describe(Rule), // composite from hand-edited JSON
-            };
+            var body = FilterDescriber.DescribeRow(Rule);
             return IsExcluded ? $"Exclude — {body}" : body;
         }
     }

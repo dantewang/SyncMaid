@@ -13,6 +13,16 @@ public static class FilterDescriber
 {
     public static string Describe(FilterRule rule) => Describe(rule, nested: false);
 
+    /// <summary>Describes one rule using the labelled wording shared by rule rows.</summary>
+    public static string DescribeRow(FilterRule rule) => rule switch
+    {
+        AllFilesFilter => "All files",
+        PathFilter path => $"Path: {path.Prefix}",
+        ExtensionFilter extension => $"Extension: {extension.Extension}",
+        // Composite expression from hand-edited JSON: use its compact plain-text form.
+        _ => Describe(rule),
+    };
+
     /// <summary>Describes a persisted filter list (OR semantics across elements).</summary>
     public static string Describe(IReadOnlyList<FilterRule> filters) => filters switch
     {

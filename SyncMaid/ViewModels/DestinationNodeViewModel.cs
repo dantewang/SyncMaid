@@ -118,17 +118,8 @@ public partial class DestinationNodeViewModel : ViewModelBase
             return "All files";
         }
 
-        return filters.Count == 1 ? Describe(filters[0]) : $"{filters.Count} filters";
+        return filters.Count == 1 ? FilterDescriber.DescribeRow(filters[0]) : $"{filters.Count} filters";
     }
-
-    private static string Describe(FilterRule rule) => rule switch
-    {
-        AllFilesFilter => "All files",
-        PathFilter path => $"Path: {path.Prefix}",
-        ExtensionFilter extension => $"Extension: {extension.Extension}",
-        // Composite expression → the compact plain-text form, e.g. "docs/ and (jpg or png)".
-        _ => FilterDescriber.Describe(rule),
-    };
 
     private static string Relative(DateTimeOffset? when)
     {
