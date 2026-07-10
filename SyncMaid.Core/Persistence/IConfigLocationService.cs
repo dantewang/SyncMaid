@@ -34,9 +34,9 @@ public interface IConfigLocationService
 
     /// <summary>
     /// Migrates the config files to <paramref name="mode"/>'s directory and sets/clears the
-    /// marker. Copies are verified before the source is removed, and the marker is flipped only
-    /// after every file has moved, so a failure leaves the current location intact. Returns true
-    /// on success. Does not restart — the caller relaunches so the new paths take effect.
+    /// marker. Copies are verified and the marker is flipped before best-effort source cleanup,
+    /// so a failure never removes data from the active location. Returns true on success. Does
+    /// not restart — the caller relaunches so the new paths take effect.
     /// </summary>
     bool SwitchTo(ConfigLocationMode mode);
 }

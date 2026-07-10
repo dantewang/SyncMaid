@@ -6,9 +6,8 @@ namespace SyncMaid.Core.Persistence;
 /// <summary>
 /// Default <see cref="IConfigLocationService"/>. The mode is derived from the presence of a
 /// marker file (given by <c>markerPath</c>): present → portable, absent → app-data. Migration
-/// is copy-verify-then-delete per file, with the marker flipped last, so an interruption never
-/// deletes a source before its copy is verified and never leaves the mode pointing at a
-/// half-populated folder.
+/// is copy-verify, marker flip, then best-effort source cleanup, so an interruption never
+/// removes data from the location selected by the marker.
 /// </summary>
 public sealed class ConfigLocationService : IConfigLocationService
 {
@@ -110,13 +109,7 @@ public sealed class ConfigLocationService : IConfigLocationService
                 moved.Add(sourceFile);
             }
 
-            // Phase 2: copies verified — remove the sources.
-            foreach (var sourceFile in moved)
-            {
-                _fileSystem.DeleteFile(sourceFile);
-            }
-
-            // Phase 3: flip the marker last, so the mode only changes once the data has moved.
+            // Phase 2: copies verified — select the populated target before touching sources.
             if (mode == ConfigLocationMode.Portable)
             {
                 _fileSystem.WriteAllBytes(_markerPath, MarkerContents);
@@ -127,6 +120,21 @@ public sealed class ConfigLocationService : IConfigLocationService
             }
 
             _currentMode = mode;
+
+            // Phase 3: clean up old copies. Once the marker points at the target, leftovers
+            // are harmless and must not turn a successful switch into apparent data loss.
+            foreach (var sourceFile in moved)
+            {
+                try
+                {
+                    _fileSystem.DeleteFile(sourceFile);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort: the active target already contains the verified copy.
+                }
+            }
+
             return true;
         }
         catch

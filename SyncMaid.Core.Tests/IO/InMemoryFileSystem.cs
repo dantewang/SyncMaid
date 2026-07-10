@@ -30,6 +30,12 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// — simulating hardware/environmental corruption that only content verification can catch.</summary>
     public bool CorruptWrites { get; set; }
 
+    /// <summary>When equal to a path, <see cref="WriteAllBytes"/> throws for that path.</summary>
+    public string? FailWriteAllBytesPath { get; set; }
+
+    /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
+    public string? FailDeletePath { get; set; }
+
     /// <summary>Seeds a file with explicit contents and stamp; used to set up test state.</summary>
     public void AddFile(string path, byte[] contents, FileStamp stamp)
     {
@@ -83,6 +89,11 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public void WriteAllBytes(string path, byte[] contents)
     {
+        if (string.Equals(Normalize(path), Normalize(FailWriteAllBytesPath ?? ""), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated write failure.");
+        }
+
         var stamp = FileStamp.Create(contents.Length, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         _files[Normalize(path)] = new Entry(contents, stamp);
     }
@@ -106,7 +117,15 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.</summary>
     public List<string> Recycled { get; } = [];
 
-    public void DeleteFile(string path) => _files.Remove(Normalize(path));
+    public void DeleteFile(string path)
+    {
+        if (string.Equals(Normalize(path), Normalize(FailDeletePath ?? ""), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated delete failure.");
+        }
+
+        _files.Remove(Normalize(path));
+    }
 
     public void Recycle(string path)
     {

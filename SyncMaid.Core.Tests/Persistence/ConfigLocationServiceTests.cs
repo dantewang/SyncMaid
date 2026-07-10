@@ -107,4 +107,39 @@ public class ConfigLocationServiceTests
         Assert.True(fs.FileExists(@"C:\Users\me\AppData\Roaming\SyncMaid\tasks.json")); // source intact
         Assert.False(fs.FileExists(Marker));
     }
+
+    [Fact]
+    public void Marker_write_failure_leaves_the_active_location_loadable()
+    {
+        var sourceFile = $@"{AppData}\tasks.json";
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(sourceFile, Encoding.UTF8.GetBytes("[tasks]"));
+        fs.FailWriteAllBytesPath = Marker;
+
+        var service = New(fs);
+        var switched = service.SwitchTo(ConfigLocationMode.Portable);
+
+        Assert.False(switched);
+        Assert.Equal(ConfigLocationMode.AppData, service.CurrentMode);
+        Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes(sourceFile)));
+        Assert.False(fs.FileExists(Marker));
+    }
+
+    [Fact]
+    public void Source_cleanup_failure_does_not_roll_back_a_successful_switch()
+    {
+        var sourceFile = $@"{AppData}\tasks.json";
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(sourceFile, Encoding.UTF8.GetBytes("[tasks]"));
+        fs.FailDeletePath = sourceFile;
+
+        var service = New(fs);
+        var switched = service.SwitchTo(ConfigLocationMode.Portable);
+
+        Assert.True(switched);
+        Assert.Equal(ConfigLocationMode.Portable, service.CurrentMode);
+        Assert.True(fs.FileExists(Marker));
+        Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{Portable}/tasks.json")));
+        Assert.True(fs.FileExists(sourceFile));
+    }
 }
