@@ -89,6 +89,17 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         Assert.Empty(Directory.EnumerateFiles(_root, "*.tmp-*", SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public void Recycle_path_is_absolute_and_uses_Win32_separators()
+    {
+        var mixedPath = Path.Combine(_root, "nested", "file.txt").Replace('\\', '/');
+
+        var normalized = PhysicalFileSystem.NormalizeRecyclePath(mixedPath);
+
+        Assert.Equal(Path.GetFullPath(mixedPath).Replace('/', '\\'), normalized);
+        Assert.DoesNotContain('/', normalized);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

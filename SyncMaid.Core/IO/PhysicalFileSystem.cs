@@ -72,10 +72,11 @@ public sealed class PhysicalFileSystem : IFileSystem
 
         // SHFileOperation moves the file to the Recycle Bin (FOF_ALLOWUNDO). pFrom must be
         // double-null-terminated. Silent, no confirmation or error UI.
+        var shellPath = NormalizeRecyclePath(path);
         var operation = new SHFILEOPSTRUCT
         {
             wFunc = FO_DELETE,
-            pFrom = path + '\0' + '\0',
+            pFrom = shellPath + '\0' + '\0',
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT,
         };
 
@@ -85,6 +86,9 @@ public sealed class PhysicalFileSystem : IFileSystem
             throw new IOException($"Failed to send '{path}' to the Recycle Bin (SHFileOperation returned {result}).");
         }
     }
+
+    internal static string NormalizeRecyclePath(string path) =>
+        Path.GetFullPath(path).Replace('/', '\\');
 
     /// <inheritdoc />
     public void EnsureDirectory(string path) => Directory.CreateDirectory(path);
