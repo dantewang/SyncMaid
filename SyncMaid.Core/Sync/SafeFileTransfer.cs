@@ -94,7 +94,15 @@ public static class SafeFileTransfer
         catch
         {
             // Leave the existing destination untouched; clean up our temp.
-            fileSystem.DeleteFile(temp);
+            try
+            {
+                fileSystem.DeleteFile(temp);
+            }
+            catch
+            {
+                // Preserve the transfer/verification failure; cleanup is best-effort.
+            }
+
             throw;
         }
     }

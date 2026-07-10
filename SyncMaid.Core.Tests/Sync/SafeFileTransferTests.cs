@@ -92,4 +92,19 @@ public class SafeFileTransferTests
         Assert.False(HasTempFiles(fs));
     }
 
+    [Fact]
+    public void Cleanup_failure_does_not_replace_the_original_verification_failure()
+    {
+        var fs = WithSource("the real bytes");
+        fs.AddFile(Dest, "PREVIOUS GOOD COPY");
+        fs.CorruptWrites = true;
+        fs.FailDeletePathFragment = ".syncmaid-tmp-";
+
+        var exception = Assert.Throws<SyncVerificationException>(() =>
+            SafeFileTransfer.Copy(fs, Source, Dest, verifyContents: true));
+
+        Assert.Contains("xxHash mismatch", exception.Message);
+        Assert.Equal("PREVIOUS GOOD COPY", Read(fs, Dest));
+    }
+
 }

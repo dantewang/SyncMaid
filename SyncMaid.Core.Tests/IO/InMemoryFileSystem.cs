@@ -39,6 +39,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
+    /// <summary>When contained in a path, <see cref="DeleteFile"/> throws for that path.</summary>
+    public string? FailDeletePathFragment { get; set; }
+
     /// <summary>Number of upcoming enumerations that throw after <see cref="FailEnumerationAfter"/> items.</summary>
     public int EnumerationFailuresRemaining { get; set; }
 
@@ -138,7 +141,9 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public void DeleteFile(string path)
     {
-        if (string.Equals(Normalize(path), Normalize(FailDeletePath ?? ""), StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(Normalize(path), Normalize(FailDeletePath ?? ""), StringComparison.OrdinalIgnoreCase)
+            || (FailDeletePathFragment is not null
+                && path.Contains(FailDeletePathFragment, StringComparison.OrdinalIgnoreCase)))
         {
             throw new IOException("Simulated delete failure.");
         }
