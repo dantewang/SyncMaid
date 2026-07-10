@@ -6,6 +6,8 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Material.Icons;
+using Material.Icons.Avalonia;
 using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
@@ -132,6 +134,13 @@ public class EditorWindowHeadlessTests
         Assert.Contains("MinimizeButton", named);
         Assert.Contains("MaximizeButton", named);
         Assert.Contains("CloseButton", named);
+
+        var maximizeIcon = window.FindControl<MaterialIcon>("MaximizeIcon");
+        Assert.Equal(MaterialIconKind.WindowMaximize, maximizeIcon!.Kind);
+
+        window.WindowState = WindowState.Maximized;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(MaterialIconKind.WindowRestore, maximizeIcon.Kind);
 
         // The settings gear is bound to the view model's stub command (no binding errors).
         var titleTexts = window.GetVisualDescendants().OfType<TextBlock>().Select(b => b.Text).ToList();

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using SyncMaid.Core.Model;
@@ -11,23 +12,25 @@ public sealed class SyncOutcomeToBrushConverter : IValueConverter
 {
     public static readonly SyncOutcomeToBrushConverter Instance = new();
 
-    private static readonly IBrush Success = new SolidColorBrush(Color.Parse("#1AA0B5"));
-    private static readonly IBrush Failed = new SolidColorBrush(Color.Parse("#C53943"));
-    private static readonly IBrush Running = new SolidColorBrush(Color.Parse("#1AA0B5"));
-    private static readonly IBrush NeedsConfirmation = new SolidColorBrush(Color.Parse("#C7810B"));
-    private static readonly IBrush Never = new SolidColorBrush(Color.Parse("#8A8A86"));
-
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is SyncOutcome outcome
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var resourceKey = value is SyncOutcome outcome
             ? outcome switch
             {
-                SyncOutcome.Success => Success,
-                SyncOutcome.Failed => Failed,
-                SyncOutcome.Running => Running,
-                SyncOutcome.NeedsConfirmation => NeedsConfirmation,
-                _ => Never,
+                SyncOutcome.Success or SyncOutcome.Running => "SuccessBrush",
+                SyncOutcome.Failed => "DangerBrush",
+                SyncOutcome.NeedsConfirmation => "WarningBrush",
+                _ => "TextMutedBrush",
             }
-            : Never;
+            : "TextMutedBrush";
+
+        var application = Application.Current;
+        return application is not null
+               && application.TryGetResource(resourceKey, application.ActualThemeVariant, out var resource)
+               && resource is IBrush
+            ? resource
+            : AvaloniaProperty.UnsetValue;
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

@@ -19,6 +19,15 @@
         WindowDecorations="BorderOnly"
         Title="SyncMaid">
 
+    <Window.Styles>
+        <Style Selector="mi|MaterialIcon#MaximizeIcon">
+            <Setter Property="Kind" Value="WindowMaximize" />
+        </Style>
+        <Style Selector="Window[WindowState=Maximized] mi|MaterialIcon#MaximizeIcon">
+            <Setter Property="Kind" Value="WindowRestore" />
+        </Style>
+    </Window.Styles>
+
     <Grid RowDefinitions="Auto,*">
         <!-- Frosted acrylic background spanning the extended title bar AND the body, so the
              glass is one continuous region across the custom title bar and the sidebar.
@@ -69,7 +78,7 @@
                 <Button Grid.Column="4" Name="MaximizeButton" Classes="caption"
                         Click="OnMaximizeRestore" ToolTip.Tip="Maximize"
                         chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
-                    <mi:MaterialIcon Name="MaximizeIcon" Kind="WindowMaximize" Width="16" Height="16" />
+                    <mi:MaterialIcon Name="MaximizeIcon" Width="16" Height="16" />
                 </Button>
                 <Button Grid.Column="5" Name="CloseButton" Classes="caption close"
                         Click="OnClose" ToolTip.Tip="Close"
