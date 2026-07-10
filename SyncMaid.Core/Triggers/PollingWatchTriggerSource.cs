@@ -16,18 +16,30 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private readonly IFileSystem _fileSystem;
     private readonly string _path;
     private readonly TimeSpan _interval;
+    private readonly Func<Action, IPollingTimer> _timerFactory;
     private readonly Lock _gate = new();
 
-    private Timer? _timer;
+    private IPollingTimer? _timer;
     private Dictionary<string, FileStamp> _snapshot = new(StringComparer.OrdinalIgnoreCase);
+    private bool _hasBaseline;
     private bool _failureReported;
     private bool _disposed;
 
     public PollingWatchTriggerSource(IFileSystem fileSystem, string path, TimeSpan? interval = null)
+        : this(fileSystem, path, interval, callback => new SystemPollingTimer(callback))
+    {
+    }
+
+    internal PollingWatchTriggerSource(
+        IFileSystem fileSystem,
+        string path,
+        TimeSpan? interval,
+        Func<Action, IPollingTimer> timerFactory)
     {
         _fileSystem = fileSystem;
         _path = path;
         _interval = interval ?? DefaultInterval;
+        _timerFactory = timerFactory;
     }
 
     /// <inheritdoc />
@@ -49,8 +61,18 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                 return;
             }
 
-            _snapshot = Snapshot();
-            _timer = new Timer(_ => PollOnce(), state: null, _interval, _interval);
+            _hasBaseline = false;
+            var timer = _timerFactory(() => PollOnce());
+            try
+            {
+                timer.Change(TimeSpan.Zero, _interval);
+                _timer = timer;
+            }
+            catch
+            {
+                timer.Dispose();
+                throw;
+            }
         }
     }
 
@@ -61,13 +83,15 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         {
             _timer?.Dispose();
             _timer = null;
+            _hasBaseline = false;
         }
     }
 
     /// <summary>
-    /// Takes one snapshot and fires if it differs from the previous one. Called by the timer;
-    /// exposed so a change can be detected deterministically in tests without waiting on the clock.
-    /// Returns true when a change was detected.
+    /// Takes one snapshot and fires if it differs from the previous one. The first successful
+    /// poll after each <see cref="Start"/> establishes a baseline without firing. Called by the
+    /// timer; exposed so a change can be detected deterministically in tests without waiting on
+    /// the clock. Returns true when a change was detected.
     /// </summary>
     public bool PollOnce()
     {
@@ -101,7 +125,12 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             {
                 recovered = _failureReported;
                 _failureReported = false;
-                if (Differs(current!, _snapshot))
+                if (!_hasBaseline)
+                {
+                    _snapshot = current!;
+                    _hasBaseline = true;
+                }
+                else if (Differs(current!, _snapshot))
                 {
                     _snapshot = current!;
                     changed = true;
@@ -197,6 +226,26 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             _disposed = true;
             _timer?.Dispose();
             _timer = null;
+            _hasBaseline = false;
         }
+    }
+
+    internal interface IPollingTimer : IDisposable
+    {
+        void Change(TimeSpan dueTime, TimeSpan period);
+    }
+
+    private sealed class SystemPollingTimer : IPollingTimer
+    {
+        private readonly Timer _timer;
+
+        public SystemPollingTimer(Action callback)
+        {
+            _timer = new Timer(_ => callback(), state: null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+
+        public void Change(TimeSpan dueTime, TimeSpan period) => _timer.Change(dueTime, period);
+
+        public void Dispose() => _timer.Dispose();
     }
 }

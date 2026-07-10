@@ -1,4 +1,5 @@
 using SyncMaid.Core.Tests.IO;
+using SyncMaid.Core.IO;
 using SyncMaid.Core.Triggers;
 
 namespace SyncMaid.Core.Tests.Triggers;
@@ -8,8 +9,8 @@ public class PollingWatchTriggerSourceTests
     private const string Root = @"\\nas\share\src";
 
     private static PollingWatchTriggerSource Source(InMemoryFileSystem fs) =>
-        // A long interval so the background timer never fires during the test; we poll by hand.
-        new(fs, Root, TimeSpan.FromHours(1));
+        // A fake timer keeps tests deterministic; snapshots are advanced by PollOnce.
+        new(fs, Root, TimeSpan.FromHours(1), _ => new FakeTimer());
 
     [Fact]
     public void Fires_when_a_file_is_added()
@@ -38,6 +39,7 @@ public class PollingWatchTriggerSourceTests
         fs.AddFile($@"{Root}\b.txt", "b");
         using var source = Source(fs);
         source.Start();
+        Assert.False(source.PollOnce()); // asynchronous first tick establishes the baseline
 
         fs.AddFile($@"{Root}\a.txt", "a-changed-longer"); // size/stamp changes
         Assert.True(source.PollOnce());
@@ -49,16 +51,40 @@ public class PollingWatchTriggerSourceTests
     }
 
     [Fact]
-    public void Does_not_fire_before_start_takes_a_baseline()
+    public void First_poll_after_start_takes_a_baseline_without_firing()
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile($@"{Root}\a.txt", "a");
         using var source = Source(fs);
 
-        // Without Start(), the baseline is empty; the first poll sees the existing file as a
-        // change and fires — Start() is what establishes "no change since we began watching".
         source.Start();
         Assert.False(source.PollOnce());
+    }
+
+    [Fact]
+    public async Task Start_arms_an_immediate_timer_without_touching_the_filesystem()
+    {
+        var fileSystem = new BlockingFileSystem();
+        FakeTimer? timer = null;
+        using var source = new PollingWatchTriggerSource(
+            fileSystem,
+            Root,
+            TimeSpan.FromSeconds(5),
+            callback => timer = new FakeTimer(callback));
+
+        var start = Task.Run(source.Start);
+        try
+        {
+            await start.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.False(fileSystem.EnumerationStarted.IsSet);
+            Assert.Equal(TimeSpan.Zero, timer!.DueTime);
+            Assert.Equal(TimeSpan.FromSeconds(5), timer.Period);
+        }
+        finally
+        {
+            fileSystem.ReleaseEnumeration.Set();
+            await start.WaitAsync(TimeSpan.FromSeconds(1));
+        }
     }
 
     [Fact]
@@ -119,5 +145,49 @@ public class PollingWatchTriggerSourceTests
         fs.AddFile($@"{Root}\c.txt", "c");
         Assert.True(source.PollOnce());
         Assert.Equal(1, fires);
+    }
+
+    private sealed class FakeTimer(Action? callback = null) : PollingWatchTriggerSource.IPollingTimer
+    {
+        public TimeSpan DueTime { get; private set; }
+        public TimeSpan Period { get; private set; }
+
+        public void Change(TimeSpan dueTime, TimeSpan period)
+        {
+            DueTime = dueTime;
+            Period = period;
+        }
+
+        public void Fire() => callback?.Invoke();
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class BlockingFileSystem : IFileSystem
+    {
+        public ManualResetEventSlim EnumerationStarted { get; } = new();
+        public ManualResetEventSlim ReleaseEnumeration { get; } = new();
+
+        public IEnumerable<string> EnumerateFiles(string root)
+        {
+            EnumerationStarted.Set();
+            ReleaseEnumeration.Wait();
+            yield break;
+        }
+
+        public bool FileExists(string path) => throw new NotSupportedException();
+        public FileStamp GetStamp(string path) => throw new NotSupportedException();
+        public byte[] ReadAllBytes(string path) => throw new NotSupportedException();
+        public void WriteAllBytes(string path, byte[] contents) => throw new NotSupportedException();
+        public void DeleteFile(string path) => throw new NotSupportedException();
+        public void Recycle(string path) => throw new NotSupportedException();
+        public void EnsureDirectory(string path) => throw new NotSupportedException();
+        public Stream OpenRead(string path) => throw new NotSupportedException();
+        public Stream CreateWriteThrough(string path) => throw new NotSupportedException();
+        public void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc) => throw new NotSupportedException();
+        public void Replace(string sourcePath, string destinationPath) => throw new NotSupportedException();
+        public long GetAvailableFreeSpace(string path) => throw new NotSupportedException();
     }
 }
