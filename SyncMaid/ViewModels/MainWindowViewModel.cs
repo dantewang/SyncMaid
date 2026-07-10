@@ -182,12 +182,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Persist();
     }
 
-    private TaskNodeViewModel CreateNode(SyncTask task) =>
-        new(task, _statuses, _dialogs, _engine, _triggerFactory, _dispatcher,
+    private TaskNodeViewModel CreateNode(SyncTask task)
+    {
+        IReadOnlyDictionary<Guid, DestinationSyncStatus> statusSnapshot;
+        lock (_statusGate)
+        {
+            statusSnapshot = new Dictionary<Guid, DestinationSyncStatus>(_statuses);
+        }
+
+        return new(task, statusSnapshot, _dialogs, _engine, _triggerFactory, _dispatcher,
             EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger, _confirmer)
         {
             IsExpanded = AllExpanded,
         };
+    }
 
     // Merges a completed run's statuses into the saved set. May be called off the UI thread.
     private void OnStatusesUpdated(IReadOnlyList<DestinationSyncStatus> statuses)

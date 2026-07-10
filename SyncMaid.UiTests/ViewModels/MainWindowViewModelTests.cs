@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
+using SyncMaid.Core.Persistence;
+using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
 using SyncMaid.Services;
 using SyncMaid.ViewModels;
@@ -21,14 +23,15 @@ public class MainWindowViewModelTests
         FakeDialogService? dialogs = null,
         RecordingTaskStore? store = null,
         FakeTriggerSourceFactory? triggers = null,
-        RecordingStatusStore? statusStore = null,
+        IStatusStore? statusStore = null,
         IDialogHost? host = null,
-        FakeAutoStartService? autoStart = null) =>
+        FakeAutoStartService? autoStart = null,
+        ISyncEngine? engine = null) =>
         new(
             dialogs ?? new FakeDialogService(),
             store ?? new RecordingTaskStore(),
             statusStore ?? new RecordingStatusStore(),
-            new FakeSyncEngine(),
+            engine ?? new FakeSyncEngine(),
             triggers ?? new FakeTriggerSourceFactory(),
             new FakeUiDispatcher(),
             host ?? new DialogHost(),
@@ -248,5 +251,61 @@ public class MainWindowViewModelTests
         await vm.Nodes[0].DeleteCommand.ExecuteAsync(null);
 
         Assert.DoesNotContain(dest.Id, statusStore.Saved.Keys);   // orphan pruned on save
+    }
+
+    [Fact]
+    public async Task Creating_a_node_waits_for_the_status_lock_and_uses_a_snapshot()
+    {
+        var destination = new Destination("D", @"D:\d", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var runningTask = new SyncTask("running", @"C:\running", new ManualTrigger(), [destination]);
+        var addedTask = new SyncTask("added", @"C:\added", new ManualTrigger(), [destination]);
+        var statusStore = new BlockingStatusStore();
+        var dialogs = new FakeDialogService { OnEditTask = _ => addedTask };
+        var vm = New(
+            dialogs: dialogs,
+            store: new RecordingTaskStore([runningTask]),
+            statusStore: statusStore,
+            engine: new FakeSyncEngine());
+
+        var run = System.Threading.Tasks.Task.Run(
+            () => vm.Nodes[0].ExecuteCommand.ExecuteAsync(null),
+            TestContext.Current.CancellationToken);
+        Assert.True(statusStore.SaveEntered.Wait(
+            TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        var add = System.Threading.Tasks.Task.Run(
+            () => vm.AddTaskCommand.ExecuteAsync(null),
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            await System.Threading.Tasks.Task.Delay(100, TestContext.Current.CancellationToken);
+            Assert.Single(vm.Nodes); // node creation itself must still be waiting for the status lock
+            Assert.False(add.IsCompleted);
+        }
+        finally
+        {
+            statusStore.AllowSave.Set();
+            await run;
+            await add;
+        }
+
+        Assert.Equal(2, vm.Nodes.Count);
+        Assert.Equal(SyncOutcome.Success, vm.Nodes[1].Children[0].Outcome);
+    }
+
+    private sealed class BlockingStatusStore : IStatusStore
+    {
+        public ManualResetEventSlim SaveEntered { get; } = new();
+        public ManualResetEventSlim AllowSave { get; } = new();
+
+        public IReadOnlyDictionary<Guid, DestinationSyncStatus> Load() =>
+            new Dictionary<Guid, DestinationSyncStatus>();
+
+        public void Save(IReadOnlyDictionary<Guid, DestinationSyncStatus> statuses)
+        {
+            SaveEntered.Set();
+            Assert.True(AllowSave.Wait(
+                TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        }
     }
 }
