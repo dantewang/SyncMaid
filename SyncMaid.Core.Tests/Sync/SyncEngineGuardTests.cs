@@ -49,6 +49,20 @@ public class SyncEngineGuardTests
         Assert.True(fs.FileExists(@"D:\dst\important2.txt"));
     }
 
+    [Fact]
+    public async Task Empty_source_and_empty_mirror_destination_succeeds_as_a_no_op()
+    {
+        var fs = new InMemoryFileSystem();
+        var destination = new Destination(
+            "empty mirror", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Success, status.Outcome);
+        Assert.Equal(0, status.FilesCopied);
+        Assert.Null(status.Error);
+    }
+
     [Theory]
     [InlineData(0, 0)]
     [InlineData(1, 0)]

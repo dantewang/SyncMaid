@@ -175,13 +175,13 @@ public sealed class SyncEngine : ISyncEngine
 
             var visibleSource = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination);
             var filtered = visibleSource.Where(destination.Includes).ToList();
-            if (destination.Strategy == SyncStrategy.Mirror && filtered.Count == 0)
+            if (destination.Strategy == SyncStrategy.Mirror
+                && filtered.Count == 0
+                && visibleSource.Count > 0)
             {
-                var error = sourceFiles.Count == 0
-                    ? "Source is empty or unavailable; skipped deletions to avoid wiping the destination."
-                    : "Filters matched no files; skipped deletions to avoid wiping the destination.";
                 return new DestinationSyncStatus(
-                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0, error);
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                    "Filters matched no files; skipped deletions to avoid wiping the destination.");
             }
 
             var provider = _destinations.Create(destination.Target);
@@ -196,9 +196,16 @@ public sealed class SyncEngine : ISyncEngine
                 var verdict = MirrorGuard.Evaluate(
                     deleteCount,
                     plan.DestinationFileCount,
-                    sourceIsEmpty: false, // handled before planning so no deletes are even proposed
+                    sourceIsEmpty: filtered.Count == 0,
                     destination.MassDeleteThreshold,
                     overrideMassDelete: confirmedMassDeletes?.Contains(destination.Id) ?? false);
+
+                if (verdict == MirrorGuardVerdict.EmptySource)
+                {
+                    return new DestinationSyncStatus(
+                        destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                        "Source is empty or unavailable; skipped deletions to avoid wiping the destination.");
+                }
 
                 if (verdict == MirrorGuardVerdict.NeedsConfirmation)
                 {
