@@ -179,6 +179,9 @@ public static class SyncPlanner
         public static DestinationSnapshot Create(IDestinationProvider provider)
         {
             var relativePaths = new List<string>();
+            // Phase-1 path providers use Windows-style, case-insensitive relative keys.
+            // A future case-sensitive provider must expose its comparer in the provider
+            // contract before this snapshot is reused for that backend.
             var stamps = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
             foreach (var relativePath in provider.Enumerate())
             {

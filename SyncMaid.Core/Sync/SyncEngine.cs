@@ -1,5 +1,6 @@
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
+using System.Runtime.ExceptionServices;
 
 namespace SyncMaid.Core.Sync;
 
@@ -116,7 +117,7 @@ public sealed class SyncEngine : ISyncEngine
         IReadOnlySet<Guid>? confirmedMassDeletes)
     {
         IReadOnlyList<string> sourceFiles = [];
-        Exception? sourceEnumerationError = null;
+        ExceptionDispatchInfo? sourceEnumerationError = null;
         try
         {
             sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
@@ -127,7 +128,7 @@ public sealed class SyncEngine : ISyncEngine
         }
         catch (Exception exception)
         {
-            sourceEnumerationError = exception;
+            sourceEnumerationError = ExceptionDispatchInfo.Capture(exception);
         }
 
         var statuses = new List<DestinationSyncStatus>(task.Destinations.Count);
@@ -151,7 +152,7 @@ public sealed class SyncEngine : ISyncEngine
         SyncTask task,
         Destination destination,
         IReadOnlyList<string> sourceFiles,
-        Exception? sourceEnumerationError,
+        ExceptionDispatchInfo? sourceEnumerationError,
         CancellationToken cancellationToken,
         IProgress<SyncProgress>? progress,
         IReadOnlySet<Guid>? confirmedMassDeletes)
@@ -170,7 +171,7 @@ public sealed class SyncEngine : ISyncEngine
 
             if (sourceEnumerationError is not null)
             {
-                throw sourceEnumerationError;
+                sourceEnumerationError.Throw();
             }
 
             var visibleSource = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination);
