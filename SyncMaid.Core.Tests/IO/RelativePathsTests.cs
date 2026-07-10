@@ -21,6 +21,16 @@ public class RelativePathsTests
         Assert.False(RelativePaths.IsDescendantOf(@"C:\source-other", @"C:\source"));
     }
 
+    [Fact]
+    public void Prefix_within_root_is_forward_slash_relative_with_trailing_separator()
+    {
+        Assert.Equal("backup/", RelativePaths.TryGetPrefixWithin(@"C:\src", @"C:\src\backup"));
+        Assert.Equal("nested/deep/", RelativePaths.TryGetPrefixWithin(@"C:/src/", @"C:\SRC\nested\deep\"));
+        Assert.Null(RelativePaths.TryGetPrefixWithin(@"C:\src", @"C:\src"));      // equal, not nested
+        Assert.Null(RelativePaths.TryGetPrefixWithin(@"C:\src", @"D:\elsewhere"));
+        Assert.Null(RelativePaths.TryGetPrefixWithin(@"C:\src", @"\\"));          // unresolvable
+    }
+
     // The editor evaluates these while a UNC path is being typed, so partial prefixes
     // must compare as unrelated instead of throwing (GetFullPath rejects them).
     [Theory]

@@ -66,7 +66,10 @@ public sealed class SyncEngine : ISyncEngine
                 }
 
                 var provider = _destinations.Create(destination.Target);
-                var filtered = _fileSystem.EnumerateFiles(task.SourcePath).Where(destination.Includes).ToList();
+                var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
+                var filtered = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination)
+                    .Where(destination.Includes)
+                    .ToList();
                 var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
                 var deletions = plan.Operations
@@ -79,6 +82,32 @@ public sealed class SyncEngine : ISyncEngine
     }
 
     private const int PreviewSampleSize = 25;
+
+    // A destination rooted inside the source would otherwise see its own output as source
+    // content: every run would copy the previous run's files one level deeper
+    // (backup/backup/…), and with trigger runs coalescing instead of being suppressed, that
+    // feedback loop never quiesces. A destination's own subtree is not source content, for
+    // any strategy. (Move refuses nested destinations outright before this applies.)
+    private static IReadOnlyList<string> WithoutNestedDestinationFiles(
+        IReadOnlyList<string> sourceFiles,
+        string sourcePath,
+        Destination destination)
+    {
+        if (string.IsNullOrWhiteSpace(destination.LocalPath))
+        {
+            return sourceFiles;
+        }
+
+        var nestedPrefix = RelativePaths.TryGetPrefixWithin(sourcePath, destination.LocalPath);
+        if (nestedPrefix is null)
+        {
+            return sourceFiles;
+        }
+
+        return sourceFiles
+            .Where(file => !file.StartsWith(nestedPrefix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 
     private IReadOnlyList<DestinationSyncStatus> Execute(
         SyncTask task,
@@ -144,7 +173,8 @@ public sealed class SyncEngine : ISyncEngine
                 throw sourceEnumerationError;
             }
 
-            var filtered = sourceFiles.Where(destination.Includes).ToList();
+            var visibleSource = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination);
+            var filtered = visibleSource.Where(destination.Includes).ToList();
             if (destination.Strategy == SyncStrategy.Mirror && filtered.Count == 0)
             {
                 var error = sourceFiles.Count == 0
