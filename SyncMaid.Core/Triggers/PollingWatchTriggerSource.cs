@@ -111,8 +111,13 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             {
                 current = Snapshot();
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            catch (Exception exception)
             {
+                // This is a timer-callback boundary: anything escaping here (a malformed
+                // configured path throwing ArgumentException, not just I/O faults) would be
+                // an unhandled thread-pool exception and kill the process. Deferring the
+                // baseline off Start() also moved the first walk out of the consumer's
+                // start-failure handling, so this catch is the only net.
                 failure = exception;
             }
 

@@ -147,6 +147,39 @@ public class PollingWatchTriggerSourceTests
         Assert.Equal(1, fires);
     }
 
+    // PollOnce runs on a raw timer callback, so the boundary must contain every exception
+    // type — a malformed configured path throws ArgumentException, not an I/O exception,
+    // and an escape would take down the whole process.
+    [Fact]
+    public void Non_io_poll_failures_are_contained_and_reported_like_io_ones()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        using var source = Source(fs);
+        var fires = 0;
+        Exception? reported = null;
+        var recoveries = 0;
+        source.Fired += (_, _) => fires++;
+        source.Error += exception => reported = exception;
+        source.Recovered += () => recoveries++;
+        source.Start();
+        fs.EnumerationFailure = () => new ArgumentException("Simulated malformed watch path.");
+        fs.EnumerationFailuresRemaining = 1;
+
+        var changed = true;
+        var escaped = Record.Exception(() => changed = source.PollOnce());
+
+        Assert.Null(escaped);
+        Assert.False(changed);
+        Assert.IsType<ArgumentException>(reported);
+
+        Assert.False(source.PollOnce()); // recovery takes a baseline without a spurious fire
+        Assert.Equal(1, recoveries);
+        fs.AddFile($@"{Root}\b.txt", "b");
+        Assert.True(source.PollOnce()); // and a genuine later change still fires
+        Assert.Equal(1, fires);
+    }
+
     private sealed class FakeTimer(Action? callback = null) : PollingWatchTriggerSource.IPollingTimer
     {
         public TimeSpan DueTime { get; private set; }

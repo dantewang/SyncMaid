@@ -48,6 +48,10 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>Number of items yielded before an injected enumeration failure.</summary>
     public int FailEnumerationAfter { get; set; }
 
+    /// <summary>The exception an injected enumeration failure throws; IOException by default.</summary>
+    public Func<Exception> EnumerationFailure { get; set; } =
+        () => new IOException("Simulated mid-enumeration failure.");
+
     /// <summary>Offset applied by <see cref="SetLastWriteTimeUtc"/> to inject stamp mismatches.</summary>
     public TimeSpan SetLastWriteTimeOffset { get; set; }
 
@@ -85,7 +89,7 @@ public sealed class InMemoryFileSystem : IFileSystem
                 if (EnumerationFailuresRemaining > 0 && yielded == FailEnumerationAfter)
                 {
                     EnumerationFailuresRemaining--;
-                    throw new IOException("Simulated mid-enumeration failure.");
+                    throw EnumerationFailure();
                 }
 
                 yielded++;
