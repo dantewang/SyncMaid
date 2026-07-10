@@ -102,9 +102,16 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_root))
+        try
         {
-            Directory.Delete(_root, recursive: true);
+            if (Directory.Exists(_root))
+            {
+                Directory.Delete(_root, recursive: true);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Test cleanup is best effort; a delayed filesystem handle must not mask the assertion result.
         }
     }
 

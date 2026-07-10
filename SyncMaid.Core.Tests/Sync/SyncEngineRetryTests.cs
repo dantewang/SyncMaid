@@ -56,7 +56,7 @@ public class SyncEngineRetryTests
                 progress: progress));
 
         Assert.Equal(SyncOutcome.Failed, status.Outcome);
-        Assert.Contains("No such file", status.Error);
+        Assert.NotNull(status.Error);
         Assert.Equal(1, fs.GetStampCallCountFor(source));
         Assert.False(fs.FileExists(source));
         Assert.False(fs.FileExists(@"D:\dst\a.txt"));

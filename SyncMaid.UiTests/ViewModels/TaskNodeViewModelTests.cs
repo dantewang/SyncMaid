@@ -564,7 +564,7 @@ public class TaskNodeViewModelTests
                     destination.Id,
                     SyncOutcome.Failed,
                     DateTimeOffset.UtcNow,
-                    Error: "Source is empty or unavailable; skipped deletions to avoid wiping the destination."),
+                    Error: "empty-source guard failure"),
             ],
         };
         var confirmer = new FakeMirrorDeleteConfirmer { Approve = true };
