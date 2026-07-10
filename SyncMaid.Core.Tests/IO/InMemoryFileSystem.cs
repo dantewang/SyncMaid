@@ -120,22 +120,6 @@ public sealed class InMemoryFileSystem : IFileSystem
         _files[Normalize(path)] = new Entry(contents, stamp);
     }
 
-    public void CopyFile(string sourcePath, string destinationPath)
-    {
-        var source = _files[Normalize(sourcePath)];
-        // Mirror PhysicalFileSystem: the copy preserves the source stamp so the pair
-        // is not seen as changed on the next run.
-        _files[Normalize(destinationPath)] = source with { };
-    }
-
-    public void MoveFile(string sourcePath, string destinationPath)
-    {
-        var key = Normalize(sourcePath);
-        var source = _files[key];
-        _files[Normalize(destinationPath)] = source;
-        _files.Remove(key);
-    }
-
     /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.</summary>
     public List<string> Recycled { get; } = [];
 

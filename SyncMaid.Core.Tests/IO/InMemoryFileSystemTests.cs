@@ -18,29 +18,4 @@ public class InMemoryFileSystemTests
         Assert.Equal(new[] { "a.txt", "sub/b.txt" }, files);
     }
 
-    [Fact]
-    public void CopyFile_preserves_stamp()
-    {
-        var fs = new InMemoryFileSystem();
-        var stamp = FileStamp.Create(3, new DateTime(2026, 5, 5, 12, 0, 0, DateTimeKind.Utc));
-        fs.AddFile(@"S:\src\a.txt", System.Text.Encoding.UTF8.GetBytes("abc"), stamp);
-
-        fs.CopyFile(@"S:\src\a.txt", @"D:\dst\a.txt");
-
-        Assert.True(fs.FileExists(@"D:\dst\a.txt"));
-        Assert.Equal(stamp, fs.GetStamp(@"D:\dst\a.txt"));
-        Assert.True(fs.FileExists(@"S:\src\a.txt")); // copy leaves the source in place
-    }
-
-    [Fact]
-    public void MoveFile_removes_source()
-    {
-        var fs = new InMemoryFileSystem();
-        fs.AddFile(@"S:\src\a.txt", "abc");
-
-        fs.MoveFile(@"S:\src\a.txt", @"D:\dst\a.txt");
-
-        Assert.True(fs.FileExists(@"D:\dst\a.txt"));
-        Assert.False(fs.FileExists(@"S:\src\a.txt"));
-    }
 }

@@ -47,23 +47,6 @@ public sealed class PhysicalFileSystem : IFileSystem
     }
 
     /// <inheritdoc />
-    public void CopyFile(string sourcePath, string destinationPath)
-    {
-        EnsureParentDirectory(destinationPath);
-        File.Copy(sourcePath, destinationPath, overwrite: true);
-        // Preserve the source timestamp so source and copy share a FileStamp and are
-        // not seen as "changed" on the next run.
-        File.SetLastWriteTimeUtc(destinationPath, File.GetLastWriteTimeUtc(sourcePath));
-    }
-
-    /// <inheritdoc />
-    public void MoveFile(string sourcePath, string destinationPath)
-    {
-        EnsureParentDirectory(destinationPath);
-        File.Move(sourcePath, destinationPath, overwrite: true);
-    }
-
-    /// <inheritdoc />
     public void DeleteFile(string path)
     {
         if (File.Exists(path))

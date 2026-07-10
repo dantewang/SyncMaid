@@ -117,8 +117,6 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         public FileStamp GetStamp(string path) => inner.GetStamp(path);
         public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
         public void WriteAllBytes(string path, byte[] contents) => inner.WriteAllBytes(path, contents);
-        public void CopyFile(string sourcePath, string destinationPath) => inner.CopyFile(sourcePath, destinationPath);
-        public void MoveFile(string sourcePath, string destinationPath) => inner.MoveFile(sourcePath, destinationPath);
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);

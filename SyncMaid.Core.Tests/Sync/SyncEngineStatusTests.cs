@@ -28,8 +28,6 @@ public class SyncEngineStatusTests
         public FileStamp GetStamp(string path) => inner.GetStamp(path);
         public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
         public void WriteAllBytes(string path, byte[] contents) => inner.WriteAllBytes(path, contents);
-        public void CopyFile(string source, string destination) => inner.CopyFile(source, destination);
-        public void MoveFile(string source, string destination) => inner.MoveFile(source, destination);
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);

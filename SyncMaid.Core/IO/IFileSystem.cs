@@ -36,21 +36,6 @@ public interface IFileSystem
     /// </summary>
     void WriteAllBytes(string path, byte[] contents);
 
-    /// <summary>
-    /// Copies the file at <paramref name="sourcePath"/> to
-    /// <paramref name="destinationPath"/>, overwriting the destination and creating
-    /// its parent directories as needed. Preserves the source last-write-time so the
-    /// copies share a <see cref="FileStamp"/>.
-    /// </summary>
-    void CopyFile(string sourcePath, string destinationPath);
-
-    /// <summary>
-    /// Moves the file at <paramref name="sourcePath"/> to
-    /// <paramref name="destinationPath"/>, overwriting the destination and creating
-    /// its parent directories as needed.
-    /// </summary>
-    void MoveFile(string sourcePath, string destinationPath);
-
     /// <summary>Deletes the file at <paramref name="path"/> if it exists; otherwise no-op.</summary>
     void DeleteFile(string path);
 
