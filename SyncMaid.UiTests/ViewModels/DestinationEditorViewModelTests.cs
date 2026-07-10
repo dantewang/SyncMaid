@@ -350,6 +350,20 @@ public class DestinationEditorViewModelTests
     }
 
     [Fact]
+    public void Out_of_range_persisted_threshold_is_clamped_before_decimal_conversion()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            MassDeleteThreshold = double.MaxValue,
+        };
+
+        var vm = New(existing: existing);
+
+        Assert.True(vm.ConfirmLargeDeletions);
+        Assert.Equal(100m, vm.MassDeletePercent);
+    }
+
+    [Fact]
     public void Turning_the_guard_off_persists_a_zero_threshold()
     {
         var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror);

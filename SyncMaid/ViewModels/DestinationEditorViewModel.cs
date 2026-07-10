@@ -90,7 +90,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             _confirmLargeDeletions = existing.MassDeleteThreshold > 0;
             if (_confirmLargeDeletions)
             {
-                _massDeletePercent = Math.Clamp((decimal)Math.Round(existing.MassDeleteThreshold * 100), 1, 100);
+                _massDeletePercent = (decimal)Math.Clamp(existing.MassDeleteThreshold * 100, 1, 100);
             }
 
             // A lone AllFilesFilter is "sync all"; anything else raises into the group editor.
