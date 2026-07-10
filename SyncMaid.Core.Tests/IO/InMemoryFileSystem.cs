@@ -33,6 +33,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="WriteAllBytes"/> throws for that path.</summary>
     public string? FailWriteAllBytesPath { get; set; }
 
+    /// <summary>When equal to a path, <see cref="WriteAllBytes"/> stores the bytes and then throws.</summary>
+    public string? FailWriteAllBytesAfterMutationPath { get; set; }
+
     /// <summary>When equal to a path, <see cref="ReadAllBytes"/> throws for that path.</summary>
     public string? FailReadAllBytesPath { get; set; }
 
@@ -45,6 +48,9 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     /// <summary>When contained in a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePathFragment { get; set; }
+
+    /// <summary>When equal to a path, <see cref="DeleteFile"/> removes it and then throws.</summary>
+    public string? FailDeleteAfterMutationPath { get; set; }
 
     /// <summary>Number of upcoming enumerations that throw after <see cref="FailEnumerationAfter"/> items.</summary>
     public int EnumerationFailuresRemaining { get; set; }
@@ -142,6 +148,13 @@ public sealed class InMemoryFileSystem : IFileSystem
 
         var stamp = FileStamp.Create(contents.Length, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         _files[Normalize(path)] = new Entry(contents, stamp);
+        if (string.Equals(
+                Normalize(path),
+                Normalize(FailWriteAllBytesAfterMutationPath ?? ""),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated write failure after mutation.");
+        }
     }
 
     /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.</summary>
@@ -157,6 +170,13 @@ public sealed class InMemoryFileSystem : IFileSystem
         }
 
         _files.Remove(Normalize(path));
+        if (string.Equals(
+                Normalize(path),
+                Normalize(FailDeleteAfterMutationPath ?? ""),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated delete failure after mutation.");
+        }
     }
 
     public void Recycle(string path)

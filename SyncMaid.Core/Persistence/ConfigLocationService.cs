@@ -110,13 +110,28 @@ public sealed class ConfigLocationService : IConfigLocationService
             }
 
             // Phase 2: copies verified — select the populated target before touching sources.
-            if (mode == ConfigLocationMode.Portable)
+            try
             {
-                _fileSystem.WriteAllBytes(_markerPath, MarkerContents);
+                if (mode == ConfigLocationMode.Portable)
+                {
+                    _fileSystem.WriteAllBytes(_markerPath, MarkerContents);
+                }
+                else
+                {
+                    _fileSystem.DeleteFile(_markerPath);
+                }
             }
-            else
+            catch
             {
-                _fileSystem.DeleteFile(_markerPath);
+                // Some filesystem APIs can commit a write/delete and then surface a late
+                // flush or handle-close failure. Marker presence is the persisted source of
+                // truth, so reconcile with disk before deciding whether the switch failed.
+                var markerSelectsRequestedMode = _fileSystem.FileExists(_markerPath)
+                    == (mode == ConfigLocationMode.Portable);
+                if (!markerSelectsRequestedMode)
+                {
+                    return false;
+                }
             }
 
             _currentMode = mode;

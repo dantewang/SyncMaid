@@ -161,4 +161,39 @@ public class ConfigLocationServiceTests
         Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{Portable}/tasks.json")));
         Assert.True(fs.FileExists(sourceFile));
     }
+
+    [Fact]
+    public void Marker_write_that_commits_before_throwing_is_reported_as_a_successful_switch()
+    {
+        var sourceFile = $@"{AppData}\tasks.json";
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(sourceFile, Encoding.UTF8.GetBytes("[tasks]"));
+        fs.FailWriteAllBytesAfterMutationPath = Marker;
+
+        var service = New(fs);
+        var switched = service.SwitchTo(ConfigLocationMode.Portable);
+
+        Assert.True(switched);
+        Assert.Equal(ConfigLocationMode.Portable, service.CurrentMode);
+        Assert.True(fs.FileExists(Marker));
+        Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{Portable}/tasks.json")));
+    }
+
+    [Fact]
+    public void Marker_delete_that_commits_before_throwing_is_reported_as_a_successful_switch()
+    {
+        var sourceFile = $"{Portable}/tasks.json";
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(Marker, [1]);
+        fs.WriteAllBytes(sourceFile, Encoding.UTF8.GetBytes("[tasks]"));
+        fs.FailDeleteAfterMutationPath = Marker;
+
+        var service = New(fs);
+        var switched = service.SwitchTo(ConfigLocationMode.AppData);
+
+        Assert.True(switched);
+        Assert.Equal(ConfigLocationMode.AppData, service.CurrentMode);
+        Assert.False(fs.FileExists(Marker));
+        Assert.Equal("[tasks]", Encoding.UTF8.GetString(fs.ReadAllBytes($"{AppData}/tasks.json")));
+    }
 }
