@@ -20,6 +20,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
 
     private Timer? _timer;
     private Dictionary<string, FileStamp> _snapshot = new(StringComparer.OrdinalIgnoreCase);
+    private bool _failureReported;
     private bool _disposed;
 
     public PollingWatchTriggerSource(IFileSystem fileSystem, string path, TimeSpan? interval = null)
@@ -31,6 +32,12 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
 
     /// <inheritdoc />
     public event EventHandler? Fired;
+
+    /// <inheritdoc />
+    public event Action<Exception>? Error;
+
+    /// <inheritdoc />
+    public event Action? Recovered;
 
     /// <inheritdoc />
     public void Start()
@@ -64,6 +71,10 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     /// </summary>
     public bool PollOnce()
     {
+        Exception? failure = null;
+        var reportFailure = false;
+        var recovered = false;
+        var changed = false;
         lock (_gate)
         {
             if (_disposed)
@@ -71,18 +82,74 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                 return false;
             }
 
-            var current = Snapshot();
-            if (!Differs(current, _snapshot))
+            Dictionary<string, FileStamp>? current = null;
+            try
             {
-                return false;
+                current = Snapshot();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                failure = exception;
             }
 
-            _snapshot = current;
+            if (failure is not null)
+            {
+                reportFailure = !_failureReported;
+                _failureReported = true;
+            }
+            else
+            {
+                recovered = _failureReported;
+                _failureReported = false;
+                if (Differs(current!, _snapshot))
+                {
+                    _snapshot = current!;
+                    changed = true;
+                }
+            }
         }
 
-        // Notify outside the lock so a handler that runs a sync can't deadlock on it.
-        Fired?.Invoke(this, EventArgs.Empty);
-        return true;
+        if (reportFailure)
+        {
+            ReportError(failure!);
+        }
+
+        if (recovered)
+        {
+            ReportRecovered();
+        }
+
+        if (changed)
+        {
+            // Notify outside the lock so a handler that runs a sync can't deadlock on it.
+            Fired?.Invoke(this, EventArgs.Empty);
+        }
+
+        return changed;
+    }
+
+    private void ReportError(Exception exception)
+    {
+        try
+        {
+            Error?.Invoke(exception);
+        }
+        catch
+        {
+            // This is a timer callback boundary; error subscribers cannot be allowed to escape it.
+        }
+    }
+
+    private void ReportRecovered()
+    {
+        try
+        {
+            Recovered?.Invoke();
+        }
+        catch
+        {
+            // Recovery notification shares the timer callback boundary.
+        }
     }
 
     private Dictionary<string, FileStamp> Snapshot()

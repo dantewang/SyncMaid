@@ -39,6 +39,12 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
+    /// <summary>Number of upcoming enumerations that throw after <see cref="FailEnumerationAfter"/> items.</summary>
+    public int EnumerationFailuresRemaining { get; set; }
+
+    /// <summary>Number of items yielded before an injected enumeration failure.</summary>
+    public int FailEnumerationAfter { get; set; }
+
     /// <summary>Seeds a file with explicit contents and stamp; used to set up test state.</summary>
     public void AddFile(string path, byte[] contents, FileStamp stamp)
     {
@@ -59,10 +65,18 @@ public sealed class InMemoryFileSystem : IFileSystem
     public IEnumerable<string> EnumerateFiles(string root)
     {
         var prefix = Normalize(root).TrimEnd('/') + "/";
+        var yielded = 0;
         foreach (var path in _files.Keys)
         {
             if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
+                if (EnumerationFailuresRemaining > 0 && yielded == FailEnumerationAfter)
+                {
+                    EnumerationFailuresRemaining--;
+                    throw new IOException("Simulated mid-enumeration failure.");
+                }
+
+                yielded++;
                 yield return path[prefix.Length..];
             }
         }

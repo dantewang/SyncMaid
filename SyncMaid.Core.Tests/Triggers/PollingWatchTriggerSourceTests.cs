@@ -81,4 +81,43 @@ public class PollingWatchTriggerSourceTests
         fs.AddFile($@"{Root}\c.txt", "c");
         Assert.True(source.PollOnce());  // a genuine later change still fires
     }
+
+    [Fact]
+    public void Enumeration_failure_keeps_the_last_good_snapshot_and_next_poll_resumes()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        fs.AddFile($@"{Root}\b.txt", "b");
+        using var source = Source(fs);
+        var fires = 0;
+        Exception? reported = null;
+        var errors = 0;
+        var recoveries = 0;
+        source.Fired += (_, _) => fires++;
+        source.Error += exception =>
+        {
+            errors++;
+            reported = exception;
+        };
+        source.Recovered += () => recoveries++;
+        source.Start();
+        fs.FailEnumerationAfter = 1;
+        fs.EnumerationFailuresRemaining = 2;
+
+        var changed = true;
+        var escaped = Record.Exception(() => changed = source.PollOnce());
+
+        Assert.Null(escaped);
+        Assert.False(changed);
+        Assert.Equal(0, fires);
+        Assert.IsType<IOException>(reported);
+        Assert.False(source.PollOnce()); // repeated failure is contained without log-spam
+        Assert.Equal(1, errors);
+        Assert.False(source.PollOnce()); // unchanged successful snapshot must not spuriously fire
+        Assert.Equal(1, recoveries);
+
+        fs.AddFile($@"{Root}\c.txt", "c");
+        Assert.True(source.PollOnce());
+        Assert.Equal(1, fires);
+    }
 }
