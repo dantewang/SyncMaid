@@ -99,26 +99,6 @@ public static class SafeFileTransfer
         }
     }
 
-    /// <summary>
-    /// Moves <paramref name="source"/> to <paramref name="destination"/>: an atomic,
-    /// verified copy, then the source is deleted <b>only</b> after the destination is
-    /// confirmed to match. A failed copy never deletes the source.
-    /// </summary>
-    public static void Move(IFileSystem fileSystem, string source, string destination, bool verifyContents)
-    {
-        Copy(fileSystem, source, destination, verifyContents);
-
-        // Defense in depth: do not remove the source unless the destination is provably
-        // the same file. Copy already verified, but this guards against a racing change.
-        if (fileSystem.GetStamp(destination) != fileSystem.GetStamp(source))
-        {
-            throw new SyncVerificationException(
-                $"Refusing to delete source '{source}': destination does not match after copy.");
-        }
-
-        fileSystem.DeleteFile(source);
-    }
-
     // Streams input → output, computing the xxHash of the bytes as they pass through
     // (hash-on-the-fly: one read of the source, no extra pass).
     private static UInt128 CopyAndHash(Stream input, Stream output)

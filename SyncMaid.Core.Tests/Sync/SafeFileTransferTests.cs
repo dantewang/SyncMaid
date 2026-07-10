@@ -92,39 +92,4 @@ public class SafeFileTransferTests
         Assert.False(HasTempFiles(fs));
     }
 
-    [Fact]
-    public void Successful_move_copies_then_removes_the_source()
-    {
-        var fs = WithSource("moving");
-
-        SafeFileTransfer.Move(fs, Source, Dest, verifyContents: true);
-
-        Assert.Equal("moving", Read(fs, Dest));
-        Assert.False(fs.FileExists(Source));
-        Assert.False(HasTempFiles(fs));
-    }
-
-    [Fact]
-    public void Interrupted_move_keeps_the_source()
-    {
-        var fs = WithSource("precious");
-        fs.FailWrites = true;
-
-        Assert.ThrowsAny<IOException>(() => SafeFileTransfer.Move(fs, Source, Dest, verifyContents: false));
-
-        Assert.True(fs.FileExists(Source)); // never deleted after a failed copy
-        Assert.False(fs.FileExists(Dest));
-    }
-
-    [Fact]
-    public void Corrupt_move_with_verification_keeps_the_source()
-    {
-        var fs = WithSource("precious");
-        fs.CorruptWrites = true;
-
-        Assert.Throws<SyncVerificationException>(() => SafeFileTransfer.Move(fs, Source, Dest, verifyContents: true));
-
-        Assert.True(fs.FileExists(Source)); // corrupt copy must not cost us the source
-        Assert.False(HasTempFiles(fs));
-    }
 }

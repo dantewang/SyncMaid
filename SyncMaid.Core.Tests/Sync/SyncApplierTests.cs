@@ -26,6 +26,35 @@ public class SyncApplierTests
     }
 
     [Fact]
+    public void Move_write_failure_keeps_the_source()
+    {
+        var (fs, dest) = Setup();
+        fs.AddFile(@"S:\src\a.txt", "precious");
+        fs.FailWrites = true;
+
+        Assert.ThrowsAny<IOException>(() =>
+            SyncApplier.Apply(fs, dest, new MoveOperation("a.txt", @"S:\src\a.txt")));
+
+        Assert.True(fs.FileExists(@"S:\src\a.txt"));
+        Assert.False(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
+    [Fact]
+    public void Move_stamp_mismatch_after_copy_keeps_the_source_and_fails()
+    {
+        var (fs, dest) = Setup();
+        fs.AddFile(@"S:\src\a.txt", "precious");
+        fs.SetLastWriteTimeOffset = TimeSpan.FromSeconds(1);
+
+        var exception = Assert.Throws<SyncVerificationException>(() =>
+            SyncApplier.Apply(fs, dest, new MoveOperation("a.txt", @"S:\src\a.txt")));
+
+        Assert.Contains("Refusing to delete source", exception.Message);
+        Assert.True(fs.FileExists(@"S:\src\a.txt"));
+        Assert.True(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
+    [Fact]
     public void Copy_leaves_source_in_place()
     {
         var (fs, dest) = Setup();

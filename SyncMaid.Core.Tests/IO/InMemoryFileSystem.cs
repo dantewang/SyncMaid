@@ -45,6 +45,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>Number of items yielded before an injected enumeration failure.</summary>
     public int FailEnumerationAfter { get; set; }
 
+    /// <summary>Offset applied by <see cref="SetLastWriteTimeUtc"/> to inject stamp mismatches.</summary>
+    public TimeSpan SetLastWriteTimeOffset { get; set; }
+
     /// <summary>Seeds a file with explicit contents and stamp; used to set up test state.</summary>
     public void AddFile(string path, byte[] contents, FileStamp stamp)
     {
@@ -178,7 +181,10 @@ public sealed class InMemoryFileSystem : IFileSystem
         var key = Normalize(path);
         if (_files.TryGetValue(key, out var entry))
         {
-            _files[key] = entry with { Stamp = FileStamp.Create(entry.Contents.Length, lastWriteTimeUtc) };
+            _files[key] = entry with
+            {
+                Stamp = FileStamp.Create(entry.Contents.Length, lastWriteTimeUtc + SetLastWriteTimeOffset),
+            };
         }
     }
 

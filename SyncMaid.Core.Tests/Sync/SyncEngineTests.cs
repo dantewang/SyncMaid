@@ -105,6 +105,21 @@ public class SyncEngineTests
     }
 
     [Fact]
+    public async Task Move_stamp_mismatch_returns_failed_status_and_keeps_source()
+    {
+        var fs = new InMemoryFileSystem { SetLastWriteTimeOffset = TimeSpan.FromSeconds(1) };
+        fs.AddFile(@"S:\src\a.txt", "precious");
+        var destination = new Destination(
+            "d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Move);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Task(destination)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("Refusing to delete source", status.Error);
+        Assert.True(fs.FileExists(@"S:\src\a.txt"));
+    }
+
+    [Fact]
     public async Task Progress_is_reported_for_each_operation()
     {
         var fs = new InMemoryFileSystem();
