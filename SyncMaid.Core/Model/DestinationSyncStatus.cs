@@ -27,9 +27,9 @@ public enum SyncOutcome
 public sealed record DestinationSyncStatus(
     Guid DestinationId,
     SyncOutcome Outcome,
-    DateTimeOffset? LastRun,
-    int FilesCopied,
-    string? Error)
+    DateTimeOffset? LastRun = null,
+    int FilesCopied = 0,
+    string? Error = null)
 {
     /// <summary>The "not yet run" status for a destination.</summary>
     public static DestinationSyncStatus Never(Guid destinationId) =>

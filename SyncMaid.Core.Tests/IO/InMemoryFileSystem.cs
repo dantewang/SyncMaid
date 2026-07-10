@@ -33,6 +33,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="WriteAllBytes"/> throws for that path.</summary>
     public string? FailWriteAllBytesPath { get; set; }
 
+    /// <summary>When equal to a path, <see cref="ReadAllBytes"/> throws for that path.</summary>
+    public string? FailReadAllBytesPath { get; set; }
+
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
@@ -79,6 +82,11 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public byte[] ReadAllBytes(string path)
     {
+        if (string.Equals(Normalize(path), Normalize(FailReadAllBytesPath ?? ""), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated read failure.");
+        }
+
         if (_files.TryGetValue(Normalize(path), out var entry))
         {
             return entry.Contents;

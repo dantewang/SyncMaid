@@ -68,4 +68,16 @@ public class JsonSettingsStoreTests
 
         Assert.True(store.Load().CloseToTray); // main unreadable → recovered from the backup
     }
+
+    [Fact]
+    public void Load_falls_back_to_the_backup_when_the_main_file_read_throws()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(new AppSettings(CloseToTray: true));
+        store.Save(new AppSettings(CloseToTray: false));
+        fs.FailReadAllBytesPath = SettingsPath;
+
+        Assert.True(store.Load().CloseToTray);
+    }
 }

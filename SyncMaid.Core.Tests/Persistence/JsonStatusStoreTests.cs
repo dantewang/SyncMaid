@@ -71,4 +71,19 @@ public class JsonStatusStoreTests
 
         Assert.Equal(5, store.Load()[id].FilesCopied); // recovered v1 from the backup
     }
+
+    [Fact]
+    public void Load_recovers_from_the_backup_when_the_main_file_read_throws()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = new JsonStatusStore(fs, Path);
+        var id = Guid.NewGuid();
+        DestinationSyncStatus Status(int copied) => new(
+            id, SyncOutcome.Success, DateTimeOffset.Parse("2026-01-01T08:00:00Z"), copied, null);
+        store.Save(new Dictionary<Guid, DestinationSyncStatus> { [id] = Status(5) });
+        store.Save(new Dictionary<Guid, DestinationSyncStatus> { [id] = Status(9) });
+        fs.FailReadAllBytesPath = Path;
+
+        Assert.Equal(5, store.Load()[id].FilesCopied);
+    }
 }

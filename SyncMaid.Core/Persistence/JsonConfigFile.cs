@@ -41,7 +41,8 @@ internal static class JsonConfigFile
                 ? null
                 : JsonSerializer.Deserialize(json, typeInfo);
         }
-        catch (JsonException)
+        catch (Exception exception) when (
+            exception is JsonException or IOException or UnauthorizedAccessException)
         {
             return null;
         }

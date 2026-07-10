@@ -190,4 +190,41 @@ public class JsonTaskStoreTests
 
         Assert.Equal(3, store.Load().Count); // main unreadable → recovered from the backup
     }
+
+    [Fact]
+    public void Load_falls_back_to_the_backup_when_the_main_file_read_throws()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        store.Save([SampleTasks()[0]]);
+        fs.FailReadAllBytesPath = ConfigPath;
+
+        Assert.Equal(3, store.Load().Count);
+    }
+
+    [Theory]
+    [InlineData("[{\"Name\":\"docs\",\"SourcePath\":\"C:/docs\",\"Trigger\":{\"kind\":\"manual\"}}]")]
+    [InlineData("[{\"Name\":\"docs\",\"SourcePath\":\"C:/docs\",\"Destinations\":[]}]")]
+    public void Load_treats_missing_required_task_members_as_corrupt_and_uses_backup(string incompleteJson)
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        store.Save([SampleTasks()[0]]);
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(incompleteJson));
+
+        Assert.Equal(3, store.Load().Count);
+    }
+
+    [Theory]
+    [InlineData("[{\"Name\":\"docs\",\"SourcePath\":\"C:/docs\",\"Trigger\":{\"kind\":\"manual\"}}]")]
+    [InlineData("[{\"Name\":\"docs\",\"SourcePath\":\"C:/docs\",\"Destinations\":[]}]")]
+    public void Load_returns_empty_when_required_task_members_and_backup_are_missing(string incompleteJson)
+    {
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(incompleteJson));
+
+        Assert.Empty(NewStore(fs).Load());
+    }
 }

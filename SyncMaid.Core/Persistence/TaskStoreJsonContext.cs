@@ -12,6 +12,7 @@ namespace SyncMaid.Core.Persistence;
 [JsonSourceGenerationOptions(
     WriteIndented = true,
     UseStringEnumConverter = true,
+    RespectRequiredConstructorParameters = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(List<SyncTask>))]
 [JsonSerializable(typeof(List<DestinationSyncStatus>))]
