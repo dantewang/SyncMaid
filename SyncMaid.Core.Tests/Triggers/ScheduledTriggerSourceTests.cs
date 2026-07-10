@@ -127,6 +127,36 @@ public class ScheduledTriggerSourceTests
         Assert.Equal(TimeSpan.FromMinutes(1), timer!.LastDueTime);
     }
 
+    [Fact]
+    public void A_successful_tick_after_a_boundary_failure_reports_recovery()
+    {
+        var now = new DateTime(2026, 1, 1, 0, 0, 30, DateTimeKind.Utc);
+        FakeTimer? timer = null;
+        using var source = New("* * * * *", () => now, value => timer = value);
+        var shouldThrow = true;
+        var errors = 0;
+        var recoveries = 0;
+        source.Fired += (_, _) =>
+        {
+            if (shouldThrow)
+            {
+                throw new InvalidOperationException("first tick failed");
+            }
+        };
+        source.Error += _ => errors++;
+        source.Recovered += () => recoveries++;
+        source.Start();
+
+        now = new DateTime(2026, 1, 1, 0, 1, 0, DateTimeKind.Utc);
+        timer!.Fire();
+        shouldThrow = false;
+        now = new DateTime(2026, 1, 1, 0, 2, 0, DateTimeKind.Utc);
+        timer.Fire();
+
+        Assert.Equal(1, errors);
+        Assert.Equal(1, recoveries);
+    }
+
     private static ScheduledTriggerSource New(
         string cron,
         Func<DateTime> utcNow,

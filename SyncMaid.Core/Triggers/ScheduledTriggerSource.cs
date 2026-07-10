@@ -19,6 +19,7 @@ public sealed class ScheduledTriggerSource : ITriggerSource
     private IOneShotTimer? _timer;
     private DateTime? _nextOccurrenceUtc;
     private bool _stopped = true;
+    private bool _errorReported;
     private bool _disposed;
 
     public ScheduledTriggerSource(string cronExpression)
@@ -43,6 +44,9 @@ public sealed class ScheduledTriggerSource : ITriggerSource
 
     /// <inheritdoc />
     public event Action<Exception>? Error;
+
+    /// <inheritdoc />
+    public event Action? Recovered;
 
     /// <inheritdoc />
     public void Start()
@@ -73,7 +77,9 @@ public sealed class ScheduledTriggerSource : ITriggerSource
 
     private void OnTimer()
     {
+        var activeBoundary = false;
         var occurrenceReached = false;
+        var boundarySucceeded = false;
         try
         {
             lock (_gate)
@@ -83,16 +89,19 @@ public sealed class ScheduledTriggerSource : ITriggerSource
                     return;
                 }
 
+                activeBoundary = true;
                 var now = _utcNow();
                 if (_nextOccurrenceUtc is not { } next)
                 {
                     ArmNext();
+                    boundarySucceeded = true;
                     return;
                 }
 
                 if (now < next)
                 {
                     ArmUntil(next, now);
+                    boundarySucceeded = true;
                     return;
                 }
 
@@ -103,6 +112,7 @@ public sealed class ScheduledTriggerSource : ITriggerSource
                 // that already passed the stopped check can still notify. The lock is reentrant,
                 // so a handler may safely call Stop/Dispose itself.
                 Fired?.Invoke(this, EventArgs.Empty);
+                boundarySucceeded = true;
             }
         }
         catch (Exception exception)
@@ -125,8 +135,14 @@ public sealed class ScheduledTriggerSource : ITriggerSource
                 }
                 catch (Exception exception)
                 {
+                    boundarySucceeded = false;
                     ReportError(exception);
                 }
+            }
+
+            if (activeBoundary && boundarySucceeded)
+            {
+                ReportRecovered();
             }
         }
     }
@@ -164,6 +180,11 @@ public sealed class ScheduledTriggerSource : ITriggerSource
 
     private void ReportError(Exception exception)
     {
+        lock (_gate)
+        {
+            _errorReported = true;
+        }
+
         try
         {
             Error?.Invoke(exception);
@@ -171,6 +192,28 @@ public sealed class ScheduledTriggerSource : ITriggerSource
         catch
         {
             // This is the thread-pool boundary; subscriber failures must not escape it either.
+        }
+    }
+
+    private void ReportRecovered()
+    {
+        lock (_gate)
+        {
+            if (!_errorReported)
+            {
+                return;
+            }
+
+            _errorReported = false;
+        }
+
+        try
+        {
+            Recovered?.Invoke();
+        }
+        catch
+        {
+            // Recovery observers share the same timer callback boundary as Error observers.
         }
     }
 
