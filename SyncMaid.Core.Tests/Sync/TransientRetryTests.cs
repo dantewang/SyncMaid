@@ -85,4 +85,21 @@ public class TransientRetryTests
 
         Assert.Equal(1, attempts);
     }
+
+    [Fact]
+    public void Does_not_retry_a_vanished_source_directory()
+    {
+        var attempts = 0;
+
+        Assert.Throws<DirectoryNotFoundException>(() =>
+            TransientRetry.Execute(
+                () =>
+                {
+                    attempts++;
+                    throw new DirectoryNotFoundException("source directory vanished after planning");
+                },
+                maxAttempts: 3));
+
+        Assert.Equal(1, attempts);
+    }
 }
