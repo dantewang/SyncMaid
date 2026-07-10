@@ -23,10 +23,6 @@ public abstract record FilterRule
 {
     /// <summary>Returns <c>true</c> when <paramref name="relativePath"/> is selected by this rule.</summary>
     public abstract bool Matches(string relativePath);
-
-    /// <summary>Normalizes a relative path to forward slashes with no leading separator.</summary>
-    private protected static string Normalize(string path) =>
-        path.Replace('\\', '/').TrimStart('/');
 }
 
 /// <summary>Selects every file under the source (the design doc's "all files, no rule").</summary>
@@ -36,28 +32,74 @@ public sealed record AllFilesFilter : FilterRule
 }
 
 /// <summary>Selects files that live at or under a specific relative path of the source.</summary>
-public sealed record PathFilter(string Prefix) : FilterRule
+public sealed record PathFilter : FilterRule
 {
+    private readonly string _matchPrefix;
+
+    public PathFilter(string prefix)
+    {
+        Prefix = prefix.Replace('\\', '/').Trim('/');
+        _matchPrefix = Prefix + '/';
+    }
+
+    public string Prefix { get; init; }
+
     public override bool Matches(string relativePath)
     {
-        var path = Normalize(relativePath);
-        var prefix = Normalize(Prefix);
+        var path = relativePath.AsSpan();
+        while (path.Length > 0 && IsSeparator(path[0]))
+        {
+            path = path[1..];
+        }
 
-        return prefix.Length == 0
-               || path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
-               || path.StartsWith(prefix + '/', StringComparison.OrdinalIgnoreCase);
+        return Prefix.Length == 0
+               || EqualsNormalized(path, Prefix)
+               || (path.Length >= _matchPrefix.Length
+                   && EqualsNormalized(path[.._matchPrefix.Length], _matchPrefix));
     }
+
+    private static bool EqualsNormalized(ReadOnlySpan<char> left, ReadOnlySpan<char> right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < left.Length; i++)
+        {
+            if (IsSeparator(left[i]) && IsSeparator(right[i]))
+            {
+                continue;
+            }
+
+            if (char.ToUpperInvariant(left[i]) != char.ToUpperInvariant(right[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsSeparator(char value) => value is '/' or '\\';
 }
 
 /// <summary>Selects files of a specific type by extension, e.g. <c>"jpg"</c> or <c>".jpg"</c>.</summary>
-public sealed record ExtensionFilter(string Extension) : FilterRule
+public sealed record ExtensionFilter : FilterRule
 {
-    public override bool Matches(string relativePath)
+    private readonly string _matchSuffix;
+
+    public ExtensionFilter(string extension)
     {
-        var ext = Extension.TrimStart('.');
-        return ext.Length > 0
-               && relativePath.EndsWith('.' + ext, StringComparison.OrdinalIgnoreCase);
+        Extension = extension.TrimStart('*').TrimStart('.');
+        _matchSuffix = '.' + Extension;
     }
+
+    public string Extension { get; init; }
+
+    public override bool Matches(string relativePath) =>
+        Extension.Length > 0
+        && relativePath.EndsWith(_matchSuffix, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>Selects files matching <b>every</b> child rule (AND). Empty matches nothing —

@@ -32,6 +32,18 @@ public class FilterRuleTests
     }
 
     [Theory]
+    [InlineData("photos/")]
+    [InlineData("/photos/")]
+    [InlineData(@"\photos\")]
+    public void PathFilter_normalizes_natural_folder_patterns(string pattern)
+    {
+        var rule = new PathFilter(pattern);
+
+        Assert.Equal("photos", rule.Prefix);
+        Assert.True(rule.Matches("photos/img.jpg"));
+    }
+
+    [Theory]
     [InlineData("a.jpg", true)]
     [InlineData("a.JPG", true)]                // case-insensitive
     [InlineData("nested/a.jpeg", false)]       // different extension
@@ -45,5 +57,17 @@ public class FilterRuleTests
     public void ExtensionFilter_accepts_leading_dot()
     {
         Assert.True(new ExtensionFilter(".png").Matches("logo.png"));
+    }
+
+    [Theory]
+    [InlineData("*.jpg")]
+    [InlineData(".jpg")]
+    [InlineData("jpg")]
+    public void ExtensionFilter_normalizes_natural_extension_patterns(string pattern)
+    {
+        var rule = new ExtensionFilter(pattern);
+
+        Assert.Equal("jpg", rule.Extension);
+        Assert.True(rule.Matches("a/b.jpg"));
     }
 }
