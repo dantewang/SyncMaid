@@ -20,7 +20,9 @@ public class WatchTriggerSourceTests
                 return watcher;
             });
             Exception? reported = null;
+            var recoveries = 0;
             source.Error += exception => reported = exception;
+            source.Recovered += () => recoveries++;
             source.Start();
 
             Assert.True(Assert.Single(created).EnableRaisingEvents);
@@ -30,10 +32,122 @@ public class WatchTriggerSourceTests
             Assert.Equal(2, created.Count);
             Assert.True(created[1].EnableRaisingEvents);
             Assert.Equal(64 * 1024, created[1].InternalBufferSize);
-            Assert.Null(reported);
+            Assert.IsType<InternalBufferOverflowException>(reported);
+            Assert.Equal(1, recoveries);
         }
         finally
         {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Watcher_error_while_stopped_does_not_restart_or_reenable()
+    {
+        var directory = NewDirectory();
+        var created = new List<TestFileSystemWatcher>();
+        try
+        {
+            using var source = new WatchTriggerSource(directory, path =>
+            {
+                var watcher = new TestFileSystemWatcher(path);
+                created.Add(watcher);
+                return watcher;
+            });
+            source.Start();
+            source.Stop();
+
+            created[0].RaiseError(new IOException("late error"));
+
+            Assert.Single(created);
+            Assert.False(created[0].EnableRaisingEvents);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dequeued_debounce_and_throwing_handlers_are_contained_after_stop()
+    {
+        var directory = NewDirectory();
+        FakeDebounceTimer? timer = null;
+        var watcher = new TestFileSystemWatcher(directory);
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => watcher,
+                callback => timer = new FakeDebounceTimer(callback));
+            var fires = 0;
+            Exception? reported = null;
+            source.Fired += (_, _) =>
+            {
+                fires++;
+                throw new InvalidOperationException("handler failed");
+            };
+            source.Error += exception => reported = exception;
+            source.Start();
+            watcher.RaiseChanged();
+
+            var escaped = Record.Exception(timer!.Fire);
+
+            Assert.Null(escaped);
+            Assert.Equal(1, fires);
+            Assert.IsType<InvalidOperationException>(reported);
+
+            watcher.RaiseChanged();
+            source.Stop();
+            escaped = Record.Exception(timer.Fire); // callback was already dequeued
+            Assert.Null(escaped);
+            Assert.Equal(1, fires);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_blocked_restart_does_not_block_dispose_or_resurrect_the_watcher()
+    {
+        var directory = NewDirectory();
+        var initial = new TestFileSystemWatcher(directory);
+        var restarted = new TestFileSystemWatcher(directory);
+        var restartEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseRestart = new ManualResetEventSlim();
+        var attempts = 0;
+        var source = new WatchTriggerSource(directory, _ =>
+        {
+            attempts++;
+            if (attempts == 1)
+            {
+                return initial;
+            }
+
+            restartEntered.TrySetResult();
+            releaseRestart.Wait();
+            return restarted;
+        });
+
+        try
+        {
+            source.Start();
+            var error = Task.Run(() => initial.RaiseError(new IOException("disconnected")));
+            await restartEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+            await Task.Run(source.Dispose).WaitAsync(TimeSpan.FromSeconds(1));
+            releaseRestart.Set();
+            await error.WaitAsync(TimeSpan.FromSeconds(1));
+
+            Assert.True(restarted.IsDisposed);
+            Assert.False(restarted.EnableRaisingEvents);
+        }
+        finally
+        {
+            releaseRestart.Set();
+            source.Dispose();
             Directory.Delete(directory, recursive: true);
         }
     }
@@ -153,8 +267,31 @@ public class WatchTriggerSourceTests
         }
     }
 
+    private static string NewDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private sealed class FakeDebounceTimer(Action callback) : WatchTriggerSource.IDebounceTimer
+    {
+        public void Change(TimeSpan dueTime) { }
+        public void Fire() => callback();
+        public void Dispose() { }
+    }
+
     private sealed class TestFileSystemWatcher(string path) : FileSystemWatcher(path)
     {
+        public bool IsDisposed { get; private set; }
+        public void RaiseChanged() => OnChanged(new FileSystemEventArgs(
+            WatcherChangeTypes.Changed, Path, "changed.txt"));
         public void RaiseError(Exception exception) => OnError(new ErrorEventArgs(exception));
+
+        protected override void Dispose(bool disposing)
+        {
+            IsDisposed = true;
+            base.Dispose(disposing);
+        }
     }
 }

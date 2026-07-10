@@ -12,15 +12,28 @@ public sealed class WatchTriggerSource : ITriggerSource
 
     private readonly string _path;
     private readonly Func<string, FileSystemWatcher> _watcherFactory;
+    private readonly Func<Action, IDebounceTimer> _debounceFactory;
     private readonly Lock _gate = new();
     private FileSystemWatcher? _watcher;
-    private Timer? _debounce;
+    private IDebounceTimer? _debounce;
+    private long _generation;
+    private bool _started;
+    private bool _errorReported;
     private bool _disposed;
 
     public WatchTriggerSource(string path, Func<string, FileSystemWatcher>? watcherFactory = null)
+        : this(path, watcherFactory, callback => new SystemDebounceTimer(callback))
+    {
+    }
+
+    internal WatchTriggerSource(
+        string path,
+        Func<string, FileSystemWatcher>? watcherFactory,
+        Func<Action, IDebounceTimer> debounceFactory)
     {
         _path = path;
         _watcherFactory = watcherFactory ?? (watchPath => new FileSystemWatcher(watchPath));
+        _debounceFactory = debounceFactory;
     }
 
     /// <inheritdoc />
@@ -30,8 +43,12 @@ public sealed class WatchTriggerSource : ITriggerSource
     public event Action<Exception>? Error;
 
     /// <inheritdoc />
+    public event Action? Recovered;
+
+    /// <inheritdoc />
     public void Start()
     {
+        long generation;
         lock (_gate)
         {
             if (_disposed)
@@ -39,17 +56,51 @@ public sealed class WatchTriggerSource : ITriggerSource
                 return;
             }
 
+            _started = true;
+            _debounce ??= _debounceFactory(OnDebounceElapsed);
             if (_watcher is not null)
             {
-                // Resume after Stop(): the watcher survives a stop with events disabled, so
-                // re-enable rather than early-return (which would make resume a silent no-op).
                 _watcher.EnableRaisingEvents = true;
+                ReportRecovered();
                 return;
             }
 
-            _debounce ??= new Timer(OnDebounceElapsed, state: null, Timeout.Infinite, Timeout.Infinite);
-            _watcher = CreateWatcher();
-            _watcher.EnableRaisingEvents = true;
+            generation = ++_generation;
+        }
+
+        FileSystemWatcher? watcher = null;
+        try
+        {
+            watcher = CreateWatcher();
+            watcher.EnableRaisingEvents = true;
+
+            lock (_gate)
+            {
+                if (_disposed || !_started || generation != _generation || _watcher is not null)
+                {
+                    return;
+                }
+
+                _watcher = watcher;
+                watcher = null;
+                ReportRecovered();
+            }
+        }
+        catch
+        {
+            lock (_gate)
+            {
+                if (generation == _generation)
+                {
+                    _started = false;
+                }
+            }
+
+            throw;
+        }
+        finally
+        {
+            watcher?.Dispose();
         }
     }
 
@@ -58,12 +109,14 @@ public sealed class WatchTriggerSource : ITriggerSource
     {
         lock (_gate)
         {
+            _started = false;
+            _generation++;
             if (_watcher is not null)
             {
                 _watcher.EnableRaisingEvents = false;
             }
 
-            _debounce?.Change(Timeout.Infinite, Timeout.Infinite);
+            _debounce?.Change(Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -71,47 +124,77 @@ public sealed class WatchTriggerSource : ITriggerSource
     {
         lock (_gate)
         {
+            if (_disposed || !_started || !ReferenceEquals(sender, _watcher))
+            {
+                return;
+            }
+
             // Restart the debounce window; we only fire once the dust settles.
-            _debounce?.Change(DebounceWindow, Timeout.InfiniteTimeSpan);
+            _debounce?.Change(DebounceWindow);
         }
     }
 
     private void OnWatcherError(object sender, ErrorEventArgs e)
     {
-        Exception? restartFailure = null;
+        FileSystemWatcher? failedWatcher;
+        long generation;
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || !_started || !ReferenceEquals(sender, _watcher))
             {
                 return;
             }
 
-            try
-            {
-                DisposeWatcher();
-                _watcher = CreateWatcher();
-                _watcher.EnableRaisingEvents = true;
-            }
-            catch (Exception exception)
-            {
-                try
-                {
-                    DisposeWatcher();
-                }
-                catch
-                {
-                    // Preserve the restart failure; the watcher is already unusable.
-                }
-
-                restartFailure = new IOException(
-                    $"The filesystem watcher stopped and its restart failed: {exception.Message}",
-                    new AggregateException(e.GetException(), exception));
-            }
+            failedWatcher = _watcher;
+            _watcher = null;
+            generation = ++_generation;
         }
 
-        if (restartFailure is not null)
+        failedWatcher.Dispose();
+
+        FileSystemWatcher? replacement = null;
+        try
         {
-            Error?.Invoke(restartFailure);
+            replacement = CreateWatcher();
+            replacement.EnableRaisingEvents = true;
+
+            var installed = false;
+            lock (_gate)
+            {
+                if (_disposed || !_started || generation != _generation || _watcher is not null)
+                {
+                    return;
+                }
+
+                _watcher = replacement;
+                replacement = null;
+                installed = true;
+            }
+
+            if (installed)
+            {
+                ReportError(e.GetException());
+                ReportRecovered();
+            }
+        }
+        catch (Exception exception)
+        {
+            lock (_gate)
+            {
+                if (_disposed || !_started || generation != _generation)
+                {
+                    return;
+                }
+            }
+
+            ReportError(
+                new IOException(
+                    $"The filesystem watcher stopped and its restart failed: {exception.Message}",
+                    new AggregateException(e.GetException(), exception)));
+        }
+        finally
+        {
+            replacement?.Dispose();
         }
     }
 
@@ -132,25 +215,108 @@ public sealed class WatchTriggerSource : ITriggerSource
         return watcher;
     }
 
-    private void DisposeWatcher()
+    private void OnDebounceElapsed()
     {
-        var watcher = _watcher;
-        _watcher = null;
-        watcher?.Dispose();
+        try
+        {
+            lock (_gate)
+            {
+                if (_disposed || !_started)
+                {
+                    return;
+                }
+
+                // Keep Stop mutually exclusive with delivery: once Stop returns, a callback
+                // that was already dequeued cannot notify after it.
+                Fired?.Invoke(this, EventArgs.Empty);
+                ReportRecovered();
+            }
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
     }
 
-    private void OnDebounceElapsed(object? state) => Fired?.Invoke(this, EventArgs.Empty);
+    private void ReportError(Exception exception)
+    {
+        lock (_gate)
+        {
+            _errorReported = true;
+        }
+
+        try
+        {
+            Error?.Invoke(exception);
+        }
+        catch
+        {
+            // This is a thread-pool boundary; subscriber failures must not escape it either.
+        }
+    }
+
+    private void ReportRecovered()
+    {
+        lock (_gate)
+        {
+            if (!_errorReported)
+            {
+                return;
+            }
+
+            _errorReported = false;
+        }
+
+        try
+        {
+            Recovered?.Invoke();
+        }
+        catch
+        {
+            // Recovery observers share the same thread-pool boundary as Error observers.
+        }
+    }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        FileSystemWatcher? watcher;
+        IDebounceTimer? debounce;
         lock (_gate)
         {
-            _disposed = true;
-            DisposeWatcher();
+            if (_disposed)
+            {
+                return;
+            }
 
-            _debounce?.Dispose();
+            _disposed = true;
+            _started = false;
+            _generation++;
+            watcher = _watcher;
+            _watcher = null;
+            debounce = _debounce;
             _debounce = null;
         }
+
+        watcher?.Dispose();
+        debounce?.Dispose();
+    }
+
+    internal interface IDebounceTimer : IDisposable
+    {
+        void Change(TimeSpan dueTime);
+    }
+
+    private sealed class SystemDebounceTimer : IDebounceTimer
+    {
+        private readonly Timer _timer;
+
+        public SystemDebounceTimer(Action callback) =>
+            _timer = new Timer(_ => callback(), state: null, Timeout.Infinite, Timeout.Infinite);
+
+        public void Change(TimeSpan dueTime) =>
+            _timer.Change(dueTime, Timeout.InfiniteTimeSpan);
+
+        public void Dispose() => _timer.Dispose();
     }
 }
