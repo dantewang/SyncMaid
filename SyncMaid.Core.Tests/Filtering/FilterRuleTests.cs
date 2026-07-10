@@ -44,6 +44,18 @@ public class FilterRuleTests
     }
 
     [Theory]
+    [InlineData("/")]
+    [InlineData(@"\")]
+    [InlineData(@"///\\")]
+    public void Slash_only_path_filter_matches_nothing(string pattern)
+    {
+        var rule = new PathFilter(pattern);
+
+        Assert.False(rule.Matches("file.txt"));
+        Assert.False(rule.Matches("nested/file.txt"));
+    }
+
+    [Theory]
     [InlineData("a.jpg", true)]
     [InlineData("a.JPG", true)]                // case-insensitive
     [InlineData("nested/a.jpeg", false)]       // different extension

@@ -35,11 +35,13 @@ public sealed record AllFilesFilter : FilterRule
 public sealed record PathFilter : FilterRule
 {
     private readonly string _matchPrefix;
+    private readonly bool _matchesNothing;
 
     public PathFilter(string prefix)
     {
         Prefix = prefix.Replace('\\', '/').Trim('/');
         _matchPrefix = Prefix + '/';
+        _matchesNothing = prefix.Length > 0 && Prefix.Length == 0;
     }
 
     public string Prefix { get; init; }
@@ -52,10 +54,11 @@ public sealed record PathFilter : FilterRule
             path = path[1..];
         }
 
-        return Prefix.Length == 0
+        return !_matchesNothing
+               && (Prefix.Length == 0
                || EqualsNormalized(path, Prefix)
                || (path.Length >= _matchPrefix.Length
-                   && EqualsNormalized(path[.._matchPrefix.Length], _matchPrefix));
+                   && EqualsNormalized(path[.._matchPrefix.Length], _matchPrefix)));
     }
 
     private static bool EqualsNormalized(ReadOnlySpan<char> left, ReadOnlySpan<char> right)
