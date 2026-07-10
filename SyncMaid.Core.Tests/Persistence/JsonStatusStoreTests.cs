@@ -86,4 +86,22 @@ public class JsonStatusStoreTests
 
         Assert.Equal(5, store.Load()[id].FilesCopied);
     }
+
+    [Theory]
+    [InlineData("[{\"DestinationId\":\"00000000-0000-0000-0000-000000000001\",\"FilesCopied\":99}]")]
+    [InlineData("[{\"Outcome\":\"Success\",\"FilesCopied\":99}]")]
+    public void Load_treats_missing_required_status_members_as_corrupt_and_uses_backup(
+        string incompleteJson)
+    {
+        var fs = new InMemoryFileSystem();
+        var store = new JsonStatusStore(fs, Path);
+        var id = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        DestinationSyncStatus Status(int copied) => new(
+            id, SyncOutcome.Success, DateTimeOffset.Parse("2026-01-01T08:00:00Z"), copied, null);
+        store.Save(new Dictionary<Guid, DestinationSyncStatus> { [id] = Status(5) });
+        store.Save(new Dictionary<Guid, DestinationSyncStatus> { [id] = Status(9) });
+        fs.WriteAllBytes(Path, System.Text.Encoding.UTF8.GetBytes(incompleteJson));
+
+        Assert.Equal(5, store.Load()[id].FilesCopied);
+    }
 }
