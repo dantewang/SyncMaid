@@ -102,6 +102,16 @@ public sealed class SyncEngine : ISyncEngine
     {
         try
         {
+            if (destination.Strategy == SyncStrategy.Move
+                && !string.IsNullOrWhiteSpace(destination.LocalPath)
+                && (RelativePaths.AreEquivalent(destination.LocalPath, task.SourcePath)
+                    || RelativePaths.IsDescendantOf(destination.LocalPath, task.SourcePath)))
+            {
+                return new DestinationSyncStatus(
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                    "Move destination must be different from and outside the source folder; no files were changed.");
+            }
+
             var provider = _destinations.Create(destination.Target);
 
             var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();

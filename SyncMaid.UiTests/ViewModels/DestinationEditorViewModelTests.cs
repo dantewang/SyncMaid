@@ -407,6 +407,26 @@ public class DestinationEditorViewModelTests
         Assert.False(vm.ShowPathHint);
     }
 
+    [Theory]
+    [InlineData(@"c:/source/")]
+    [InlineData(@"C:\SOURCE\nested")]
+    public void Move_destination_at_or_below_source_is_explained_and_rejected(string destinationPath)
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(),
+            sourcePath: @"C:\Source",
+            directoryExists: _ => true)
+        {
+            Name = "Unsafe move",
+            Path = destinationPath,
+            SelectedStrategy = SyncStrategy.Move,
+        };
+
+        Assert.True(vm.ShowPathHint);
+        Assert.Contains("outside the source", vm.PathHintText, StringComparison.OrdinalIgnoreCase);
+        Assert.False(vm.OKCommand.CanExecute(null));
+    }
+
     [Fact]
     public void Network_verify_warning_shows_only_for_a_unc_path_with_verification_on()
     {

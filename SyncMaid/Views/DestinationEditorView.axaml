@@ -45,7 +45,7 @@
                                 <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
                                                  Foreground="{StaticResource WarningBrush}" VerticalAlignment="Top" />
                                 <TextBlock Classes="muted" TextWrapping="Wrap"
-                                           Text="This folder doesn't exist yet — it will be created on the first run. Double-check for typos." />
+                                           Text="{Binding PathHintText}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

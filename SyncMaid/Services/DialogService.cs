@@ -23,8 +23,8 @@ public sealed class DialogService : IDialogService
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing) =>
         _host.ShowAsync(new TaskEditorViewModel(_folderPicker, existing));
 
-    public Task<Destination?> EditDestinationAsync(Destination? existing) =>
-        _host.ShowAsync(new DestinationEditorViewModel(_folderPicker, existing));
+    public Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath) =>
+        _host.ShowAsync(new DestinationEditorViewModel(_folderPicker, existing, sourcePath));
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true) =>
         await _host.ShowAsync(new ConfirmViewModel(title, message, confirmLabel, isDestructive));

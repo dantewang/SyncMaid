@@ -15,6 +15,24 @@ public class SyncEngineGuardTests
     private static SyncTask Mirror(InMemoryFileSystem fs, Destination dest) =>
         new("t", @"S:\src", new ManualTrigger(), [dest]);
 
+    [Theory]
+    [InlineData(@"S:\src")]
+    [InlineData(@"S:\src\nested")]
+    public async Task Move_destination_at_or_below_source_fails_without_deleting_source(string destinationPath)
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\important.txt", "keep me");
+        var destination = new Destination(
+            "unsafe", destinationPath, [new AllFilesFilter()], SyncStrategy.Move);
+        var task = new SyncTask("move", @"S:\src", new ManualTrigger(), [destination]);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(task));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("outside the source", status.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.True(fs.FileExists(@"S:\src\important.txt"));
+    }
+
     [Fact]
     public async Task Empty_or_unavailable_source_does_not_wipe_the_mirror()
     {

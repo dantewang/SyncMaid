@@ -32,6 +32,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     [NotifyPropertyChangedFor(nameof(IsNetworkPath))]
     [NotifyPropertyChangedFor(nameof(ShowVerifyNetworkWarning))]
     [NotifyPropertyChangedFor(nameof(ShowPathHint))]
+    [NotifyPropertyChangedFor(nameof(PathHintText))]
     private string _path = string.Empty;
 
     [ObservableProperty]
@@ -39,6 +40,9 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     private bool _syncAll = true;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowPathHint))]
+    [NotifyPropertyChangedFor(nameof(PathHintText))]
     private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
 
     [ObservableProperty]
@@ -63,6 +67,7 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     private readonly IFolderPickerService _folderPicker;
     private readonly Func<string, bool> _directoryExists;
+    private readonly string _sourcePath;
     private readonly Guid _id;
 
     /// <param name="directoryExists">Directory probe, injectable for tests;
@@ -71,10 +76,12 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     public DestinationEditorViewModel(
         IFolderPickerService folderPicker,
         Destination? existing = null,
+        string sourcePath = "",
         Func<string, bool>? directoryExists = null)
     {
         _folderPicker = folderPicker;
         _directoryExists = directoryExists ?? System.IO.Directory.Exists;
+        _sourcePath = sourcePath;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
         Groups = new ObservableCollection<FilterGroupViewModel>();
@@ -150,7 +157,13 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
 
     /// <summary>Non-blocking typo guard: the destination folder doesn't exist (yet). Saving is
     /// fine — the first run creates it — but a typo would silently sync somewhere unintended.</summary>
-    public bool ShowPathHint => !string.IsNullOrWhiteSpace(Path) && !_directoryExists(Path);
+    public bool ShowPathHint => HasUnsafeMovePath
+        || (!string.IsNullOrWhiteSpace(Path) && !_directoryExists(Path));
+
+    /// <summary>Explains either a destructive Move path or the non-blocking missing-folder hint.</summary>
+    public string PathHintText => HasUnsafeMovePath
+        ? "Move destination must be different from and outside the source folder."
+        : "This folder doesn't exist yet — it will be created on the first run. Double-check for typos.";
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
@@ -169,7 +182,15 @@ public partial class DestinationEditorViewModel : DialogViewModel<Destination>
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
+        && !HasUnsafeMovePath
         && (SyncAll || Groups.Any(group => group.Rules.Count > 0));
+
+    private bool HasUnsafeMovePath =>
+        SelectedStrategy == SyncStrategy.Move
+        && !string.IsNullOrWhiteSpace(_sourcePath)
+        && !string.IsNullOrWhiteSpace(Path)
+        && (RelativePaths.AreEquivalent(Path, _sourcePath)
+            || RelativePaths.IsDescendantOf(Path, _sourcePath));
 
     [RelayCommand]
     private void Cancel() => Close(null);

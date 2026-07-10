@@ -23,7 +23,7 @@ public sealed class FakeDialogService : IDialogService
 
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing) => Task.FromResult(OnEditTask(existing));
 
-    public Task<Destination?> EditDestinationAsync(Destination? existing) =>
+    public Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath) =>
         Task.FromResult(OnEditDestination(existing));
 
     public Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true)

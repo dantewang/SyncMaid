@@ -204,7 +204,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task AddDestination()
     {
-        var destination = await _dialogs.EditDestinationAsync(null);
+        var destination = await _dialogs.EditDestinationAsync(null, Task.SourcePath);
         if (destination != null)
         {
             Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
@@ -214,7 +214,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private async Task EditLeaf(DestinationNodeViewModel node)
     {
-        var edited = await _dialogs.EditDestinationAsync(node.Destination);
+        var edited = await _dialogs.EditDestinationAsync(node.Destination, Task.SourcePath);
         if (edited != null)
         {
             // Id is preserved by the editor, so the existing status still applies.
