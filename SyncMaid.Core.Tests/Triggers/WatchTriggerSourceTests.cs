@@ -110,6 +110,35 @@ public class WatchTriggerSourceTests
     }
 
     [Fact]
+    public void Debounce_dequeued_before_stop_cannot_fire_after_a_subsequent_start()
+    {
+        var directory = NewDirectory();
+        FakeDebounceTimer? timer = null;
+        var watcher = new TestFileSystemWatcher(directory);
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => watcher,
+                callback => timer = new FakeDebounceTimer(callback));
+            var fires = 0;
+            source.Fired += (_, _) => fires++;
+            source.Start();
+            watcher.RaiseChanged();
+
+            source.Stop();
+            source.Start();
+            timer!.Fire(); // callback from the arm that preceded Stop()
+
+            Assert.Equal(0, fires);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task A_blocked_restart_does_not_block_dispose_or_resurrect_the_watcher()
     {
         var directory = NewDirectory();
@@ -176,6 +205,29 @@ public class WatchTriggerSourceTests
             Assert.Equal(2, attempts);
             Assert.NotNull(reported);
             Assert.Contains("restart", reported.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Failed_watcher_disposal_is_contained_at_the_error_callback_boundary()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory) { ThrowOnDispose = true };
+        try
+        {
+            using var source = new WatchTriggerSource(directory, _ => watcher);
+            Exception? reported = null;
+            source.Error += exception => reported = exception;
+            source.Start();
+
+            var escaped = Record.Exception(() => watcher.RaiseError(new IOException("watcher stopped")));
+
+            Assert.Null(escaped);
+            Assert.IsType<IOException>(reported);
         }
         finally
         {
@@ -284,6 +336,7 @@ public class WatchTriggerSourceTests
     private sealed class TestFileSystemWatcher(string path) : FileSystemWatcher(path)
     {
         public bool IsDisposed { get; private set; }
+        public bool ThrowOnDispose { get; set; }
         public void RaiseChanged() => OnChanged(new FileSystemEventArgs(
             WatcherChangeTypes.Changed, Path, "changed.txt"));
         public void RaiseError(Exception exception) => OnError(new ErrorEventArgs(exception));
@@ -291,7 +344,13 @@ public class WatchTriggerSourceTests
         protected override void Dispose(bool disposing)
         {
             IsDisposed = true;
+            var throwAfterDisposal = ThrowOnDispose;
+            ThrowOnDispose = false;
             base.Dispose(disposing);
+            if (throwAfterDisposal)
+            {
+                throw new InvalidOperationException("Simulated watcher disposal failure.");
+            }
         }
     }
 }

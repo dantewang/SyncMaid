@@ -18,6 +18,7 @@ public sealed class WatchTriggerSource : ITriggerSource
     private IDebounceTimer? _debounce;
     private long _generation;
     private bool _started;
+    private bool _debounceArmed;
     private bool _errorReported;
     private bool _disposed;
 
@@ -111,6 +112,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         {
             _started = false;
             _generation++;
+            _debounceArmed = false;
             if (_watcher is not null)
             {
                 _watcher.EnableRaisingEvents = false;
@@ -130,6 +132,7 @@ public sealed class WatchTriggerSource : ITriggerSource
             }
 
             // Restart the debounce window; we only fire once the dust settles.
+            _debounceArmed = true;
             _debounce?.Change(DebounceWindow);
         }
     }
@@ -150,7 +153,17 @@ public sealed class WatchTriggerSource : ITriggerSource
             generation = ++_generation;
         }
 
-        failedWatcher.Dispose();
+        try
+        {
+            failedWatcher.Dispose();
+        }
+        catch (Exception exception)
+        {
+            ReportError(new IOException(
+                $"The filesystem watcher stopped and its cleanup failed: {exception.Message}",
+                new AggregateException(e.GetException(), exception)));
+            return;
+        }
 
         FileSystemWatcher? replacement = null;
         try
@@ -221,11 +234,12 @@ public sealed class WatchTriggerSource : ITriggerSource
         {
             lock (_gate)
             {
-                if (_disposed || !_started)
+                if (_disposed || !_started || !_debounceArmed)
                 {
                     return;
                 }
 
+                _debounceArmed = false;
                 // Keep Stop mutually exclusive with delivery: once Stop returns, a callback
                 // that was already dequeued cannot notify after it.
                 Fired?.Invoke(this, EventArgs.Empty);
@@ -291,6 +305,7 @@ public sealed class WatchTriggerSource : ITriggerSource
 
             _disposed = true;
             _started = false;
+            _debounceArmed = false;
             _generation++;
             watcher = _watcher;
             _watcher = null;
