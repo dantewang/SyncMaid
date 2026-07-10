@@ -17,8 +17,8 @@ public sealed class WatchTriggerSource : ITriggerSource
     private FileSystemWatcher? _watcher;
     private IDebounceTimer? _debounce;
     private long _generation;
+    private long _debounceArm;
     private bool _started;
-    private bool _debounceArmed;
     private bool _errorReported;
     private bool _disposed;
 
@@ -58,7 +58,6 @@ public sealed class WatchTriggerSource : ITriggerSource
             }
 
             _started = true;
-            _debounce ??= _debounceFactory(OnDebounceElapsed);
             if (_watcher is not null)
             {
                 _watcher.EnableRaisingEvents = true;
@@ -108,22 +107,28 @@ public sealed class WatchTriggerSource : ITriggerSource
     /// <inheritdoc />
     public void Stop()
     {
+        IDebounceTimer? debounce;
         lock (_gate)
         {
             _started = false;
             _generation++;
-            _debounceArmed = false;
+            _debounceArm++;
             if (_watcher is not null)
             {
                 _watcher.EnableRaisingEvents = false;
             }
 
-            _debounce?.Change(Timeout.InfiniteTimeSpan);
+            debounce = _debounce;
+            _debounce = null;
         }
+
+        DisposeDebounce(debounce);
     }
 
     private void OnChanged(object sender, FileSystemEventArgs e)
     {
+        IDebounceTimer? previous = null;
+        IDebounceTimer? created = null;
         lock (_gate)
         {
             if (_disposed || !_started || !ReferenceEquals(sender, _watcher))
@@ -131,10 +136,27 @@ public sealed class WatchTriggerSource : ITriggerSource
                 return;
             }
 
-            // Restart the debounce window; we only fire once the dust settles.
-            _debounceArmed = true;
-            _debounce?.Change(DebounceWindow);
+            // Each arm captures an immutable token. Disposing a Timer does not retract a
+            // callback already queued to the thread pool, so a shared mutable flag cannot
+            // distinguish that stale callback from a later lifecycle's new arm.
+            var arm = ++_debounceArm;
+            previous = _debounce;
+            _debounce = null;
+            try
+            {
+                created = _debounceFactory(() => OnDebounceElapsed(arm));
+                created.Change(DebounceWindow);
+                _debounce = created;
+                created = null;
+            }
+            catch (Exception exception)
+            {
+                ReportError(exception);
+            }
         }
+
+        DisposeDebounce(previous);
+        DisposeDebounce(created);
     }
 
     private void OnWatcherError(object sender, ErrorEventArgs e)
@@ -166,6 +188,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
 
         FileSystemWatcher? replacement = null;
+        Exception? restartFailure = null;
         try
         {
             replacement = CreateWatcher();
@@ -192,6 +215,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
         catch (Exception exception)
         {
+            restartFailure = exception;
             lock (_gate)
             {
                 if (_disposed || !_started || generation != _generation)
@@ -207,7 +231,32 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
         finally
         {
-            replacement?.Dispose();
+            DisposeReplacement(replacement, e.GetException(), restartFailure);
+        }
+    }
+
+    private void DisposeReplacement(
+        FileSystemWatcher? replacement,
+        Exception watcherFailure,
+        Exception? restartFailure)
+    {
+        if (replacement is null)
+        {
+            return;
+        }
+
+        try
+        {
+            replacement.Dispose();
+        }
+        catch (Exception cleanupFailure)
+        {
+            var failures = restartFailure is null
+                ? new AggregateException(watcherFailure, cleanupFailure)
+                : new AggregateException(watcherFailure, restartFailure, cleanupFailure);
+            ReportError(new IOException(
+                $"The filesystem watcher stopped and replacement cleanup failed: {cleanupFailure.Message}",
+                failures));
         }
     }
 
@@ -228,18 +277,21 @@ public sealed class WatchTriggerSource : ITriggerSource
         return watcher;
     }
 
-    private void OnDebounceElapsed()
+    private void OnDebounceElapsed(long arm)
     {
+        IDebounceTimer? completed = null;
         try
         {
             lock (_gate)
             {
-                if (_disposed || !_started || !_debounceArmed)
+                if (_disposed || !_started || arm != _debounceArm)
                 {
                     return;
                 }
 
-                _debounceArmed = false;
+                completed = _debounce;
+                _debounce = null;
+                _debounceArm++;
                 // Keep Stop mutually exclusive with delivery: once Stop returns, a callback
                 // that was already dequeued cannot notify after it.
                 Fired?.Invoke(this, EventArgs.Empty);
@@ -249,6 +301,29 @@ public sealed class WatchTriggerSource : ITriggerSource
         catch (Exception exception)
         {
             ReportError(exception);
+        }
+        finally
+        {
+            DisposeDebounce(completed);
+        }
+    }
+
+    private void DisposeDebounce(IDebounceTimer? debounce)
+    {
+        if (debounce is null)
+        {
+            return;
+        }
+
+        try
+        {
+            debounce.Dispose();
+        }
+        catch (Exception exception)
+        {
+            ReportError(new IOException(
+                $"The filesystem watcher debounce timer cleanup failed: {exception.Message}",
+                exception));
         }
     }
 
@@ -305,8 +380,8 @@ public sealed class WatchTriggerSource : ITriggerSource
 
             _disposed = true;
             _started = false;
-            _debounceArmed = false;
             _generation++;
+            _debounceArm++;
             watcher = _watcher;
             _watcher = null;
             debounce = _debounce;
@@ -314,7 +389,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
 
         watcher?.Dispose();
-        debounce?.Dispose();
+        DisposeDebounce(debounce);
     }
 
     internal interface IDebounceTimer : IDisposable

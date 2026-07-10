@@ -113,24 +113,35 @@ public class WatchTriggerSourceTests
     public void Debounce_dequeued_before_stop_cannot_fire_after_a_subsequent_start()
     {
         var directory = NewDirectory();
-        FakeDebounceTimer? timer = null;
+        var timers = new List<FakeDebounceTimer>();
         var watcher = new TestFileSystemWatcher(directory);
         try
         {
             using var source = new WatchTriggerSource(
                 directory,
                 _ => watcher,
-                callback => timer = new FakeDebounceTimer(callback));
+                callback =>
+                {
+                    var timer = new FakeDebounceTimer(callback);
+                    timers.Add(timer);
+                    return timer;
+                });
             var fires = 0;
             source.Fired += (_, _) => fires++;
             source.Start();
             watcher.RaiseChanged();
+            var staleTimer = Assert.Single(timers);
 
             source.Stop();
             source.Start();
-            timer!.Fire(); // callback from the arm that preceded Stop()
+            watcher.RaiseChanged();
+            Assert.Equal(2, timers.Count);
 
+            staleTimer.Fire(); // callback from the arm that preceded Stop()
             Assert.Equal(0, fires);
+
+            timers[1].Fire();
+            Assert.Equal(1, fires);
         }
         finally
         {
@@ -177,6 +188,51 @@ public class WatchTriggerSourceTests
         {
             releaseRestart.Set();
             source.Dispose();
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Replacement_cleanup_failure_is_contained_when_stop_invalidates_a_restart()
+    {
+        var directory = NewDirectory();
+        var initial = new TestFileSystemWatcher(directory);
+        var replacement = new TestFileSystemWatcher(directory) { ThrowOnDispose = true };
+        var restartEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseRestart = new ManualResetEventSlim();
+        var attempts = 0;
+        using var source = new WatchTriggerSource(directory, _ =>
+        {
+            attempts++;
+            if (attempts == 1)
+            {
+                return initial;
+            }
+
+            restartEntered.TrySetResult();
+            releaseRestart.Wait();
+            return replacement;
+        });
+        Exception? reported = null;
+        source.Error += exception => reported = exception;
+
+        try
+        {
+            source.Start();
+            var errorCallback = Task.Run(() => initial.RaiseError(new IOException("disconnected")));
+            await restartEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            source.Stop();
+            releaseRestart.Set();
+
+            var escaped = await Record.ExceptionAsync(
+                async () => await errorCallback.WaitAsync(TimeSpan.FromSeconds(1)));
+
+            Assert.Null(escaped);
+            Assert.IsType<IOException>(reported);
+        }
+        finally
+        {
+            releaseRestart.Set();
             Directory.Delete(directory, recursive: true);
         }
     }
