@@ -28,7 +28,13 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When true, the run blocks until cancelled (then throws), simulating a long sync.</summary>
     public bool HangUntilCancelled { get; set; }
 
-    /// <summary>When true, destinations return NeedsConfirmation unless their id was confirmed.</summary>
+    /// <summary>
+    /// When true, destinations return NeedsConfirmation unless their id was confirmed.
+    /// This models only the overridable mass-delete verdict from
+    /// <see cref="SyncEngine.ExecuteAsync"/>. The production empty-source guard returns
+    /// <see cref="SyncOutcome.Failed"/> instead; tests for that contract should set
+    /// <see cref="Result"/> explicitly.
+    /// </summary>
     public bool NeedsConfirmation { get; set; }
 
     /// <summary>When set, the run throws this unexpected failure after it is recorded.</summary>

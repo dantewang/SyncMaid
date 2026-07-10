@@ -515,6 +515,35 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
+    public async Task An_empty_source_failure_does_not_offer_confirmation()
+    {
+        var destination = Dest("D");
+        var engine = new FakeSyncEngine
+        {
+            Result =
+            [
+                new DestinationSyncStatus(
+                    destination.Id,
+                    SyncOutcome.Failed,
+                    DateTimeOffset.UtcNow,
+                    Error: "Source is empty or unavailable; skipped deletions to avoid wiping the destination."),
+            ],
+        };
+        var confirmer = new FakeMirrorDeleteConfirmer { Approve = true };
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [destination]),
+            engine: engine,
+            confirmer: confirmer);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+        Assert.False(node.Children[0].NeedsConfirmation);
+        Assert.Equal(SyncOutcome.Failed, node.HealthOutcome);
+        Assert.Equal(0, confirmer.CallCount);
+    }
+
+    [Fact]
     public async Task Confirming_a_mass_delete_reruns_with_the_override()
     {
         var dest = Dest("D");
