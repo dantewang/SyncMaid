@@ -350,6 +350,19 @@ public class DestinationEditorViewModelTests
     }
 
     [Fact]
+    public void Persisted_mass_delete_threshold_is_rounded_to_a_whole_percentage()
+    {
+        var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            MassDeleteThreshold = 0.755,
+        };
+
+        var vm = New(existing: existing);
+
+        Assert.Equal(76m, vm.MassDeletePercent);
+    }
+
+    [Fact]
     public void Out_of_range_persisted_threshold_is_clamped_before_decimal_conversion()
     {
         var existing = new Destination("All", @"D:\all", [new AllFilesFilter()], SyncStrategy.Mirror)
