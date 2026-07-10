@@ -34,5 +34,5 @@ public static class TransientRetry
     /// <summary>True for I/O failures that are worth retrying (locks, sharing violations,
     /// momentary access denials).</summary>
     public static bool IsTransient(Exception exception) =>
-        exception is IOException or UnauthorizedAccessException;
+        exception is (IOException and not FileNotFoundException) or UnauthorizedAccessException;
 }

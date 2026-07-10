@@ -37,4 +37,33 @@ public class SyncEngineRetryTests
         Assert.Equal(SyncOutcome.Failed, Assert.Single(statuses).Outcome);
         Assert.False(fs.FileExists(@"D:\dst\a.txt"));
     }
+
+    [Fact]
+    public async Task A_source_deleted_between_plan_and_apply_fails_without_retrying()
+    {
+        var source = @"S:\src\a.txt";
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(source, "a");
+        var destination = new Destination(
+            "d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var task = new SyncTask("t", @"S:\src", new ManualTrigger(), [destination]);
+
+        var progress = new CallbackProgress<SyncProgress>(_ => fs.DeleteFile(source));
+        var status = Assert.Single(await new SyncEngine(
+            fs,
+            new RetryOptions(MaxAttempts: 3, BaseDelay: TimeSpan.Zero)).ExecuteAsync(
+                task,
+                progress: progress));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("No such file", status.Error);
+        Assert.Equal(1, fs.GetStampCallCountFor(source));
+        Assert.False(fs.FileExists(source));
+        Assert.False(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
+    private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
+    {
+        public void Report(T value) => callback(value);
+    }
 }

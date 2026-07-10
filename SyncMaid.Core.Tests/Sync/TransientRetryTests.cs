@@ -68,4 +68,21 @@ public class TransientRetryTests
 
         Assert.Equal(1, attempts); // verification failures are deterministic — fail fast
     }
+
+    [Fact]
+    public void Does_not_retry_a_vanished_source_file()
+    {
+        var attempts = 0;
+
+        Assert.Throws<FileNotFoundException>(() =>
+            TransientRetry.Execute(
+                () =>
+                {
+                    attempts++;
+                    throw new FileNotFoundException("vanished after planning");
+                },
+                maxAttempts: 3));
+
+        Assert.Equal(1, attempts);
+    }
 }

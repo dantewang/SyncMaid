@@ -48,6 +48,12 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>Offset applied by <see cref="SetLastWriteTimeUtc"/> to inject stamp mismatches.</summary>
     public TimeSpan SetLastWriteTimeOffset { get; set; }
 
+    public int GetStampCallCount { get; private set; }
+    private readonly Dictionary<string, int> _getStampCallsByPath = new(StringComparer.OrdinalIgnoreCase);
+
+    public int GetStampCallCountFor(string path) =>
+        _getStampCallsByPath.GetValueOrDefault(Normalize(path));
+
     /// <summary>Seeds a file with explicit contents and stamp; used to set up test state.</summary>
     public void AddFile(string path, byte[] contents, FileStamp stamp)
     {
@@ -89,7 +95,11 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public FileStamp GetStamp(string path)
     {
-        if (_files.TryGetValue(Normalize(path), out var entry))
+        GetStampCallCount++;
+        var normalizedPath = Normalize(path);
+        _getStampCallsByPath[normalizedPath] = GetStampCallCountFor(normalizedPath) + 1;
+
+        if (_files.TryGetValue(normalizedPath, out var entry))
         {
             return entry.Stamp;
         }
@@ -191,7 +201,12 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void Replace(string sourcePath, string destinationPath)
     {
         var sourceKey = Normalize(sourcePath);
-        _files[Normalize(destinationPath)] = _files[sourceKey];
+        if (!_files.TryGetValue(sourceKey, out var source))
+        {
+            throw new FileNotFoundException("No such file in the in-memory filesystem.", sourcePath);
+        }
+
+        _files[Normalize(destinationPath)] = source;
         _files.Remove(sourceKey);
     }
 

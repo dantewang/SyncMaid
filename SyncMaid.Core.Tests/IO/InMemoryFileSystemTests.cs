@@ -18,4 +18,16 @@ public class InMemoryFileSystemTests
         Assert.Equal(new[] { "a.txt", "sub/b.txt" }, files);
     }
 
+    [Fact]
+    public void Missing_files_raise_physical_filesystem_exception_types()
+    {
+        var fs = new InMemoryFileSystem();
+
+        Assert.Throws<FileNotFoundException>(() => fs.GetStamp(@"S:\missing.txt"));
+        Assert.Throws<FileNotFoundException>(() => fs.ReadAllBytes(@"S:\missing.txt"));
+        Assert.Throws<FileNotFoundException>(() => fs.OpenRead(@"S:\missing.txt"));
+        Assert.Throws<FileNotFoundException>(() => fs.Replace(@"S:\missing.txt", @"D:\target.txt"));
+        Assert.Empty(fs.EnumerateFiles(@"S:\missing-directory"));
+    }
+
 }
