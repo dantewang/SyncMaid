@@ -28,6 +28,9 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When true, destinations return NeedsConfirmation unless their id was confirmed.</summary>
     public bool NeedsConfirmation { get; set; }
 
+    /// <summary>When set, the run throws this unexpected failure after it is recorded.</summary>
+    public Exception? ExceptionToThrow { get; set; }
+
     /// <summary>The confirmed-mass-delete set passed to the most recent run.</summary>
     public IReadOnlySet<Guid>? LastConfirmed { get; private set; }
 
@@ -42,6 +45,11 @@ public sealed class FakeSyncEngine : ISyncEngine
     {
         Executed.Add(task);
         LastConfirmed = confirmedMassDeletes;
+
+        if (ExceptionToThrow is not null)
+        {
+            throw ExceptionToThrow;
+        }
 
         if (progress is not null && ProgressToReport is not null)
         {

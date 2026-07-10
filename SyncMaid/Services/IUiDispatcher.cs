@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 namespace SyncMaid.Services;
 
@@ -10,4 +11,7 @@ namespace SyncMaid.Services;
 public interface IUiDispatcher
 {
     void Post(Action action);
+
+    /// <summary>Runs a value-producing action on the UI thread and completes with its result.</summary>
+    Task<T> InvokeAsync<T>(Func<T> action);
 }

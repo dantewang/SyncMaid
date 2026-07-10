@@ -325,25 +325,31 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var cts = new CancellationTokenSource();
-        _cts = cts;
-        // Capture each destination's status so a cancelled run reverts cleanly (cancel is
-        // neutral — not a failure) rather than leaving rows stuck on "Syncing…".
-        var priorStatuses = Children.ToDictionary(child => child.Id, child => child.Status);
-
-        // Suppress the task's own trigger while it runs: a Move task deletes from the watched
-        // source, so its own changes would otherwise re-fire the watcher (debounced past run
-        // end) and queue a pointless follow-up run. Fires *during* a run were already dropped
-        // by the interlock above; stopping the source also swallows the debounce tail, and the
-        // polling source re-baselines on resume, absorbing the run's own changes.
-        _triggerSource?.Stop();
-
+        CancellationTokenSource? cts = null;
+        IReadOnlyList<DestinationNodeViewModel> runChildren = [];
+        IReadOnlyDictionary<Guid, DestinationSyncStatus> priorStatuses =
+            new Dictionary<Guid, DestinationSyncStatus>();
         try
         {
+            cts = new CancellationTokenSource();
+            _cts = cts;
+
+            // ObservableCollection may only be enumerated on the UI thread. Work from the
+            // stable list after this point so trigger-thread runs never race add/edit/remove.
+            runChildren = await _dispatcher.InvokeAsync(() => Children.ToList());
+            priorStatuses = runChildren.ToDictionary(child => child.Id, child => child.Status);
+
+            // Suppress the task's own trigger while it runs: a Move task deletes from the watched
+            // source, so its own changes would otherwise re-fire the watcher (debounced past run
+            // end) and queue a pointless follow-up run. Fires *during* a run were already dropped
+            // by the interlock above; stopping the source also swallows the debounce tail, and the
+            // polling source re-baselines on resume, absorbing the run's own changes.
+            _triggerSource?.Stop();
+
             _dispatcher.Post(() =>
             {
                 IsRunning = true;
-                foreach (var child in Children)
+                foreach (var child in runChildren)
                 {
                     child.MarkRunning();
                 }
@@ -371,7 +377,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             // Revert to the pre-run status; the user stopped it, so it's not a failure.
             _dispatcher.Post(() =>
             {
-                foreach (var child in Children)
+                foreach (var child in runChildren)
                 {
                     if (priorStatuses.TryGetValue(child.Id, out var prior))
                     {
@@ -385,13 +391,22 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         catch (Exception exception)
         {
             // Per-destination failures are already captured as statuses by the engine; this
-            // catches an unexpected engine/dispatch failure so it is recorded, not swallowed.
+            // catches an unexpected engine/dispatch failure so it is recorded and visible.
             _logger.LogError(exception, "Sync run failed for task '{Task}'.", Task.Name);
+            _dispatcher.Post(() =>
+            {
+                foreach (var child in runChildren)
+                {
+                    child.SetStatus(new DestinationSyncStatus(
+                        child.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0, exception.Message));
+                }
+
+                RefreshHealth();
+            });
         }
         finally
         {
             _cts = null;
-            cts.Dispose();
             _dispatcher.Post(() => IsRunning = false);
             Interlocked.Exchange(ref _running, 0);
             ResumeTrigger(); // after the run-lock releases, so a fire can start a fresh run

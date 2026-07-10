@@ -11,6 +11,7 @@ public sealed class FakeTriggerSource : ITriggerSource
 {
     public bool Started { get; private set; }
     public bool Disposed { get; private set; }
+    public Exception? StopException { get; set; }
 
     public event EventHandler? Fired;
     public event Action<Exception>? Error;
@@ -18,7 +19,15 @@ public sealed class FakeTriggerSource : ITriggerSource
 
     public void Start() => Started = true;
 
-    public void Stop() => Started = false;
+    public void Stop()
+    {
+        if (StopException is not null)
+        {
+            throw StopException;
+        }
+
+        Started = false;
+    }
 
     /// <summary>Simulates the trigger firing (a watch event, a schedule tick).</summary>
     public void Raise() => Fired?.Invoke(this, EventArgs.Empty);

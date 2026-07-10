@@ -9,6 +9,7 @@ using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Services;
 using SyncMaid.ViewModels;
 
 namespace SyncMaid.UiTests.ViewModels;
@@ -27,14 +28,15 @@ public class TaskNodeViewModelTests
         Action<IReadOnlyList<DestinationSyncStatus>>? onStatuses = null,
         IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null,
         ILogger? logger = null,
-        FakeMirrorDeleteConfirmer? confirmer = null) =>
+        FakeMirrorDeleteConfirmer? confirmer = null,
+        IUiDispatcher? dispatcher = null) =>
         new(
             task,
             statuses ?? new Dictionary<Guid, DestinationSyncStatus>(),
             dialogs ?? new FakeDialogService(),
             engine ?? new FakeSyncEngine(),
             triggers ?? new FakeTriggerSourceFactory(),
-            new FakeUiDispatcher(),
+            dispatcher ?? new FakeUiDispatcher(),
             _ => Task.CompletedTask,
             _ => Task.CompletedTask,
             onChanged ?? (() => { }),
@@ -339,6 +341,61 @@ public class TaskNodeViewModelTests
 
         node.CancelCommand.Execute(null);
         await node.ExecuteCommand.ExecutionTask!;
+    }
+
+    [Fact]
+    public async Task Unexpected_engine_failure_marks_children_failed_and_releases_the_run_lock()
+    {
+        var failure = new InvalidOperationException("engine exploded");
+        var engine = new FakeSyncEngine { ExceptionToThrow = failure };
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]), engine: engine);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.False(node.IsRunning);
+        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+        Assert.Contains("engine exploded", node.Children[0].StatusText);
+
+        engine.ExceptionToThrow = null;
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, engine.Executed.Count);
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
+    }
+
+    [Fact]
+    public async Task Prologue_failure_releases_the_run_lock_for_a_follow_up_run()
+    {
+        var engine = new FakeSyncEngine();
+        var triggers = new FakeTriggerSourceFactory();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [Dest("D")]),
+            engine: engine,
+            triggers: triggers);
+        var trigger = triggers.Created.Single();
+        trigger.StopException = new IOException("stop failed");
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+
+        trigger.StopException = null;
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.Single(engine.Executed);
+        Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
+    }
+
+    [Fact]
+    public async Task Children_snapshot_is_taken_through_the_ui_dispatcher()
+    {
+        var dispatcher = new FakeUiDispatcher();
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]),
+            dispatcher: dispatcher);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.True(dispatcher.InvokeCount > 0);
     }
 
     [Fact]
