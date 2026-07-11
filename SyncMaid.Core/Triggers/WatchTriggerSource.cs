@@ -199,7 +199,6 @@ public sealed class WatchTriggerSource : ITriggerSource
             replacement = CreateWatcher();
             replacement.EnableRaisingEvents = true;
 
-            var installed = false;
             lock (_gate)
             {
                 if (_disposed || !_started || generation != _generation || _watcher is not null)
@@ -209,13 +208,15 @@ public sealed class WatchTriggerSource : ITriggerSource
 
                 _watcher = replacement;
                 replacement = null;
-                installed = true;
-            }
 
-            if (installed)
-            {
+                // The error cancelled any pending debounce, and the OS may already have
+                // dropped events before it (buffer overflow) — the changes they carried
+                // must still sync, so fire once after a successful restart; a run over an
+                // unchanged tree is a planner no-op. Raised under the gate, like the
+                // debounce path, so Stop keeps its no-fire-after-Stop guarantee.
                 ReportError(e.GetException());
                 ReportRecovered();
+                Fired?.Invoke(this, EventArgs.Empty);
             }
         }
         catch (Exception exception)
@@ -393,7 +394,22 @@ public sealed class WatchTriggerSource : ITriggerSource
             _debounce = null;
         }
 
-        watcher?.Dispose();
+        if (watcher is not null)
+        {
+            try
+            {
+                watcher.Dispose();
+            }
+            catch (Exception exception)
+            {
+                // Watcher disposal can throw for dead network handles (the error-recovery
+                // path guards the same call); Dispose must not throw, and the debounce
+                // below must still be cleaned up.
+                ReportError(new IOException(
+                    $"The filesystem watcher cleanup failed: {exception.Message}", exception));
+            }
+        }
+
         DisposeDebounce(debounce);
     }
 

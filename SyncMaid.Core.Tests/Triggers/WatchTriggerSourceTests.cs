@@ -300,6 +300,66 @@ public class WatchTriggerSourceTests
         }
     }
 
+    // A watcher error cancels the pending debounce, and the OS may have dropped events
+    // before it — after a successful restart the source must fire once so the changes
+    // those events carried still sync, instead of being silently lost.
+    [Fact]
+    public void Successful_restart_after_an_error_fires_so_pending_changes_still_sync()
+    {
+        var directory = NewDirectory();
+        var initial = new TestFileSystemWatcher(directory);
+        FakeDebounceTimer? timer = null;
+        var attempts = 0;
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => ++attempts == 1 ? initial : new TestFileSystemWatcher(directory),
+                callback => timer = new FakeDebounceTimer(callback));
+            var fires = 0;
+            var recoveries = 0;
+            source.Fired += (_, _) => fires++;
+            source.Recovered += () => recoveries++;
+            source.Start();
+            initial.RaiseChanged(); // a real change is pending in the debounce window
+
+            initial.RaiseError(new IOException("watcher stopped"));
+
+            Assert.Equal(1, fires);      // the pending change is not lost
+            Assert.Equal(1, recoveries); // and the badge still clears
+            timer!.Fire();               // the cancelled arm stays cancelled — no double fire
+            Assert.Equal(1, fires);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dispose_contains_watcher_cleanup_failures_and_still_disposes_the_debounce()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory) { ThrowOnDispose = true };
+        FakeDebounceTimer? timer = null;
+        try
+        {
+            var source = new WatchTriggerSource(
+                directory, _ => watcher, callback => timer = new FakeDebounceTimer(callback));
+            source.Start();
+            watcher.RaiseChanged(); // arms a debounce that Dispose must still clean up
+
+            var escaped = Record.Exception(source.Dispose);
+
+            Assert.Null(escaped);
+            Assert.True(timer!.Disposed);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Fact]
     public void Failed_watcher_disposal_is_contained_at_the_error_callback_boundary()
     {
@@ -416,9 +476,10 @@ public class WatchTriggerSourceTests
 
     private sealed class FakeDebounceTimer(Action callback) : WatchTriggerSource.IDebounceTimer
     {
+        public bool Disposed { get; private set; }
         public void Change(TimeSpan dueTime) { }
         public void Fire() => callback();
-        public void Dispose() { }
+        public void Dispose() => Disposed = true;
     }
 
     private sealed class TestFileSystemWatcher(string path) : FileSystemWatcher(path)
