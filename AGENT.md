@@ -14,6 +14,36 @@ Guidance for AI agents working in this repository.
   attached property in `App.axaml` (see https://docs.avaloniaui.net/controls/navigation/trayicon),
   not with `new TrayIcon(...)` + `TrayIcon.SetIcons(...)` in `App.axaml.cs`.
 
+## Task shape conventions
+
+These are product rules, not implementation details: enforce them, don't engineer around
+them. Both are validated in the editor (blocked with a hint) **and** in the engine (the
+run fails without touching files), so hand-edited config is covered too.
+
+- **A task's source and destinations never nest.** A destination path must not equal the
+  task's source path, must not be inside it, and must not contain it — in either
+  direction, for every strategy. Sibling folders under a common parent are fine.
+  Rationale: a destination inside the source turns the app's own output into input
+  (feedback loops); a source inside a destination makes Mirror treat the live source as
+  orphaned destination content and delete it. Do **not** add code to make nested layouts
+  work (e.g. excluding a nested subtree from planning) — reject the layout instead.
+- **Move is exclusive.** A destination with the Move strategy must be the only
+  destination of its task: with a Move destination in place, no other destination can be
+  added; with any destination in place, a Move destination cannot be added. Rationale:
+  Move's postcondition (an emptied source) contradicts every other strategy's
+  precondition (the source is the truth), so combinations have no coherent semantics —
+  within a run they are order-dependent, and across runs Mirror+Move deadlocks on the
+  empty-source guard.
+- **Tasks never share same-kind paths.** Across tasks, a source may not equal or nest
+  with another task's source, and a destination may not equal or nest with another
+  task's destination — in either direction. A destination feeding another task's source
+  (chaining: task A moves files into a folder task B watches and backs up) is
+  explicitly allowed; chained runs converge via trigger coalescing and idempotent
+  planning. Rationale: runs of different tasks are concurrent and uncoordinated, so
+  overlapping destinations race on the same files (one task's Mirror deletes what
+  another just wrote as "orphans") and overlapping sources double-process the same
+  input (fatal once one of them is a Move). Enforced in the editors and at run start.
+
 ## Commits
 
 - Do **not** add a "Co-Authored-By: Claude" trailer (or any AI co-author/attribution
