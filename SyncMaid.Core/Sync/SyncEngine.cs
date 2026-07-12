@@ -92,6 +92,20 @@ public sealed class SyncEngine : ISyncEngine
         IProgress<SyncProgress>? progress,
         IReadOnlySet<Guid>? confirmedMassDeletes)
     {
+        // Task shape convention (AGENT.md): Move is exclusive. Combinations have no
+        // coherent semantics (destinations run in sequence, and Move empties the source
+        // the others still treat as the truth), so the whole run is refused before any
+        // file is touched. The editors prevent this; hand-edited config lands here.
+        if (task.Destinations.Count > 1
+            && task.Destinations.Any(destination => destination.Strategy == SyncStrategy.Move))
+        {
+            return task.Destinations
+                .Select(destination => new DestinationSyncStatus(
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                    "A Move destination must be the only destination of its task; no files were changed."))
+                .ToList();
+        }
+
         IReadOnlyList<string> sourceFiles = [];
         ExceptionDispatchInfo? sourceEnumerationError = null;
         try

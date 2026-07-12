@@ -338,6 +338,31 @@ public class TaskNodeViewModelTests
         Assert.Equal(SyncOutcome.Success, node.Children[1].Outcome);
     }
 
+    // Task shape convention: Move is exclusive.
+    [Fact]
+    public void A_move_destination_blocks_adding_another()
+    {
+        var move = new Destination("m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [move]));
+
+        Assert.False(node.AddDestinationCommand.CanExecute(null));
+        Assert.Contains("only destination", node.AddDestinationHint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Sibling_context_flows_to_the_destination_editor()
+    {
+        var dialogs = new FakeDialogService(); // returns null: the "dialog" is cancelled
+        var empty = New(new SyncTask("A", @"C:\a", new ManualTrigger(), []), dialogs: dialogs);
+        await empty.AddDestinationCommand.ExecuteAsync(null);
+        Assert.False(dialogs.LastEditHadSiblings); // first destination — Move available
+
+        var node = New(new SyncTask("B", @"C:\b", new ManualTrigger(), [Dest("D")]), dialogs: dialogs);
+        Assert.True(node.AddDestinationCommand.CanExecute(null)); // non-Move sibling — add allowed
+        await node.AddDestinationCommand.ExecuteAsync(null);
+        Assert.True(dialogs.LastEditHadSiblings); // …but the new destination cannot be Move
+    }
+
     [Fact]
     public void Disposing_the_node_stops_and_disposes_its_trigger_source()
     {

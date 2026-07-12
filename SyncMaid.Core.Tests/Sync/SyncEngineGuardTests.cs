@@ -45,6 +45,34 @@ public class SyncEngineGuardTests
         Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
     }
 
+    // Task shape convention: Move is exclusive. Destinations run in sequence and Move
+    // empties the source the others still treat as the truth, so any combination is
+    // refused whole — every destination fails, nothing is touched.
+    [Theory]
+    [InlineData(SyncStrategy.AddOnly)]
+    [InlineData(SyncStrategy.Mirror)]
+    [InlineData(SyncStrategy.Move)]
+    public async Task Move_combined_with_any_other_destination_fails_the_whole_run(
+        SyncStrategy otherStrategy)
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\important.txt", "keep me");
+        var pathsBefore = fs.AllPaths;
+        var move = new Destination("move", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var other = new Destination("other", @"E:\backup", [new AllFilesFilter()], otherStrategy);
+        var task = new SyncTask("combo", @"S:\src", new ManualTrigger(), [other, move]);
+
+        var statuses = await new SyncEngine(fs).ExecuteAsync(task);
+
+        Assert.Equal(2, statuses.Count);
+        Assert.All(statuses, status =>
+        {
+            Assert.Equal(SyncOutcome.Failed, status.Outcome);
+            Assert.Contains("only destination", status.Error, StringComparison.OrdinalIgnoreCase);
+        });
+        Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
+    }
+
     [Fact]
     public async Task Empty_or_unavailable_source_does_not_wipe_the_mirror()
     {

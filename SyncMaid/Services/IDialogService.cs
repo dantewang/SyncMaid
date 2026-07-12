@@ -14,8 +14,10 @@ public interface IDialogService
     Task<SyncTask?> EditTaskAsync(SyncTask? existing);
 
     /// <param name="existing">The destination to edit, or null to create a new one.</param>
-    /// <param name="sourcePath">The owning task's source path, used to reject destructive Move targets.</param>
-    Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath);
+    /// <param name="sourcePath">The owning task's source path, used to reject nested paths.</param>
+    /// <param name="hasSiblings">Whether the task has other destinations — Move is exclusive,
+    /// so with siblings the Move strategy is unavailable.</param>
+    Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath, bool hasSiblings);
 
     /// <summary>Shows a modal yes/no confirmation. Returns true only if the user confirms.</summary>
     /// <param name="title">Dialog heading.</param>

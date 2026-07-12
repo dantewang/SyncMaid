@@ -459,6 +459,31 @@ public class DestinationEditorViewModelTests
         Assert.False(vm.OKCommand.CanExecute(null));
     }
 
+    // Task shape convention: Move is exclusive — with sibling destinations the Move
+    // strategy is unavailable, except when editing an existing (hand-edited) Move.
+    [Fact]
+    public void Move_is_unavailable_when_the_task_has_other_destinations()
+    {
+        var vm = new DestinationEditorViewModel(new FakeFolderPickerService(), hasSiblings: true);
+
+        Assert.False(vm.CanChooseMove);
+        Assert.Contains("only destination", vm.MoveUnavailableHint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Move_stays_available_without_siblings_and_for_an_existing_move_destination()
+    {
+        var alone = new DestinationEditorViewModel(new FakeFolderPickerService());
+        Assert.True(alone.CanChooseMove);
+        Assert.Null(alone.MoveUnavailableHint);
+
+        var existingMove = new Destination(
+            "m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var handEdited = new DestinationEditorViewModel(
+            new FakeFolderPickerService(), existingMove, hasSiblings: true);
+        Assert.True(handEdited.CanChooseMove);
+    }
+
     // Typing a UNC destination passes through prefixes GetFullPath rejects ("\\", "\\nas");
     // every keystroke re-evaluates the nesting check, which must not throw mid-typing.
     [Theory]

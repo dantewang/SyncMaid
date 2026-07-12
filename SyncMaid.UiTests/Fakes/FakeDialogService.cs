@@ -21,10 +21,16 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>Number of times a confirmation was requested.</summary>
     public int ConfirmCount { get; private set; }
 
+    /// <summary>The <c>hasSiblings</c> flag passed to the most recent destination edit.</summary>
+    public bool? LastEditHadSiblings { get; private set; }
+
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing) => Task.FromResult(OnEditTask(existing));
 
-    public Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath) =>
-        Task.FromResult(OnEditDestination(existing));
+    public Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath, bool hasSiblings)
+    {
+        LastEditHadSiblings = hasSiblings;
+        return Task.FromResult(OnEditDestination(existing));
+    }
 
     public Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true)
     {

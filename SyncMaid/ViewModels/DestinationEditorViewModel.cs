@@ -58,7 +58,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         IFolderPickerService folderPicker,
         Destination? existing = null,
         string sourcePath = "",
-        Func<string, bool>? directoryExists = null)
+        Func<string, bool>? directoryExists = null,
+        bool hasSiblings = false)
         : base(
             folderPicker,
             "Select Destination Folder",
@@ -68,6 +69,10 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             directoryExists)
     {
         _sourcePath = sourcePath;
+        // Task shape convention (AGENT.md): Move is exclusive, so with sibling
+        // destinations the Move strategy is unavailable. An existing Move destination
+        // (hand-edited config) stays selectable so the user can see and change it.
+        CanChooseMove = !hasSiblings || existing?.Strategy == SyncStrategy.Move;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
         Groups = new ObservableCollection<FilterGroupViewModel>();
@@ -107,6 +112,13 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     public SyncStrategy[] SyncStrategies { get; }
     public DeleteMode[] DeleteModes { get; }
+
+    /// <summary>False when the task has other destinations — Move is exclusive.</summary>
+    public bool CanChooseMove { get; }
+
+    /// <summary>Tooltip for the disabled Move option; null when Move is available.</summary>
+    public string? MoveUnavailableHint =>
+        CanChooseMove ? null : "A Move destination must be the only destination of its task.";
 
     /// <summary>The rule groups; each combines its own rules with its ANY/ALL connective.</summary>
     public ObservableCollection<FilterGroupViewModel> Groups { get; }

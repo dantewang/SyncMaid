@@ -74,6 +74,9 @@
                                 </Grid>
                             </RadioButton>
                             <RadioButton Classes="card" GroupName="strategy"
+                                         IsEnabled="{Binding CanChooseMove}"
+                                         ToolTip.Tip="{Binding MoveUnavailableHint}"
+                                         ToolTip.ShowOnDisabled="True"
                                          IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Move}}">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <mi:MaterialIcon Grid.Column="0" Kind="ArrowRight" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />

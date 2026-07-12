@@ -90,6 +90,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         Children.CollectionChanged += (_, _) =>
         {
             ExecuteCommand.NotifyCanExecuteChanged();
+            AddDestinationCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(AddDestinationHint));
             RefreshHealth();
         };
 
@@ -247,10 +249,21 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task Delete() => _onDelete(this);
 
-    [RelayCommand]
+    // Task shape convention (AGENT.md): Move is exclusive, so a task whose destination
+    // is Move cannot take another one.
+    private bool CanAddDestination() =>
+        Children.All(child => child.Destination.Strategy != SyncStrategy.Move);
+
+    /// <summary>Tooltip for the add-destination button, explaining why it is disabled.</summary>
+    public string AddDestinationHint => CanAddDestination()
+        ? "Add destination"
+        : "A Move destination must be the only destination of its task.";
+
+    [RelayCommand(CanExecute = nameof(CanAddDestination))]
     private async Task AddDestination()
     {
-        var destination = await _dialogs.EditDestinationAsync(null, Task.SourcePath);
+        var destination = await _dialogs.EditDestinationAsync(
+            null, Task.SourcePath, hasSiblings: Children.Count > 0);
         if (destination != null)
         {
             Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
@@ -260,7 +273,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private async Task EditLeaf(DestinationNodeViewModel node)
     {
-        var edited = await _dialogs.EditDestinationAsync(node.Destination, Task.SourcePath);
+        var edited = await _dialogs.EditDestinationAsync(
+            node.Destination, Task.SourcePath, hasSiblings: Children.Count > 1);
         if (edited != null)
         {
             // Id is preserved by the editor, so the existing status still applies.
