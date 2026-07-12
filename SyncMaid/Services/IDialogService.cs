@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using SyncMaid.Core.Model;
 
@@ -11,13 +12,19 @@ namespace SyncMaid.Services;
 public interface IDialogService
 {
     /// <param name="existing">The task to edit, or null to create a new one.</param>
-    Task<SyncTask?> EditTaskAsync(SyncTask? existing);
+    /// <param name="sourceConflicts">Probe returning the name of another task whose source
+    /// overlaps the given path, or null — sources never overlap across tasks.</param>
+    Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts);
 
     /// <param name="existing">The destination to edit, or null to create a new one.</param>
     /// <param name="sourcePath">The owning task's source path, used to reject nested paths.</param>
     /// <param name="hasSiblings">Whether the task has other destinations — Move is exclusive,
     /// so with siblings the Move strategy is unavailable.</param>
-    Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath, bool hasSiblings);
+    /// <param name="destinationConflicts">Probe returning the name of another task owning a
+    /// destination that overlaps the given path, or null — destinations never overlap across
+    /// tasks.</param>
+    Task<Destination?> EditDestinationAsync(
+        Destination? existing, string sourcePath, bool hasSiblings, Func<string, string?> destinationConflicts);
 
     /// <summary>Shows a modal yes/no confirmation. Returns true only if the user confirms.</summary>
     /// <param name="title">Dialog heading.</param>

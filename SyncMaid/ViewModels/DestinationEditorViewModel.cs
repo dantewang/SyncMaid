@@ -54,12 +54,15 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <param name="directoryExists">Directory probe, injectable for tests;
     /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
     /// for invalid/partial input, so it is safe to call while the user types).</param>
+    private readonly Func<string, string?>? _destinationConflicts;
+
     public DestinationEditorViewModel(
         IFolderPickerService folderPicker,
         Destination? existing = null,
         string sourcePath = "",
         Func<string, bool>? directoryExists = null,
-        bool hasSiblings = false)
+        bool hasSiblings = false,
+        Func<string, string?>? destinationConflicts = null)
         : base(
             folderPicker,
             "Select Destination Folder",
@@ -69,6 +72,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             directoryExists)
     {
         _sourcePath = sourcePath;
+        _destinationConflicts = destinationConflicts;
         // Task shape convention (AGENT.md): Move is exclusive, so with sibling
         // destinations the Move strategy is unavailable. An existing Move destination
         // (hand-edited config) stays selectable so the user can see and change it.
@@ -146,10 +150,13 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
 
-    /// <summary>Explains either a blocked nested path or the non-blocking missing-folder hint.</summary>
+    /// <summary>Explains a blocked nested path or cross-task overlap, or the non-blocking
+    /// missing-folder hint.</summary>
     public string PathHintText => HasUnsafeNesting
         ? "Destination must be a separate folder outside the source (and not contain it)."
-        : "This folder doesn't exist yet — it will be created on the first run. Double-check for typos.";
+        : DestinationConflictName is { } conflictingTask
+            ? $"This folder overlaps a destination of task \"{conflictingTask}\" — tasks never share destinations."
+            : "This folder doesn't exist yet — it will be created on the first run. Double-check for typos.";
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
@@ -171,13 +178,20 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
         && !HasUnsafeNesting
+        && DestinationConflictName is null
         && (SyncAll || Groups.Any(group => group.Rules.Count > 0));
 
     // Task shape convention (AGENT.md): source and destinations never nest, in either
     // direction, for every strategy. The engine enforces the same rule at run start.
     private bool HasUnsafeNesting => RelativePaths.Overlaps(Path, _sourcePath);
 
-    protected override bool HasAdditionalPathWarning => HasUnsafeNesting;
+    // Task shape convention (AGENT.md): tasks never share same-kind paths. The probe is
+    // supplied by the task-list owner and checks the other tasks' destinations.
+    private string? DestinationConflictName =>
+        string.IsNullOrWhiteSpace(Path) ? null : _destinationConflicts?.Invoke(Path);
+
+    protected override bool HasAdditionalPathWarning =>
+        HasUnsafeNesting || DestinationConflictName is not null;
 
     protected override void OnEditorPathChanged()
     {

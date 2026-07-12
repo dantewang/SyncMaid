@@ -29,7 +29,8 @@ public class TaskNodeViewModelTests
         IReadOnlyDictionary<Guid, DestinationSyncStatus>? statuses = null,
         ILogger? logger = null,
         FakeMirrorDeleteConfirmer? confirmer = null,
-        IUiDispatcher? dispatcher = null) =>
+        IUiDispatcher? dispatcher = null,
+        Func<SyncTask, string?>? runOverlapConflict = null) =>
         new(
             task,
             statuses ?? new Dictionary<Guid, DestinationSyncStatus>(),
@@ -42,7 +43,8 @@ public class TaskNodeViewModelTests
             onChanged ?? (() => { }),
             onStatuses ?? (_ => { }),
             logger ?? NullLogger.Instance,
-            confirmer ?? new FakeMirrorDeleteConfirmer());
+            confirmer ?? new FakeMirrorDeleteConfirmer(),
+            runOverlapConflict: runOverlapConflict);
 
     [Fact]
     public void Execute_is_disabled_without_destinations()
@@ -336,6 +338,24 @@ public class TaskNodeViewModelTests
         Assert.Contains(second.Id, engine.LastConfirmed!);
         Assert.Equal(SyncOutcome.Success, node.Children[0].Outcome);
         Assert.Equal(SyncOutcome.Success, node.Children[1].Outcome);
+    }
+
+    // Task shape convention: tasks never share same-kind paths — a hand-edited overlap
+    // is refused at run start, before the engine (and any file) is touched.
+    [Fact]
+    public async Task A_cross_task_overlap_refuses_the_run_before_the_engine()
+    {
+        var engine = new FakeSyncEngine();
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [Dest("D")]),
+            engine: engine,
+            runOverlapConflict: _ => "Other");
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.Empty(engine.Executed);
+        Assert.Equal(SyncOutcome.Failed, node.Children[0].Outcome);
+        Assert.Contains("\"Other\"", node.Children[0].Status.Error);
     }
 
     // Task shape convention: Move is exclusive.

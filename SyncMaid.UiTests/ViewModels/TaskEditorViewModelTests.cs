@@ -28,6 +28,27 @@ public class TaskEditorViewModelTests
         Assert.False(vm.ShowPathHint);      // clears once the folder resolves
     }
 
+    // Task shape convention: tasks never share sources. Unlike the missing-folder hint,
+    // an overlap blocks saving and names the conflicting task.
+    [Fact]
+    public void Source_overlapping_another_task_is_explained_and_rejected()
+    {
+        var vm = new TaskEditorViewModel(
+            new FakeFolderPickerService(), existing: null,
+            directoryExists: _ => true,
+            sourceConflicts: path => path.StartsWith(@"C:\photos") ? "Photos" : null);
+        vm.Name = "T";
+
+        vm.Path = @"C:\photos\2026";
+        Assert.True(vm.ShowPathHint);
+        Assert.Contains("\"Photos\"", vm.PathHintText);
+        Assert.False(vm.OKCommand.CanExecute(null));
+
+        vm.Path = @"C:\music";
+        Assert.False(vm.ShowPathHint);
+        Assert.True(vm.OKCommand.CanExecute(null));
+    }
+
     [Fact]
     public void Editing_preserves_the_task_id()
     {

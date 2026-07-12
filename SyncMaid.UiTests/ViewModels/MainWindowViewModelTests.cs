@@ -82,6 +82,33 @@ public class MainWindowViewModelTests
         Assert.Equal(0, store.SaveCount);
     }
 
+    // Task shape convention: tasks never share same-kind paths. The editors receive
+    // live probes over the task list; an edited task is excluded from its own check.
+    [Fact]
+    public async Task Overlap_probes_see_other_tasks_and_exclude_the_edited_one()
+    {
+        var a = new SyncTask("A", @"C:\a", new ManualTrigger(),
+            [new Destination("d", @"D:\a-backup", [new AllFilesFilter()], SyncStrategy.AddOnly)]);
+        var b = new SyncTask("B", @"C:\b", new ManualTrigger(), []);
+        var dialogs = new FakeDialogService(); // every "dialog" is cancelled
+        var vm = New(dialogs, new RecordingTaskStore([a, b]));
+
+        await vm.AddTaskCommand.ExecuteAsync(null);        // a new task checks against both
+        Assert.Equal("A", dialogs.LastSourceConflicts!(@"C:\a\sub"));
+        Assert.Equal("B", dialogs.LastSourceConflicts!(@"C:\b"));
+        Assert.Null(dialogs.LastSourceConflicts!(@"C:\c"));
+
+        await vm.Nodes[0].EditCommand.ExecuteAsync(null);  // editing A excludes A itself
+        Assert.Null(dialogs.LastSourceConflicts!(@"C:\a"));
+        Assert.Equal("B", dialogs.LastSourceConflicts!(@"C:\b"));
+
+        await vm.Nodes[0].AddDestinationCommand.ExecuteAsync(null); // A's own destination is no conflict
+        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\a-backup"));
+
+        await vm.Nodes[1].AddDestinationCommand.ExecuteAsync(null); // B checks against A's destination
+        Assert.Equal("A", dialogs.LastDestinationConflicts!(@"D:\a-backup\sub"));
+    }
+
     [Fact]
     public void Loading_tasks_starts_a_trigger_for_each()
     {

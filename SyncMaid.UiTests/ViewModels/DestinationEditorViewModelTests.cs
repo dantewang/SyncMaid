@@ -459,6 +459,30 @@ public class DestinationEditorViewModelTests
         Assert.False(vm.OKCommand.CanExecute(null));
     }
 
+    // Task shape convention: tasks never share destinations. The overlap blocks saving
+    // and names the conflicting task.
+    [Fact]
+    public void Destination_overlapping_another_task_is_explained_and_rejected()
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(),
+            sourcePath: @"C:\Source",
+            directoryExists: _ => true,
+            destinationConflicts: path => path.StartsWith(@"D:\backup") ? "Backup" : null)
+        {
+            Name = "D",
+        };
+
+        vm.Path = @"D:\backup\sub";
+        Assert.True(vm.ShowPathHint);
+        Assert.Contains("\"Backup\"", vm.PathHintText);
+        Assert.False(vm.OKCommand.CanExecute(null));
+
+        vm.Path = @"D:\elsewhere";
+        Assert.False(vm.ShowPathHint);
+        Assert.True(vm.OKCommand.CanExecute(null));
+    }
+
     // Task shape convention: Move is exclusive — with sibling destinations the Move
     // strategy is unavailable, except when editing an existing (hand-edited) Move.
     [Fact]

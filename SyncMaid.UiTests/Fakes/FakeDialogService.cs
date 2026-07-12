@@ -24,11 +24,22 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>The <c>hasSiblings</c> flag passed to the most recent destination edit.</summary>
     public bool? LastEditHadSiblings { get; private set; }
 
-    public Task<SyncTask?> EditTaskAsync(SyncTask? existing) => Task.FromResult(OnEditTask(existing));
+    /// <summary>The overlap probes passed to the most recent edits, so tests can assert
+    /// the wiring (which tasks a probe sees, and that the edited task excludes itself).</summary>
+    public Func<string, string?>? LastSourceConflicts { get; private set; }
+    public Func<string, string?>? LastDestinationConflicts { get; private set; }
 
-    public Task<Destination?> EditDestinationAsync(Destination? existing, string sourcePath, bool hasSiblings)
+    public Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts)
+    {
+        LastSourceConflicts = sourceConflicts;
+        return Task.FromResult(OnEditTask(existing));
+    }
+
+    public Task<Destination?> EditDestinationAsync(
+        Destination? existing, string sourcePath, bool hasSiblings, Func<string, string?> destinationConflicts)
     {
         LastEditHadSiblings = hasSiblings;
+        LastDestinationConflicts = destinationConflicts;
         return Task.FromResult(OnEditDestination(existing));
     }
 

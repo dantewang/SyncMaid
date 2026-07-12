@@ -27,6 +27,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly Action<IReadOnlyList<DestinationSyncStatus>> _onStatusesUpdated;
     private readonly ILogger _logger;
     private readonly IMirrorDeleteConfirmer _confirmer;
+    private readonly Func<string, string?> _destinationConflicts;
+    private readonly Func<SyncTask, string?>? _runOverlapConflict;
     private readonly Lock _runGate = new();
 
     private ITriggerSource? _triggerSource;
@@ -64,7 +66,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         Action onChanged,
         Action<IReadOnlyList<DestinationSyncStatus>> onStatusesUpdated,
         ILogger logger,
-        IMirrorDeleteConfirmer confirmer)
+        IMirrorDeleteConfirmer confirmer,
+        Func<string, string?>? destinationConflicts = null,
+        Func<SyncTask, string?>? runOverlapConflict = null)
     {
         Task = task;
         _dialogs = dialogs;
@@ -77,6 +81,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         _onStatusesUpdated = onStatusesUpdated;
         _logger = logger;
         _confirmer = confirmer;
+        _destinationConflicts = destinationConflicts ?? (_ => null);
+        _runOverlapConflict = runOverlapConflict;
 
         Children = new ObservableCollection<DestinationNodeViewModel>();
         foreach (var destination in task.Destinations)
@@ -263,7 +269,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private async Task AddDestination()
     {
         var destination = await _dialogs.EditDestinationAsync(
-            null, Task.SourcePath, hasSiblings: Children.Count > 0);
+            null, Task.SourcePath, hasSiblings: Children.Count > 0, _destinationConflicts);
         if (destination != null)
         {
             Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
@@ -274,7 +280,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private async Task EditLeaf(DestinationNodeViewModel node)
     {
         var edited = await _dialogs.EditDestinationAsync(
-            node.Destination, Task.SourcePath, hasSiblings: Children.Count > 1);
+            node.Destination, Task.SourcePath, hasSiblings: Children.Count > 1, _destinationConflicts);
         if (edited != null)
         {
             // Id is preserved by the editor, so the existing status still applies.
@@ -505,6 +511,32 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             // stable list after this point so trigger-thread runs never race add/edit/remove.
             runChildren = await _dispatcher.InvokeAsync(() => Children.ToList());
             priorStatuses = runChildren.ToDictionary(child => child.Id, child => child.Status);
+
+            // Task shape convention (AGENT.md): tasks never share same-kind paths. The
+            // editors prevent it; hand-edited config is refused here, before any file is
+            // touched. Checked on the dispatcher because the probe reads the live task list.
+            var overlap = _runOverlapConflict is null
+                ? null
+                : await _dispatcher.InvokeAsync(() => _runOverlapConflict(Task));
+            if (overlap is not null)
+            {
+                var refused = runChildren
+                    .Select(child => new DestinationSyncStatus(
+                        child.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                        $"This task's paths overlap task \"{overlap}\"; fix the overlap and run again — no files were changed."))
+                    .ToList();
+                _dispatcher.Post(() =>
+                {
+                    foreach (var status in refused)
+                    {
+                        ChildById(status.DestinationId)?.SetStatus(status);
+                    }
+
+                    RefreshHealth();
+                });
+                _onStatusesUpdated(refused);
+                return;
+            }
 
             _dispatcher.Post(() =>
             {

@@ -30,13 +30,14 @@
                         </StackPanel>
                     </Button>
                 </Grid>
-                <!-- Non-blocking typo guard: saving is allowed, the hint just flags it. -->
+                <!-- Missing folder is a non-blocking typo guard; a cross-task source overlap
+                     blocks saving — the text explains whichever applies. -->
                 <Border IsVisible="{Binding ShowPathHint}" Classes="filterRow" Margin="0,6,0,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
                                          Foreground="{StaticResource WarningBrush}" VerticalAlignment="Top" />
                         <TextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="This folder doesn't exist. Check for typos — the task won't find anything to sync (and a watch trigger can't start) until it does." />
+                                   Text="{Binding PathHintText}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

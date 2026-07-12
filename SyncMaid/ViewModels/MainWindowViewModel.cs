@@ -131,10 +131,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // Task shape convention (AGENT.md): tasks never share same-kind paths. The probes
+    // close over the live node list, so they must be invoked on the UI thread.
+    private IEnumerable<SyncTask> TasksExcept(Guid? taskId) =>
+        Nodes.Where(node => node.Task.Id != taskId).Select(node => node.Task);
+
     [RelayCommand]
     private async Task AddTask()
     {
-        var task = await _dialogs.EditTaskAsync(null);
+        var task = await _dialogs.EditTaskAsync(
+            null, path => TaskOverlapChecker.FindSourceConflict(TasksExcept(null), path));
         if (task != null)
         {
             var node = CreateNode(task);
@@ -146,7 +152,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task EditTask(TaskNodeViewModel node)
     {
-        var edited = await _dialogs.EditTaskAsync(node.Task);
+        var edited = await _dialogs.EditTaskAsync(
+            node.Task, path => TaskOverlapChecker.FindSourceConflict(TasksExcept(node.Task.Id), path));
         if (edited != null)
         {
             // The editor preserves the id and edits task fields only; carry destinations.
@@ -193,7 +200,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         return new(task, statusSnapshot, _dialogs, _engine, _triggerFactory, _dispatcher,
-            EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger, _confirmer)
+            EditTask, DeleteTask, Persist, OnStatusesUpdated, _nodeLogger, _confirmer,
+            destinationConflicts: path =>
+                TaskOverlapChecker.FindDestinationConflict(TasksExcept(task.Id), path),
+            runOverlapConflict: current =>
+                TaskOverlapChecker.FindTaskConflict(TasksExcept(current.Id), current))
         {
             IsExpanded = AllExpanded,
         };
