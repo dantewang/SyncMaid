@@ -33,12 +33,15 @@
                 <!-- Missing folder is a non-blocking typo guard; a cross-task source overlap
                      blocks saving — the text explains whichever applies. -->
                 <Border IsVisible="{Binding ShowPathHint}" Classes="filterRow" Margin="0,6,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
-                                         Foreground="{StaticResource WarningBrush}" VerticalAlignment="Top" />
-                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                    <!-- Auto,* grid, not a horizontal StackPanel: the text needs a
+                         bounded width or TextWrapping never engages. -->
+                    <Grid ColumnDefinitions="Auto,*">
+                        <mi:MaterialIcon Grid.Column="0" Kind="AlertOutline" Width="16" Height="16"
+                                         Foreground="{StaticResource WarningBrush}"
+                                         VerticalAlignment="Top" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Classes="muted" TextWrapping="Wrap"
                                    Text="{Binding PathHintText}" />
-                    </StackPanel>
+                    </Grid>
                 </Border>
             </StackPanel>
 
