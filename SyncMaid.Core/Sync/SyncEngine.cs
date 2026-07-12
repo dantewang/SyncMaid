@@ -63,7 +63,7 @@ public sealed class SyncEngine : ISyncEngine
                 var destination = task.Destinations.FirstOrDefault(d => d.Id == destinationId);
                 if (destination is null
                     || destination.Strategy != SyncStrategy.Mirror
-                    || HasNestedPaths(task.SourcePath, destination))
+                    || RelativePaths.Overlaps(destination.LocalPath, task.SourcePath))
                 {
                     return MirrorDeletePreview.None;
                 }
@@ -85,11 +85,6 @@ public sealed class SyncEngine : ISyncEngine
 
     private const int PreviewSampleSize = 25;
 
-    private static bool HasNestedPaths(string sourcePath, Destination destination) =>
-        !string.IsNullOrWhiteSpace(destination.LocalPath)
-        && (RelativePaths.AreEquivalent(destination.LocalPath, sourcePath)
-            || RelativePaths.IsDescendantOf(destination.LocalPath, sourcePath)
-            || RelativePaths.IsDescendantOf(sourcePath, destination.LocalPath));
 
     private IReadOnlyList<DestinationSyncStatus> Execute(
         SyncTask task,
@@ -145,7 +140,7 @@ public sealed class SyncEngine : ISyncEngine
             // the app's own output back in as input; a source inside a destination makes
             // Mirror's orphan scan delete the live source. Reject the layout, don't
             // engineer around it.
-            if (HasNestedPaths(task.SourcePath, destination))
+            if (RelativePaths.Overlaps(destination.LocalPath, task.SourcePath))
             {
                 return new DestinationSyncStatus(
                     destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,

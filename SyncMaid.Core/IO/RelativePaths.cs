@@ -10,28 +10,25 @@ public static class RelativePaths
         return $"{trimmedRoot}/{relativePath}";
     }
 
-    /// <summary>Returns whether two paths identify the same Windows filesystem location.
-    /// False when either path cannot be resolved (e.g. a partially typed UNC prefix).</summary>
-    public static bool AreEquivalent(string first, string second)
+    /// <summary>
+    /// Returns whether two folder paths identify overlapping trees on a Windows
+    /// filesystem: the same location, or one nested beneath the other, in either
+    /// direction. This is the path relation behind the task shape conventions
+    /// (AGENT.md). Null, whitespace, or unresolvable input (e.g. a partially typed
+    /// UNC prefix) overlaps nothing.
+    /// </summary>
+    public static bool Overlaps(string? first, string? second)
     {
         var normalizedFirst = TryNormalizeFullPath(first);
         var normalizedSecond = TryNormalizeFullPath(second);
-        return normalizedFirst is not null
-            && string.Equals(normalizedFirst, normalizedSecond, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>Returns whether <paramref name="candidate"/> is nested beneath <paramref name="root"/>.
-    /// False when either path cannot be resolved (e.g. a partially typed UNC prefix).</summary>
-    public static bool IsDescendantOf(string candidate, string root)
-    {
-        var normalizedCandidate = TryNormalizeFullPath(candidate);
-        var normalizedRoot = TryNormalizeFullPath(root);
-        if (normalizedCandidate is null || normalizedRoot is null)
+        if (normalizedFirst is null || normalizedSecond is null)
         {
             return false;
         }
 
-        return normalizedCandidate.StartsWith(WithTrailingSeparator(normalizedRoot), StringComparison.OrdinalIgnoreCase);
+        return string.Equals(normalizedFirst, normalizedSecond, StringComparison.OrdinalIgnoreCase)
+            || normalizedFirst.StartsWith(WithTrailingSeparator(normalizedSecond), StringComparison.OrdinalIgnoreCase)
+            || normalizedSecond.StartsWith(WithTrailingSeparator(normalizedFirst), StringComparison.OrdinalIgnoreCase);
     }
 
     private static string WithTrailingSeparator(string path) =>
@@ -39,8 +36,13 @@ public static class RelativePaths
 
     // Callers evaluate user input as it is typed ("\\", "\\server"), which GetFullPath
     // rejects; an unresolvable path simply has no filesystem location to relate.
-    private static string? TryNormalizeFullPath(string path)
+    private static string? TryNormalizeFullPath(string? path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
         try
         {
             return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));

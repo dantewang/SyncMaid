@@ -163,12 +163,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     // Task shape convention (AGENT.md): source and destinations never nest, in either
     // direction, for every strategy. The engine enforces the same rule at run start.
-    private bool HasUnsafeNesting =>
-        !string.IsNullOrWhiteSpace(_sourcePath)
-        && !string.IsNullOrWhiteSpace(Path)
-        && (RelativePaths.AreEquivalent(Path, _sourcePath)
-            || RelativePaths.IsDescendantOf(Path, _sourcePath)
-            || RelativePaths.IsDescendantOf(_sourcePath, Path));
+    private bool HasUnsafeNesting => RelativePaths.Overlaps(Path, _sourcePath);
 
     protected override bool HasAdditionalPathWarning => HasUnsafeNesting;
 
