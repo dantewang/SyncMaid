@@ -302,6 +302,15 @@
         <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
         <Setter Property="Background" Value="{StaticResource TealSubtleBrush}" />
     </Style>
+    <!-- The custom template bypasses Fluent's disabled chrome, so an unavailable choice
+         (e.g. Move when the task already has destinations) must dim itself. -->
+    <Style Selector="RadioButton.card:disabled">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="RadioButton.card:disabled /template/ Border#root">
+        <Setter Property="Opacity" Value="0.45" />
+        <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+    </Style>
 
     <!-- In-window modal -->
     <Style Selector="Border.backdrop">
