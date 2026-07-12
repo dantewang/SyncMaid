@@ -14,6 +14,7 @@ public sealed class WatchTriggerSource : ITriggerSource
     private readonly Func<string, FileSystemWatcher> _watcherFactory;
     private readonly Func<Action, IDebounceTimer> _debounceFactory;
     private readonly Lock _gate = new();
+    private readonly TriggerNotifier _notifier = new();
     private FileSystemWatcher? _watcher;
     private IDebounceTimer? _debounce;
     private long _generation;
@@ -49,7 +50,8 @@ public sealed class WatchTriggerSource : ITriggerSource
     /// <inheritdoc />
     public void Start()
     {
-        long generation;
+        long generation = 0;
+        var resumed = false;
         lock (_gate)
         {
             if (_disposed)
@@ -60,12 +62,32 @@ public sealed class WatchTriggerSource : ITriggerSource
             _started = true;
             if (_watcher is not null)
             {
-                _watcher.EnableRaisingEvents = true;
-                ReportRecovered();
-                return;
-            }
+                try
+                {
+                    _watcher.EnableRaisingEvents = true;
+                }
+                catch
+                {
+                    // Mirror the fresh-create rollback below: a failed resume must not
+                    // leave the source claiming to run with a dead, disabled watcher —
+                    // a later Start retries this path.
+                    _started = false;
+                    throw;
+                }
 
-            generation = ++_generation;
+                EnqueueRecoveredLocked();
+                resumed = true;
+            }
+            else
+            {
+                generation = ++_generation;
+            }
+        }
+
+        if (resumed)
+        {
+            _notifier.Drain(OnDeliveryError);
+            return;
         }
 
         FileSystemWatcher? watcher = null;
@@ -83,8 +105,10 @@ public sealed class WatchTriggerSource : ITriggerSource
 
                 _watcher = watcher;
                 watcher = null;
-                ReportRecovered();
+                EnqueueRecoveredLocked();
             }
+
+            _notifier.Drain(OnDeliveryError);
         }
         catch
         {
@@ -120,9 +144,14 @@ public sealed class WatchTriggerSource : ITriggerSource
 
             debounce = _debounce;
             _debounce = null;
+            _notifier.Invalidate();
         }
 
         DisposeDebounce(debounce);
+
+        // Once Stop returns, the source has quiesced: queued notifications were dropped
+        // by the epoch bump, and a delivery in flight completes inside this barrier.
+        _notifier.WaitForIdle();
     }
 
     private void OnChanged(object sender, FileSystemEventArgs e)
@@ -151,12 +180,13 @@ public sealed class WatchTriggerSource : ITriggerSource
             }
             catch (Exception exception)
             {
-                ReportError(exception);
+                EnqueueErrorLocked(exception);
             }
         }
 
         DisposeDebounce(previous);
         DisposeDebounce(created);
+        _notifier.Drain(OnDeliveryError);
     }
 
     private void OnWatcherError(object sender, ErrorEventArgs e)
@@ -199,6 +229,7 @@ public sealed class WatchTriggerSource : ITriggerSource
             replacement = CreateWatcher();
             replacement.EnableRaisingEvents = true;
 
+            var installed = false;
             lock (_gate)
             {
                 if (_disposed || !_started || generation != _generation || _watcher is not null)
@@ -208,15 +239,20 @@ public sealed class WatchTriggerSource : ITriggerSource
 
                 _watcher = replacement;
                 replacement = null;
+                installed = true;
 
-                // The error cancelled any pending debounce, and the OS may already have
-                // dropped events before it (buffer overflow) — the changes they carried
-                // must still sync, so fire once after a successful restart; a run over an
-                // unchanged tree is a planner no-op. Raised under the gate, like the
-                // debounce path, so Stop keeps its no-fire-after-Stop guarantee.
-                ReportError(e.GetException());
-                ReportRecovered();
-                Fired?.Invoke(this, EventArgs.Empty);
+                // Decided in order: the error, its recovery, and one fire — the error
+                // cancelled any pending debounce, and the OS may already have dropped
+                // events before it (buffer overflow), so the changes they carried must
+                // still sync; a run over an unchanged tree is a planner no-op.
+                EnqueueErrorLocked(e.GetException());
+                EnqueueRecoveredLocked();
+                _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
+            }
+
+            if (installed)
+            {
+                _notifier.Drain(OnDeliveryError);
             }
         }
         catch (Exception exception)
@@ -285,33 +321,26 @@ public sealed class WatchTriggerSource : ITriggerSource
 
     private void OnDebounceElapsed(long arm)
     {
-        IDebounceTimer? completed = null;
-        try
+        IDebounceTimer? completed;
+        lock (_gate)
         {
-            lock (_gate)
+            if (_disposed || !_started || arm != _debounceArm)
             {
-                if (_disposed || !_started || arm != _debounceArm)
-                {
-                    return;
-                }
-
-                completed = _debounce;
-                _debounce = null;
-                _debounceArm++;
-                // Keep Stop mutually exclusive with delivery: once Stop returns, a callback
-                // that was already dequeued cannot notify after it.
-                Fired?.Invoke(this, EventArgs.Empty);
-                ReportRecovered();
+                return;
             }
+
+            completed = _debounce;
+            _debounce = null;
+            _debounceArm++;
+            // Decisions under the gate, delivery outside it: the notifier preserves the
+            // no-notification-after-Stop guarantee (epoch + Stop's barrier) without
+            // subscribers ever running under the state gate.
+            _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
+            EnqueueRecoveredLocked();
         }
-        catch (Exception exception)
-        {
-            ReportError(exception);
-        }
-        finally
-        {
-            DisposeDebounce(completed);
-        }
+
+        DisposeDebounce(completed);
+        _notifier.Drain(OnDeliveryError);
     }
 
     private void DisposeDebounce(IDebounceTimer? debounce)
@@ -333,43 +362,65 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
     }
 
+    // Error/Recovered transitions are decided atomically with their enqueue, under the
+    // gate — the decided order is the delivered order, so the flag and the last
+    // delivered event can never disagree. Their subscribers' own failures are swallowed
+    // at delivery; a throwing Fired subscriber surfaces through the drain's callback.
+    private void EnqueueErrorLocked(Exception exception)
+    {
+        _errorReported = true;
+        _notifier.Enqueue(() =>
+        {
+            try
+            {
+                Error?.Invoke(exception);
+            }
+            catch
+            {
+                // Subscriber failures must not escape the thread-pool boundary.
+            }
+        });
+    }
+
+    private void EnqueueRecoveredLocked()
+    {
+        // Never promise recovery on a source the consumer stopped or disposed.
+        if (_disposed || !_started || !_errorReported)
+        {
+            return;
+        }
+
+        _errorReported = false;
+        _notifier.Enqueue(() =>
+        {
+            try
+            {
+                Recovered?.Invoke();
+            }
+            catch
+            {
+                // Recovery observers share the same boundary as Error observers.
+            }
+        });
+    }
+
+    private void OnDeliveryError(Exception exception)
+    {
+        lock (_gate)
+        {
+            EnqueueErrorLocked(exception);
+        }
+    }
+
+    // For failures observed outside the gate (cleanup paths); decides, then drains.
     private void ReportError(Exception exception)
     {
         lock (_gate)
         {
-            _errorReported = true;
+            EnqueueErrorLocked(exception);
         }
 
-        try
-        {
-            Error?.Invoke(exception);
-        }
-        catch
-        {
-            // This is a thread-pool boundary; subscriber failures must not escape it either.
-        }
-    }
-
-    private void ReportRecovered()
-    {
-        lock (_gate)
-        {
-            if (!_errorReported)
-            {
-                return;
-            }
-
-            _errorReported = false;
-        }
-
-        try
-        {
-            Recovered?.Invoke();
-        }
-        catch
-        {
-            // Recovery observers share the same thread-pool boundary as Error observers.
-        }
+        _notifier.Drain(OnDeliveryError);
     }
 
     /// <inheritdoc />
@@ -392,6 +443,7 @@ public sealed class WatchTriggerSource : ITriggerSource
             _watcher = null;
             debounce = _debounce;
             _debounce = null;
+            _notifier.Invalidate();
         }
 
         if (watcher is not null)
@@ -411,6 +463,7 @@ public sealed class WatchTriggerSource : ITriggerSource
         }
 
         DisposeDebounce(debounce);
+        _notifier.WaitForIdle();
     }
 
     internal interface IDebounceTimer : IDisposable

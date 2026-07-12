@@ -467,6 +467,95 @@ public class WatchTriggerSourceTests
         }
     }
 
+    // Delivery happens outside the state gate: while a Fired subscriber is still
+    // running, watcher events must keep arming debounces instead of queuing up
+    // behind the handler.
+    [Fact]
+    public async Task A_blocking_fired_subscriber_does_not_block_watcher_events()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory);
+        var timers = new List<FakeDebounceTimer>();
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => watcher,
+                callback =>
+                {
+                    var timer = new FakeDebounceTimer(callback);
+                    timers.Add(timer);
+                    return timer;
+                });
+            var handlerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var releaseHandler = new ManualResetEventSlim();
+            source.Fired += (_, _) =>
+            {
+                handlerEntered.TrySetResult();
+                releaseHandler.Wait();
+            };
+            source.Start();
+            watcher.RaiseChanged();
+
+            var delivery = Task.Run(timers[0].Fire);
+            await handlerEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+            // With the handler still blocked, a new change must arm a new debounce.
+            var changed = Task.Run(watcher.RaiseChanged);
+            await changed.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.Equal(2, timers.Count);
+
+            releaseHandler.Set();
+            await delivery.WaitAsync(TimeSpan.FromSeconds(1));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    // A failed resume must roll back _started, so the source does not act running with
+    // a dead, disabled watcher — and a later Start can retry cleanly.
+    [Fact]
+    public void Resume_failure_rolls_back_so_the_source_does_not_act_started()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory);
+        var timers = new List<FakeDebounceTimer>();
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => watcher,
+                callback =>
+                {
+                    var timer = new FakeDebounceTimer(callback);
+                    timers.Add(timer);
+                    return timer;
+                });
+            source.Start();
+            source.Stop();
+
+            Directory.Delete(directory, recursive: true);
+            Assert.NotNull(Record.Exception(source.Start)); // resume fails: folder is gone
+
+            watcher.RaiseChanged();                         // a stray event must not arm anything
+            Assert.Empty(timers);
+
+            Directory.CreateDirectory(directory);
+            Assert.Null(Record.Exception(source.Start));    // rollback lets the retry succeed
+            watcher.RaiseChanged();
+            Assert.Single(timers);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     private static string NewDirectory()
     {
         var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));

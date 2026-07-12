@@ -18,6 +18,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private readonly TimeSpan _interval;
     private readonly Func<Action, IPollingTimer> _timerFactory;
     private readonly Lock _gate = new();
+    private readonly TriggerNotifier _notifier = new();
 
     private IPollingTimer? _timer;
     private Dictionary<string, FileStamp> _snapshot = new(StringComparer.OrdinalIgnoreCase);
@@ -84,7 +85,12 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             _timer?.Dispose();
             _timer = null;
             _hasBaseline = false;
+            _notifier.Invalidate();
         }
+
+        // Once Stop returns, the source has quiesced: queued notifications were dropped
+        // by the epoch bump, and a delivery in flight completes inside this barrier.
+        _notifier.WaitForIdle();
     }
 
     /// <summary>
@@ -95,9 +101,10 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     /// </summary>
     public bool PollOnce()
     {
-        Exception? failure = null;
-        var reportFailure = false;
-        var recovered = false;
+        // Decisions happen under the gate and enqueue their notifications; the notifier
+        // delivers them outside it, in decided order, and drops them if Stop/Dispose
+        // lands first. A throwing Fired subscriber is contained by the drain and folded
+        // into the same once-until-recovered error reporting as a failed snapshot.
         var changed = false;
         lock (_gate)
         {
@@ -107,6 +114,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             }
 
             Dictionary<string, FileStamp>? current = null;
+            Exception? failure = null;
             try
             {
                 current = Snapshot();
@@ -123,13 +131,11 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
 
             if (failure is not null)
             {
-                reportFailure = !_failureReported;
-                _failureReported = true;
+                EnqueueErrorOnceLocked(failure);
             }
             else
             {
-                recovered = _failureReported;
-                _failureReported = false;
+                EnqueueRecoveredLocked();
                 if (!_hasBaseline)
                 {
                     _snapshot = current!;
@@ -139,50 +145,64 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                 {
                     _snapshot = current!;
                     changed = true;
+                    _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
                 }
             }
         }
 
-        if (reportFailure)
-        {
-            ReportError(failure!);
-        }
-
-        if (recovered)
-        {
-            ReportRecovered();
-        }
-
-        if (changed)
-        {
-            // Notify outside the lock so a handler that runs a sync can't deadlock on it.
-            Fired?.Invoke(this, EventArgs.Empty);
-        }
-
+        _notifier.Drain(OnDeliveryError);
         return changed;
     }
 
-    private void ReportError(Exception exception)
+    // Reported once until the next successful poll, so a persistently failing share
+    // does not spam the consumer. Subscriber failures are swallowed at delivery.
+    private void EnqueueErrorOnceLocked(Exception exception)
     {
-        try
+        if (_failureReported)
         {
-            Error?.Invoke(exception);
+            return;
         }
-        catch
+
+        _failureReported = true;
+        _notifier.Enqueue(() =>
         {
-            // This is a timer callback boundary; error subscribers cannot be allowed to escape it.
-        }
+            try
+            {
+                Error?.Invoke(exception);
+            }
+            catch
+            {
+                // Subscriber failures must not escape the timer callback boundary.
+            }
+        });
     }
 
-    private void ReportRecovered()
+    private void EnqueueRecoveredLocked()
     {
-        try
+        if (!_failureReported)
         {
-            Recovered?.Invoke();
+            return;
         }
-        catch
+
+        _failureReported = false;
+        _notifier.Enqueue(() =>
         {
-            // Recovery notification shares the timer callback boundary.
+            try
+            {
+                Recovered?.Invoke();
+            }
+            catch
+            {
+                // Recovery notification shares the timer callback boundary.
+            }
+        });
+    }
+
+    private void OnDeliveryError(Exception exception)
+    {
+        lock (_gate)
+        {
+            EnqueueErrorOnceLocked(exception);
         }
     }
 
@@ -232,7 +252,10 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             _timer?.Dispose();
             _timer = null;
             _hasBaseline = false;
+            _notifier.Invalidate();
         }
+
+        _notifier.WaitForIdle();
     }
 
     internal interface IPollingTimer : IDisposable

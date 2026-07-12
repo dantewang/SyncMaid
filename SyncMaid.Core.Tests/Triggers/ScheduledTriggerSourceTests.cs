@@ -157,6 +157,38 @@ public class ScheduledTriggerSourceTests
         Assert.Equal(1, recoveries);
     }
 
+    // The badge must not clear on a source the user just stopped: a fire whose handler
+    // stops the source suppresses the recovery that tick would otherwise have reported.
+    [Fact]
+    public void Recovery_is_not_reported_after_a_handler_stops_the_source()
+    {
+        var now = new DateTime(2026, 1, 1, 0, 0, 30, DateTimeKind.Utc);
+        FakeTimer? timer = null;
+        using var source = New("* * * * *", () => now, value => timer = value);
+        var shouldThrow = true;
+        var recoveries = 0;
+        source.Fired += (_, _) =>
+        {
+            if (shouldThrow)
+            {
+                throw new InvalidOperationException("first tick failed");
+            }
+
+            source.Stop();
+        };
+        source.Recovered += () => recoveries++;
+        source.Start();
+
+        now = new DateTime(2026, 1, 1, 0, 1, 0, DateTimeKind.Utc);
+        timer!.Fire();                                    // error state set
+        shouldThrow = false;
+        now = new DateTime(2026, 1, 1, 0, 2, 0, DateTimeKind.Utc);
+        timer.Fire();                                     // succeeds, but the handler stopped us
+
+        Assert.Equal(0, recoveries);
+        Assert.Equal(Timeout.InfiniteTimeSpan, timer.LastDueTime);
+    }
+
     private static ScheduledTriggerSource New(
         string cron,
         Func<DateTime> utcNow,

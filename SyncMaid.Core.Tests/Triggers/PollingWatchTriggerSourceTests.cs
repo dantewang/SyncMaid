@@ -180,6 +180,33 @@ public class PollingWatchTriggerSourceTests
         Assert.Equal(1, fires);
     }
 
+    // A throwing Fired subscriber previously escaped PollOnce bare (delivered outside
+    // any try, on a raw timer callback) and killed the process. The drain contains it
+    // and folds it into the once-until-recovered error reporting.
+    [Fact]
+    public void A_throwing_fired_subscriber_is_contained_and_reported()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        using var source = Source(fs);
+        Exception? reported = null;
+        var recoveries = 0;
+        source.Fired += (_, _) => throw new InvalidOperationException("handler failed");
+        source.Error += exception => reported = exception;
+        source.Recovered += () => recoveries++;
+        source.Start();
+        Assert.False(source.PollOnce()); // baseline
+
+        fs.AddFile($@"{Root}\b.txt", "b");
+        var escaped = Record.Exception(() => source.PollOnce());
+
+        Assert.Null(escaped);
+        Assert.IsType<InvalidOperationException>(reported);
+
+        Assert.False(source.PollOnce()); // the next successful poll clears the error state
+        Assert.Equal(1, recoveries);
+    }
+
     private sealed class FakeTimer(Action? callback = null) : PollingWatchTriggerSource.IPollingTimer
     {
         public TimeSpan DueTime { get; private set; }

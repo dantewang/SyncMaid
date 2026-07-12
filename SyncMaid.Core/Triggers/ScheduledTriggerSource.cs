@@ -16,6 +16,7 @@ public sealed class ScheduledTriggerSource : ITriggerSource
     private readonly Func<Action, IOneShotTimer> _timerFactory;
     private readonly TimeZoneInfo _timeZone;
     private readonly Lock _gate = new();
+    private readonly TriggerNotifier _notifier = new();
     private IOneShotTimer? _timer;
     private DateTime? _nextOccurrenceUtc;
     private bool _stopped = true;
@@ -72,79 +73,88 @@ public sealed class ScheduledTriggerSource : ITriggerSource
             _stopped = true;
             _nextOccurrenceUtc = null;
             _timer?.Change(Timeout.InfiniteTimeSpan);
+            _notifier.Invalidate();
         }
+
+        // Once Stop returns, the fire has quiesced: queued notifications were dropped by
+        // the epoch bump, and a delivery already in flight completes inside this barrier.
+        _notifier.WaitForIdle();
     }
 
     private void OnTimer()
     {
-        var activeBoundary = false;
+        // Decisions happen under the gate and enqueue their notifications; delivery
+        // happens outside it via the notifier, which preserves decision order and the
+        // Stop contract without subscribers ever running under the state gate.
         var occurrenceReached = false;
-        var boundarySucceeded = false;
-        try
+        var boundaryFailed = false;
+        lock (_gate)
         {
-            lock (_gate)
+            if (_disposed || _stopped)
             {
-                if (_disposed || _stopped)
-                {
-                    return;
-                }
+                return;
+            }
 
-                activeBoundary = true;
+            try
+            {
                 var now = _utcNow();
                 if (_nextOccurrenceUtc is not { } next)
                 {
                     ArmNext();
-                    boundarySucceeded = true;
-                    return;
                 }
-
-                if (now < next)
+                else if (now < next)
                 {
                     ArmUntil(next, now);
-                    boundarySucceeded = true;
-                    return;
                 }
-
-                occurrenceReached = true;
-                _nextOccurrenceUtc = null;
-
-                // Keep Stop mutually exclusive with delivery: once Stop returns, no callback
-                // that already passed the stopped check can still notify. The lock is reentrant,
-                // so a handler may safely call Stop/Dispose itself.
-                Fired?.Invoke(this, EventArgs.Empty);
-                boundarySucceeded = true;
+                else
+                {
+                    occurrenceReached = true;
+                    _nextOccurrenceUtc = null;
+                    _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
+                }
+            }
+            catch (Exception exception)
+            {
+                boundaryFailed = true;
+                EnqueueErrorLocked(exception);
             }
         }
-        catch (Exception exception)
+
+        var deliveryFailed = false;
+        _notifier.Drain(exception =>
         {
-            ReportError(exception);
-        }
-        finally
+            deliveryFailed = true;
+            OnDeliveryError(exception);
+        });
+
+        if (occurrenceReached)
         {
-            if (occurrenceReached)
+            lock (_gate)
             {
-                try
+                if (!_disposed && !_stopped)
                 {
-                    lock (_gate)
+                    try
                     {
-                        if (!_disposed && !_stopped)
-                        {
-                            ArmNext();
-                        }
+                        ArmNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        boundaryFailed = true;
+                        EnqueueErrorLocked(exception);
                     }
                 }
-                catch (Exception exception)
-                {
-                    boundarySucceeded = false;
-                    ReportError(exception);
-                }
-            }
-
-            if (activeBoundary && boundarySucceeded)
-            {
-                ReportRecovered();
             }
         }
+
+        if (!boundaryFailed && !deliveryFailed)
+        {
+            lock (_gate)
+            {
+                EnqueueRecoveredLocked();
+            }
+        }
+
+        _notifier.Drain(OnDeliveryError);
     }
 
     // Schedules the timer for the next cron occurrence. Caller holds _gate.
@@ -178,42 +188,54 @@ public sealed class ScheduledTriggerSource : ITriggerSource
         _timer?.Change(delay);
     }
 
-    private void ReportError(Exception exception)
+    // Error/Recovered transitions are decided atomically with their enqueue, under the
+    // gate — the decided order is the delivered order, so the flag and the last
+    // delivered event can never disagree. Their subscribers' own failures are swallowed
+    // at delivery (they share the thread-pool boundary); a throwing Fired subscriber is
+    // surfaced through the drain's error callback instead.
+    private void EnqueueErrorLocked(Exception exception)
     {
-        lock (_gate)
+        _errorReported = true;
+        _notifier.Enqueue(() =>
         {
-            _errorReported = true;
-        }
-
-        try
-        {
-            Error?.Invoke(exception);
-        }
-        catch
-        {
-            // This is the thread-pool boundary; subscriber failures must not escape it either.
-        }
+            try
+            {
+                Error?.Invoke(exception);
+            }
+            catch
+            {
+                // Subscriber failures must not escape the thread-pool boundary.
+            }
+        });
     }
 
-    private void ReportRecovered()
+    private void EnqueueRecoveredLocked()
+    {
+        // Never promise recovery on a source the consumer just stopped or disposed.
+        if (_stopped || _disposed || !_errorReported)
+        {
+            return;
+        }
+
+        _errorReported = false;
+        _notifier.Enqueue(() =>
+        {
+            try
+            {
+                Recovered?.Invoke();
+            }
+            catch
+            {
+                // Recovery observers share the same boundary as Error observers.
+            }
+        });
+    }
+
+    private void OnDeliveryError(Exception exception)
     {
         lock (_gate)
         {
-            if (!_errorReported)
-            {
-                return;
-            }
-
-            _errorReported = false;
-        }
-
-        try
-        {
-            Recovered?.Invoke();
-        }
-        catch
-        {
-            // Recovery observers share the same timer callback boundary as Error observers.
+            EnqueueErrorLocked(exception);
         }
     }
 
@@ -227,7 +249,10 @@ public sealed class ScheduledTriggerSource : ITriggerSource
             _nextOccurrenceUtc = null;
             _timer?.Dispose();
             _timer = null;
+            _notifier.Invalidate();
         }
+
+        _notifier.WaitForIdle();
     }
 
     internal interface IOneShotTimer : IDisposable

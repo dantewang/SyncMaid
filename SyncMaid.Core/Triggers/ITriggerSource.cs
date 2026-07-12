@@ -5,6 +5,10 @@ namespace SyncMaid.Core.Triggers;
 /// active task; created from the task's <see cref="Trigger"/> by
 /// <see cref="TriggerSourceFactory"/>. The consumer (the app) subscribes to
 /// <see cref="Fired"/> and runs the sync engine in response.
+/// Implementations deliver <see cref="Fired"/>/<see cref="Error"/>/<see cref="Recovered"/>
+/// serially and in decision order, never while holding internal state locks, and never
+/// after <see cref="Stop"/> returns — a delivery in flight when Stop is called completes
+/// before Stop returns (see <see cref="TriggerNotifier"/>).
 /// </summary>
 public interface ITriggerSource : IDisposable
 {
