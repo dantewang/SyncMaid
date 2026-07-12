@@ -15,22 +15,34 @@ public class SyncEngineGuardTests
     private static SyncTask Mirror(InMemoryFileSystem fs, Destination dest) =>
         new("t", @"S:\src", new ManualTrigger(), [dest]);
 
+    // Task shape convention: source and destinations never nest, in either direction,
+    // for every strategy. The Mirror source-inside-destination case is the data-loss
+    // trap this closes: the orphan scan of S:\ would otherwise delete the live source.
     [Theory]
-    [InlineData(@"S:\src")]
-    [InlineData(@"S:\src\nested")]
-    public async Task Move_destination_at_or_below_source_fails_without_deleting_source(string destinationPath)
+    [InlineData(SyncStrategy.AddOnly, @"S:\src")]
+    [InlineData(SyncStrategy.AddOnly, @"S:\src\nested")]
+    [InlineData(SyncStrategy.AddOnly, @"S:\")]
+    [InlineData(SyncStrategy.Mirror, @"S:\src")]
+    [InlineData(SyncStrategy.Mirror, @"S:\src\nested")]
+    [InlineData(SyncStrategy.Mirror, @"S:\")]
+    [InlineData(SyncStrategy.Move, @"S:\src")]
+    [InlineData(SyncStrategy.Move, @"S:\src\nested")]
+    [InlineData(SyncStrategy.Move, @"S:\")]
+    public async Task Nested_destination_fails_without_touching_any_file(
+        SyncStrategy strategy, string destinationPath)
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile(@"S:\src\important.txt", "keep me");
+        var pathsBefore = fs.AllPaths;
         var destination = new Destination(
-            "unsafe", destinationPath, [new AllFilesFilter()], SyncStrategy.Move);
-        var task = new SyncTask("move", @"S:\src", new ManualTrigger(), [destination]);
+            "unsafe", destinationPath, [new AllFilesFilter()], strategy);
+        var task = new SyncTask("nested", @"S:\src", new ManualTrigger(), [destination]);
 
         var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(task));
 
         Assert.Equal(SyncOutcome.Failed, status.Outcome);
         Assert.Contains("outside the source", status.Error, StringComparison.OrdinalIgnoreCase);
-        Assert.True(fs.FileExists(@"S:\src\important.txt"));
+        Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
     }
 
     [Fact]

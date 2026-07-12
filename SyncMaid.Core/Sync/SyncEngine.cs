@@ -61,14 +61,15 @@ public sealed class SyncEngine : ISyncEngine
             () =>
             {
                 var destination = task.Destinations.FirstOrDefault(d => d.Id == destinationId);
-                if (destination is null || destination.Strategy != SyncStrategy.Mirror)
+                if (destination is null
+                    || destination.Strategy != SyncStrategy.Mirror
+                    || HasNestedPaths(task.SourcePath, destination))
                 {
                     return MirrorDeletePreview.None;
                 }
 
                 var provider = _destinations.Create(destination.Target);
-                var sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
-                var filtered = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination)
+                var filtered = _fileSystem.EnumerateFiles(task.SourcePath)
                     .Where(destination.Includes)
                     .ToList();
                 var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
@@ -84,31 +85,11 @@ public sealed class SyncEngine : ISyncEngine
 
     private const int PreviewSampleSize = 25;
 
-    // A destination rooted inside the source would otherwise see its own output as source
-    // content: every run would copy the previous run's files one level deeper
-    // (backup/backup/…), and with trigger runs coalescing instead of being suppressed, that
-    // feedback loop never quiesces. A destination's own subtree is not source content, for
-    // any strategy. (Move refuses nested destinations outright before this applies.)
-    private static IReadOnlyList<string> WithoutNestedDestinationFiles(
-        IReadOnlyList<string> sourceFiles,
-        string sourcePath,
-        Destination destination)
-    {
-        if (string.IsNullOrWhiteSpace(destination.LocalPath))
-        {
-            return sourceFiles;
-        }
-
-        var nestedPrefix = RelativePaths.TryGetPrefixWithin(sourcePath, destination.LocalPath);
-        if (nestedPrefix is null)
-        {
-            return sourceFiles;
-        }
-
-        return sourceFiles
-            .Where(file => !file.StartsWith(nestedPrefix, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
+    private static bool HasNestedPaths(string sourcePath, Destination destination) =>
+        !string.IsNullOrWhiteSpace(destination.LocalPath)
+        && (RelativePaths.AreEquivalent(destination.LocalPath, sourcePath)
+            || RelativePaths.IsDescendantOf(destination.LocalPath, sourcePath)
+            || RelativePaths.IsDescendantOf(sourcePath, destination.LocalPath));
 
     private IReadOnlyList<DestinationSyncStatus> Execute(
         SyncTask task,
@@ -159,14 +140,16 @@ public sealed class SyncEngine : ISyncEngine
     {
         try
         {
-            if (destination.Strategy == SyncStrategy.Move
-                && !string.IsNullOrWhiteSpace(destination.LocalPath)
-                && (RelativePaths.AreEquivalent(destination.LocalPath, task.SourcePath)
-                    || RelativePaths.IsDescendantOf(destination.LocalPath, task.SourcePath)))
+            // Task shape convention (AGENT.md): source and destinations never nest, in
+            // either direction, for every strategy. A destination inside the source feeds
+            // the app's own output back in as input; a source inside a destination makes
+            // Mirror's orphan scan delete the live source. Reject the layout, don't
+            // engineer around it.
+            if (HasNestedPaths(task.SourcePath, destination))
             {
                 return new DestinationSyncStatus(
                     destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
-                    "Move destination must be different from and outside the source folder; no files were changed.");
+                    "Destination must be a separate folder outside the source (and not contain it); no files were changed.");
             }
 
             if (sourceEnumerationError is not null)
@@ -174,11 +157,10 @@ public sealed class SyncEngine : ISyncEngine
                 sourceEnumerationError.Throw();
             }
 
-            var visibleSource = WithoutNestedDestinationFiles(sourceFiles, task.SourcePath, destination);
-            var filtered = visibleSource.Where(destination.Includes).ToList();
+            var filtered = sourceFiles.Where(destination.Includes).ToList();
             if (destination.Strategy == SyncStrategy.Mirror
                 && filtered.Count == 0
-                && visibleSource.Count > 0)
+                && sourceFiles.Count > 0)
             {
                 return new DestinationSyncStatus(
                     destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,

@@ -34,27 +34,6 @@ public static class RelativePaths
         return normalizedCandidate.StartsWith(WithTrailingSeparator(normalizedRoot), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Returns <paramref name="candidate"/>'s forward-slash relative prefix (with a
-    /// trailing '/') when it is nested beneath <paramref name="root"/>; null when it is not,
-    /// or when either path cannot be resolved.</summary>
-    public static string? TryGetPrefixWithin(string root, string candidate)
-    {
-        var normalizedRoot = TryNormalizeFullPath(root);
-        var normalizedCandidate = TryNormalizeFullPath(candidate);
-        if (normalizedRoot is null || normalizedCandidate is null)
-        {
-            return null;
-        }
-
-        var rootWithSeparator = WithTrailingSeparator(normalizedRoot);
-        if (!normalizedCandidate.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return normalizedCandidate[rootWithSeparator.Length..].Replace('\\', '/') + "/";
-    }
-
     private static string WithTrailingSeparator(string path) =>
         Path.EndsInDirectorySeparator(path) ? path : path + Path.DirectorySeparatorChar;
 

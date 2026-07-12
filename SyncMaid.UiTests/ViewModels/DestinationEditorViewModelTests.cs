@@ -434,19 +434,24 @@ public class DestinationEditorViewModelTests
         Assert.False(vm.ShowPathHint);
     }
 
+    // Task shape convention: source and destinations never nest, in either direction,
+    // for every strategy — equal, inside the source, or containing the source.
     [Theory]
-    [InlineData(@"c:/source/")]
-    [InlineData(@"C:\SOURCE\nested")]
-    public void Move_destination_at_or_below_source_is_explained_and_rejected(string destinationPath)
+    [InlineData(SyncStrategy.Mirror, @"c:/source/")]
+    [InlineData(SyncStrategy.Mirror, @"C:\SOURCE\nested")]
+    [InlineData(SyncStrategy.AddOnly, @"C:\")]
+    [InlineData(SyncStrategy.Move, @"C:\SOURCE\nested")]
+    public void Nested_destination_is_explained_and_rejected(
+        SyncStrategy strategy, string destinationPath)
     {
         var vm = new DestinationEditorViewModel(
             new FakeFolderPickerService(),
             sourcePath: @"C:\Source",
             directoryExists: _ => true)
         {
-            Name = "Unsafe move",
+            Name = "Unsafe nesting",
             Path = destinationPath,
-            SelectedStrategy = SyncStrategy.Move,
+            SelectedStrategy = strategy,
         };
 
         Assert.True(vm.ShowPathHint);
@@ -455,7 +460,7 @@ public class DestinationEditorViewModelTests
     }
 
     // Typing a UNC destination passes through prefixes GetFullPath rejects ("\\", "\\nas");
-    // every keystroke re-evaluates the Move-safety check, which must not throw mid-typing.
+    // every keystroke re-evaluates the nesting check, which must not throw mid-typing.
     [Theory]
     [InlineData(@"\\")]
     [InlineData(@"\\nas")]

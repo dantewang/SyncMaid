@@ -27,9 +27,6 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     private bool _syncAll = true;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
-    [NotifyPropertyChangedFor(nameof(ShowPathHint))]
-    [NotifyPropertyChangedFor(nameof(PathHintText))]
     private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
 
     [ObservableProperty]
@@ -137,9 +134,9 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
 
-    /// <summary>Explains either a destructive Move path or the non-blocking missing-folder hint.</summary>
-    public string PathHintText => HasUnsafeMovePath
-        ? "Move destination must be different from and outside the source folder."
+    /// <summary>Explains either a blocked nested path or the non-blocking missing-folder hint.</summary>
+    public string PathHintText => HasUnsafeNesting
+        ? "Destination must be a separate folder outside the source (and not contain it)."
         : "This folder doesn't exist yet — it will be created on the first run. Double-check for typos.";
 
     [RelayCommand(CanExecute = nameof(CanOk))]
@@ -161,17 +158,19 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     private bool CanOk() =>
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
-        && !HasUnsafeMovePath
+        && !HasUnsafeNesting
         && (SyncAll || Groups.Any(group => group.Rules.Count > 0));
 
-    private bool HasUnsafeMovePath =>
-        SelectedStrategy == SyncStrategy.Move
-        && !string.IsNullOrWhiteSpace(_sourcePath)
+    // Task shape convention (AGENT.md): source and destinations never nest, in either
+    // direction, for every strategy. The engine enforces the same rule at run start.
+    private bool HasUnsafeNesting =>
+        !string.IsNullOrWhiteSpace(_sourcePath)
         && !string.IsNullOrWhiteSpace(Path)
         && (RelativePaths.AreEquivalent(Path, _sourcePath)
-            || RelativePaths.IsDescendantOf(Path, _sourcePath));
+            || RelativePaths.IsDescendantOf(Path, _sourcePath)
+            || RelativePaths.IsDescendantOf(_sourcePath, Path));
 
-    protected override bool HasAdditionalPathWarning => HasUnsafeMovePath;
+    protected override bool HasAdditionalPathWarning => HasUnsafeNesting;
 
     protected override void OnEditorPathChanged()
     {

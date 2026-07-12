@@ -32,47 +32,6 @@ public class SyncEngineTests
         Assert.False(fs.FileExists(@"D:\dst\orphan.txt"));
     }
 
-    // A destination nested inside the source must not treat its own output as source
-    // content — with live triggers, re-copying it one level deeper each run would loop
-    // until the disk fills.
-    [Fact]
-    public async Task Nested_destination_does_not_recopy_its_own_output()
-    {
-        var fs = new InMemoryFileSystem();
-        fs.AddFile(@"S:\src\a.txt", "a");
-        var dest = new Destination(
-            "backup", @"S:\src\backup", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.AddOnly);
-        var engine = new SyncEngine(fs);
-
-        await engine.ExecuteAsync(Task(dest));
-        Assert.True(fs.FileExists(@"S:\src\backup\a.txt"));
-
-        var statuses = await engine.ExecuteAsync(Task(dest)); // source now contains backup\a.txt
-        Assert.Equal(SyncOutcome.Success, statuses[0].Outcome);
-        Assert.Equal(0, statuses[0].FilesCopied);
-        Assert.False(fs.FileExists(@"S:\src\backup\backup\a.txt"));
-    }
-
-    [Fact]
-    public async Task Nested_mirror_destination_keeps_its_own_content_out_of_planning()
-    {
-        var fs = new InMemoryFileSystem();
-        fs.AddFile(@"S:\src\a.txt", "a");
-        var dest = new Destination(
-            "backup", @"S:\src\backup", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
-        var engine = new SyncEngine(fs);
-
-        var first = await engine.ExecuteAsync(Task(dest));
-        Assert.Equal(SyncOutcome.Success, first[0].Outcome);
-        Assert.True(fs.FileExists(@"S:\src\backup\a.txt"));
-
-        var second = await engine.ExecuteAsync(Task(dest));
-        Assert.Equal(SyncOutcome.Success, second[0].Outcome);
-        Assert.Equal(0, second[0].FilesCopied);
-        Assert.True(fs.FileExists(@"S:\src\backup\a.txt"));  // not planned as its own deletion
-        Assert.False(fs.FileExists(@"S:\src\backup\backup\a.txt"));
-    }
-
     [Fact]
     public async Task Engine_applies_filters_so_only_matching_files_sync()
     {
