@@ -180,6 +180,37 @@ public class PollingWatchTriggerSourceTests
         Assert.Equal(1, fires);
     }
 
+    // An unplugged share is now a DirectoryNotFoundException from enumeration, so the
+    // existing poll boundary turns it into the error badge — and its return into the
+    // recovery — with no spurious fire on the re-baseline.
+    [Fact]
+    public void Missing_watch_root_reports_error_and_recovers_when_it_returns()
+    {
+        var fs = new InMemoryFileSystem(); // the watched root does not exist yet
+        using var source = Source(fs);
+        var fires = 0;
+        Exception? reported = null;
+        var recoveries = 0;
+        source.Fired += (_, _) => fires++;
+        source.Error += exception => reported = exception;
+        source.Recovered += () => recoveries++;
+        source.Start();
+
+        Assert.False(source.PollOnce());
+        Assert.IsType<DirectoryNotFoundException>(reported);
+        Assert.False(source.PollOnce()); // still gone — reported once, no spam
+        Assert.Equal(0, recoveries);
+
+        fs.AddFile($@"{Root}\a.txt", "a"); // the share comes back
+        Assert.False(source.PollOnce());   // recovery takes a baseline without firing
+        Assert.Equal(1, recoveries);
+        Assert.Equal(0, fires);
+
+        fs.AddFile($@"{Root}\b.txt", "b");
+        Assert.True(source.PollOnce());    // genuine changes fire again
+        Assert.Equal(1, fires);
+    }
+
     // A throwing Fired subscriber previously escaped PollOnce bare (delivered outside
     // any try, on a raw timer callback) and killed the process. The drain contains it
     // and folds it into the once-until-recovered error reporting.

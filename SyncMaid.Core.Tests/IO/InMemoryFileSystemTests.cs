@@ -27,7 +27,19 @@ public class InMemoryFileSystemTests
         Assert.Throws<FileNotFoundException>(() => fs.ReadAllBytes(@"S:\missing.txt"));
         Assert.Throws<FileNotFoundException>(() => fs.OpenRead(@"S:\missing.txt"));
         Assert.Throws<FileNotFoundException>(() => fs.Replace(@"S:\missing.txt", @"D:\target.txt"));
-        Assert.Empty(fs.EnumerateFiles(@"S:\missing-directory"));
+        Assert.Throws<DirectoryNotFoundException>(() => fs.EnumerateFiles(@"S:\missing-directory"));
     }
 
+    // Matching PhysicalFileSystem: an unplugged/missing root is not an empty one.
+    [Fact]
+    public void A_created_but_empty_root_enumerates_empty_while_a_missing_one_throws()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.EnsureDirectory(@"S:\empty");
+        fs.AddFile(@"S:\src\a.txt", "a"); // a file implies its root exists
+
+        Assert.Empty(fs.EnumerateFiles(@"S:\empty"));
+        Assert.Single(fs.EnumerateFiles(@"S:\src"));
+        Assert.Throws<DirectoryNotFoundException>(() => fs.EnumerateFiles(@"S:\missing"));
+    }
 }

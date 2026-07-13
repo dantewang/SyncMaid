@@ -89,10 +89,28 @@ public class SyncEngineGuardTests
         Assert.True(fs.FileExists(@"D:\dst\important2.txt"));
     }
 
+    // An unplugged/missing source must not masquerade as an empty one: even into an
+    // empty destination (where no deletions are at stake), the run must say the source
+    // is unavailable rather than report a successful backup that copied nothing.
+    [Fact]
+    public async Task Missing_source_root_fails_even_into_an_empty_destination()
+    {
+        var fs = new InMemoryFileSystem(); // S:\src never created — the drive is gone
+        var destination = new Destination(
+            "fresh backup", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("not found or unavailable", status.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(fs.AllPaths);
+    }
+
     [Fact]
     public async Task Empty_source_and_empty_mirror_destination_succeeds_as_a_no_op()
     {
         var fs = new InMemoryFileSystem();
+        fs.EnsureDirectory(@"S:\src"); // genuinely empty, not missing
         var destination = new Destination(
             "empty mirror", @"D:\dst", [new AllFilesFilter()], SyncStrategy.Mirror);
 
@@ -128,7 +146,9 @@ public class SyncEngineGuardTests
 
         Assert.Equal(SyncOutcome.Failed, status.Outcome);
         Assert.Contains("filters matched no files", status.Error, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(destinationFileCount, fs.EnumerateFiles(@"D:\dst").Count());
+        Assert.Equal(
+            destinationFileCount,
+            fs.AllPaths.Count(path => path.StartsWith(@"D:/dst", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static InMemoryFileSystem MassDeleteScenario(out Destination dest)

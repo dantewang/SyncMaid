@@ -32,6 +32,21 @@ public class SyncEngineTests
         Assert.False(fs.FileExists(@"D:\dst\orphan.txt"));
     }
 
+    // A destination that does not exist yet is an empty destination — the first run
+    // creates it. Only a missing SOURCE is an error (see the guard tests).
+    [Fact]
+    public async Task First_mirror_run_into_a_missing_destination_creates_it()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a"); // D:\dst does not exist at all
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, statuses[0].Outcome);
+        Assert.True(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
     [Fact]
     public async Task Engine_applies_filters_so_only_matching_files_sync()
     {
@@ -156,7 +171,7 @@ public class SyncEngineTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => engine.ExecuteAsync(Task(dest), cts.Token));
 
-        Assert.Empty(fs.EnumerateFiles(@"D:\dst")); // nothing copied
+        Assert.DoesNotContain(fs.AllPaths, path => path.StartsWith(@"D:/dst")); // nothing copied
     }
 
     private sealed class CollectingProgress : IProgress<SyncProgress>

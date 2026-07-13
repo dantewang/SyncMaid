@@ -69,16 +69,26 @@ public sealed class SyncEngine : ISyncEngine
                 }
 
                 var provider = _destinations.Create(destination.Target);
-                var filtered = _fileSystem.EnumerateFiles(task.SourcePath)
-                    .Where(destination.Includes)
-                    .ToList();
-                var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
+                try
+                {
+                    var filtered = _fileSystem.EnumerateFiles(task.SourcePath)
+                        .Where(destination.Includes)
+                        .ToList();
+                    var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
 
-                var deletions = plan.Operations
-                    .OfType<DeleteOperation>()
-                    .Select(operation => operation.RelativePath)
-                    .ToList();
-                return new MirrorDeletePreview(deletions.Count, deletions.Take(PreviewSampleSize).ToList());
+                    var deletions = plan.Operations
+                        .OfType<DeleteOperation>()
+                        .Select(operation => operation.RelativePath)
+                        .ToList();
+                    return new MirrorDeletePreview(deletions.Count, deletions.Take(PreviewSampleSize).ToList());
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    // The preview is advisory: if the source vanished since the run that
+                    // was blocked (e.g. the drive was unplugged), report nothing to
+                    // confirm — the follow-up run surfaces the real failure.
+                    return MirrorDeletePreview.None;
+                }
             },
             cancellationToken);
     }

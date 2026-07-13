@@ -13,12 +13,20 @@ public sealed class PhysicalFileSystem : IFileSystem
     /// <inheritdoc />
     public IEnumerable<string> EnumerateFiles(string root)
     {
+        // A missing root must be distinguishable from an empty one: silently yielding
+        // nothing made an unplugged source drive look like an empty source (and Mirror
+        // into an empty destination then reported Success). Destinations that don't
+        // exist yet are tolerated by LocalDestinationProvider, not here.
         if (!Directory.Exists(root))
         {
-            yield break;
+            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
         }
 
-        var fullRoot = Path.GetFullPath(root);
+        return EnumerateCore(Path.GetFullPath(root));
+    }
+
+    private static IEnumerable<string> EnumerateCore(string fullRoot)
+    {
         foreach (var file in Directory.EnumerateFiles(fullRoot, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(fullRoot, file);

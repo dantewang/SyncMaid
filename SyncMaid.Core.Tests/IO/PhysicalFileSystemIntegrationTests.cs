@@ -20,6 +20,19 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
 
     public PhysicalFileSystemIntegrationTests() => Directory.CreateDirectory(_root);
 
+    // A missing root must be distinguishable from an empty one, or an unplugged source
+    // drive reads as an empty source.
+    [Fact]
+    public void Enumerating_a_missing_root_throws_while_an_empty_one_yields_nothing()
+    {
+        var missing = Path.Combine(_root, "missing");
+        var empty = Path.Combine(_root, "empty");
+        Directory.CreateDirectory(empty);
+
+        Assert.Throws<DirectoryNotFoundException>(() => _physical.EnumerateFiles(missing));
+        Assert.Empty(_physical.EnumerateFiles(empty));
+    }
+
     [Fact]
     public void CreateWriteThrough_replace_and_stamps_round_trip_on_disk()
     {

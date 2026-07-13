@@ -5,14 +5,16 @@ namespace SyncMaid.Core.Tests.IO;
 /// <summary>
 /// A disk-free <see cref="IFileSystem"/> for tests. Files live in a dictionary keyed
 /// by a normalized absolute path; each holds its bytes and a <see cref="FileStamp"/>.
-/// There is no real directory tree — directories are implied by file paths — so
-/// <see cref="EnsureDirectory"/> is a no-op and enumeration is by path prefix.
+/// Directories are implied by file paths, plus roots registered via
+/// <see cref="EnsureDirectory"/> — so, matching <see cref="PhysicalFileSystem"/>,
+/// enumeration can distinguish a created-but-empty root from a missing one.
 /// </summary>
 public sealed class InMemoryFileSystem : IFileSystem
 {
     private sealed record Entry(byte[] Contents, FileStamp Stamp);
 
     private readonly Dictionary<string, Entry> _files = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _directories = new(StringComparer.OrdinalIgnoreCase);
     private static readonly DateTime DefaultTime = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>Free space reported by <see cref="GetAvailableFreeSpace"/>; tune for preflight tests.</summary>
@@ -90,7 +92,21 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public IEnumerable<string> EnumerateFiles(string root)
     {
-        var prefix = Normalize(root).TrimEnd('/') + "/";
+        var normalizedRoot = Normalize(root);
+        var prefix = normalizedRoot + "/";
+        var exists = _directories.Contains(normalizedRoot)
+            || _files.Keys.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        if (!exists)
+        {
+            // Matches PhysicalFileSystem: a missing root is not an empty one.
+            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
+        }
+
+        return EnumerateCore(prefix);
+    }
+
+    private IEnumerable<string> EnumerateCore(string prefix)
+    {
         var yielded = 0;
         foreach (var path in _files.Keys)
         {
@@ -190,7 +206,9 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public void EnsureDirectory(string path)
     {
-        // No real directory tree; directories are implied by file paths.
+        // Tracked so EnumerateFiles can tell a created-but-empty root from a missing
+        // one. Tests seed an existing empty folder with this too.
+        _directories.Add(Normalize(path));
     }
 
     public Stream OpenRead(string path)

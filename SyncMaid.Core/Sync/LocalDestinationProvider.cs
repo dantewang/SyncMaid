@@ -25,7 +25,20 @@ public sealed class LocalDestinationProvider : IDestinationProvider
     /// fallback on network shares handled by the filesystem).</summary>
     public DestinationCapabilities Capabilities => new(IsRemote: false, SupportsRecycle: true);
 
-    public IEnumerable<string> Enumerate() => _fileSystem.EnumerateFiles(_root);
+    // A destination that does not exist yet is an empty destination — the first run
+    // creates it. The source side deliberately gets no such tolerance: a missing
+    // source must fail the run, not read as empty.
+    public IEnumerable<string> Enumerate()
+    {
+        try
+        {
+            return _fileSystem.EnumerateFiles(_root).ToList();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return [];
+        }
+    }
 
     public FileStamp GetStamp(string relativePath) => _fileSystem.GetStamp(Full(relativePath));
 
