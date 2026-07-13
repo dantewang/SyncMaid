@@ -11,4 +11,9 @@ public interface IAppSettingsService
     /// <summary>When true, closing the main window hides it to the tray instead of exiting.
     /// Setting the value persists it.</summary>
     bool CloseToTray { get; set; }
+
+    /// <summary>The UI language as a BCP-47 tag, or null to follow the OS language.
+    /// Setting the value persists it; applying it to the running UI is
+    /// <c>Localizer.Apply</c>'s job (done at startup and by the Settings dialog).</summary>
+    string? Language { get; set; }
 }

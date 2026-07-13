@@ -1,6 +1,9 @@
+using System.Collections.Generic;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Persistence;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -30,6 +33,11 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private bool _closeToTray;
 
+    /// <summary>The picked UI language; switching applies immediately, like every other
+    /// option here.</summary>
+    [ObservableProperty]
+    private LanguageOption _selectedLanguage;
+
     /// <summary>Set when a storage switch is refused (e.g. an unwritable target) or fails; shown
     /// as an inline notice.</summary>
     [ObservableProperty]
@@ -52,7 +60,20 @@ public partial class SettingsViewModel : DialogViewModel<bool>
         _startWithWindows = state == AutoStartState.Enabled;
         _isDisabledByWindows = state == AutoStartState.DisabledByWindows;
         _closeToTray = appSettings.CloseToTray;
+        // An unrecognized persisted tag (hand-edited settings.json) shows as system default.
+        _selectedLanguage = Languages.FirstOrDefault(option => option.Tag == appSettings.Language)
+                            ?? Languages[0];
     }
+
+    /// <summary>The pickable UI languages: the OS default plus every built-in translation.</summary>
+    public IReadOnlyList<LanguageOption> Languages { get; } =
+    [
+        new(null, Strings.Settings_SystemDefault),
+        new("en", "English"),
+        new("zh-Hans", "简体中文"),
+        new("zh-Hant", "繁體中文"),
+        new("ja", "日本語"),
+    ];
 
     /// <summary>The mode the target of a switch would be — the opposite of the current one.</summary>
     private ConfigLocationMode OtherMode =>
@@ -122,6 +143,12 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     }
 
     partial void OnCloseToTrayChanged(bool value) => _appSettings.CloseToTray = value;
+
+    partial void OnSelectedLanguageChanged(LanguageOption value)
+    {
+        _appSettings.Language = value.Tag;
+        Localizer.Instance.Apply(value.Tag);
+    }
 
     [RelayCommand]
     private void Done() => Close(true);

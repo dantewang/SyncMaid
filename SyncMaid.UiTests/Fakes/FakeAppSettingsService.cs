@@ -6,4 +6,6 @@ namespace SyncMaid.UiTests.Fakes;
 public sealed class FakeAppSettingsService : IAppSettingsService
 {
     public bool CloseToTray { get; set; }
+
+    public string? Language { get; set; }
 }

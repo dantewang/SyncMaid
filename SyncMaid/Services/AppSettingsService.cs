@@ -33,4 +33,19 @@ public sealed class AppSettingsService : IAppSettingsService
             _store.Save(_current);
         }
     }
+
+    public string? Language
+    {
+        get => _current.Language;
+        set
+        {
+            if (value == _current.Language)
+            {
+                return;
+            }
+
+            _current = _current with { Language = value };
+            _store.Save(_current);
+        }
+    }
 }

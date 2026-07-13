@@ -8,4 +8,7 @@ namespace SyncMaid.Core.Model;
 public sealed record AppSettings(
     /// <summary>When true, closing the main window hides it to the system tray and leaves
     /// SyncMaid running (triggers keep firing) rather than exiting the app.</summary>
-    bool CloseToTray = false);
+    bool CloseToTray = false,
+    /// <summary>UI language as a BCP-47 tag (e.g. "zh-Hans"); null means follow the OS
+    /// language. A tag, not display text — how it renders is the UI layer's concern.</summary>
+    string? Language = null);

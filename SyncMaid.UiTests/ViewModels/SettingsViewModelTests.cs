@@ -1,4 +1,7 @@
+using System.Linq;
+using Avalonia.Headless.XUnit;
 using SyncMaid.Core.Persistence;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 using SyncMaid.UiTests.Fakes;
 using SyncMaid.ViewModels;
@@ -104,6 +107,46 @@ public class SettingsViewModelTests
         vm.CloseToTray = true;
 
         Assert.True(settings.CloseToTray);
+    }
+
+    [Fact]
+    public void Seeds_the_stored_language_without_writing_on_load()
+    {
+        var settings = new FakeAppSettingsService { Language = "ja" };
+
+        var vm = New(settings: settings);
+
+        Assert.Equal("ja", vm.SelectedLanguage.Tag);
+        Assert.Equal("ja", settings.Language); // seeding must not rewrite it
+    }
+
+    [Fact]
+    public void An_unknown_stored_language_shows_as_system_default()
+    {
+        var vm = New(settings: new FakeAppSettingsService { Language = "xx-Nope" });
+
+        Assert.Null(vm.SelectedLanguage.Tag);
+    }
+
+    // [AvaloniaFact], not [Fact]: switching the culture notifies every live view model —
+    // including UI-bound ones from earlier headless tests — so it must run on the UI
+    // thread, exactly as it does in production.
+    [AvaloniaFact]
+    public void Picking_a_language_persists_it_and_switches_the_ui_culture()
+    {
+        var settings = new FakeAppSettingsService();
+        var vm = New(settings: settings);
+        try
+        {
+            vm.SelectedLanguage = vm.Languages.Single(option => option.Tag == "zh-Hans");
+
+            Assert.Equal("zh-Hans", settings.Language);
+            Assert.Equal("运行全部", Strings.Main_RunAll); // strings now resolve in the picked language
+        }
+        finally
+        {
+            Localizer.Instance.Apply("en");
+        }
     }
 
     [Fact]

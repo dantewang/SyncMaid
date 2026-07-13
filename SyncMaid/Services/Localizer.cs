@@ -52,9 +52,18 @@ public sealed class Localizer : INotifyPropertyChanged
     /// </summary>
     public void Apply(string? cultureTag)
     {
-        var culture = string.IsNullOrEmpty(cultureTag)
-            ? SystemUiCulture
-            : CultureInfo.GetCultureInfo(cultureTag);
+        CultureInfo culture;
+        try
+        {
+            culture = string.IsNullOrEmpty(cultureTag)
+                ? SystemUiCulture
+                : CultureInfo.GetCultureInfo(cultureTag);
+        }
+        catch (CultureNotFoundException)
+        {
+            // A malformed tag from a hand-edited settings.json must not block startup.
+            culture = SystemUiCulture;
+        }
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.CurrentUICulture = culture;
 

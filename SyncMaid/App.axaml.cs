@@ -45,6 +45,11 @@ public partial class App : Application
                 e.SetObserved();
             };
 
+            // Apply the persisted UI language before the main window is created. The tray
+            // XAML loaded earlier (Initialize) in the OS language; the apply re-renders its
+            // bindings too, so nothing is visible in the wrong language.
+            Localizer.Instance.Apply(services.GetRequiredService<IAppSettingsService>().Language);
+
             var mainWindow = new MainWindow
             {
                 DataContext = services.GetRequiredService<MainWindowViewModel>(),

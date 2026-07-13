@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:SyncMaid.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="440"
              x:Class="SyncMaid.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
@@ -12,6 +13,18 @@
     <Border Classes="dialogCard" Width="440">
         <StackPanel Margin="24" Spacing="16">
             <TextBlock Text="Settings" FontSize="16" FontWeight="Medium" />
+
+            <StackPanel>
+                <TextBlock Text="{l:Loc Settings.LanguageLabel}" Classes="label" />
+                <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                          MinWidth="220">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LanguageOption">
+                            <TextBlock Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
 
             <StackPanel>
                 <TextBlock Text="Startup" Classes="label" />
