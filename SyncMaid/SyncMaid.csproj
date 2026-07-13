@@ -5,6 +5,9 @@
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets\syncmaid.ico</ApplicationIcon>
+        <!-- The neutral resources (Lang\Strings.resx) are English; the culture-specific
+             Strings.<culture>.resx files beside it build into satellite assemblies. -->
+        <NeutralLanguage>en</NeutralLanguage>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <!-- BuiltInComInteropSupport was required before Avalonia 12.0 for accessibility APIs; no longer needed. -->
         <BuiltInComInteropSupport>false</BuiltInComInteropSupport>

@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:SyncMaid.Markup"
+        xmlns:views="using:SyncMaid.UiTests.Views"
+        x:Class="SyncMaid.UiTests.Views.LocProbeWindow"
+        x:DataType="views:LocProbeViewModel"
+        x:CompileBindings="True"
+        Width="240" Height="120">
+    <!-- Exercises the two localization mechanisms end-to-end: a {l:Loc} compiled binding
+         straight to the Localizer, and a compiled binding to a view-model computed string
+         that must refresh via ViewModelBase's culture-changed hook. -->
+    <StackPanel>
+        <TextBlock Name="XamlProbe" Text="{l:Loc Main.RunAll}" />
+        <TextBlock Name="VmProbe" Text="{Binding HealthProbe}" />
+    </StackPanel>
+</Window>

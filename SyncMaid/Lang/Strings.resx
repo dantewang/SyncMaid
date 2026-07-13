@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Neutral (English) UI strings. Every user-facing string in the app lives here;
+    culture-specific translations live in Strings.<culture>.resx beside this file.
+    Keys are scoped dot-separated names (Main.*, Task.*, Settings.*, ...); keys ending
+    in "Format" hold composite format strings ({0}, {1}, ...); plural pairs end in
+    ".One"/".Other". After adding or removing keys, regenerate Strings.Designer.cs
+    with tools/generate-strings.ps1.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Shared -->
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common.Browse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="Common.NameLabel" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Common.Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Common.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Common.MoveExclusiveHint" xml:space="preserve">
+    <value>A Move destination must be the only destination of its task.</value>
+  </data>
+  <data name="Common.FilesCount.One" xml:space="preserve">
+    <value>{0} file</value>
+  </data>
+  <data name="Common.FilesCount.Other" xml:space="preserve">
+    <value>{0} files</value>
+  </data>
+
+  <!-- Main window: title bar, sidebar, toolbar -->
+  <data name="Main.SettingsTip" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Main.MinimizeTip" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Main.MaximizeTip" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="Main.CloseTip" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Main.TasksHeading" xml:space="preserve">
+    <value>Tasks</value>
+  </data>
+  <data name="Main.HideSidebarTip" xml:space="preserve">
+    <value>Hide sidebar</value>
+  </data>
+  <data name="Main.ShowSidebarTip" xml:space="preserve">
+    <value>Show sidebar</value>
+  </data>
+  <data name="Main.SyncTasksHeading" xml:space="preserve">
+    <value>Sync tasks</value>
+  </data>
+  <data name="Main.RunAll" xml:space="preserve">
+    <value>Run all</value>
+  </data>
+  <data name="Main.NewTask" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="Main.CollapseAll" xml:space="preserve">
+    <value>Collapse all</value>
+  </data>
+  <data name="Main.ExpandAll" xml:space="preserve">
+    <value>Expand all</value>
+  </data>
+  <data name="Main.DeleteTaskTitle" xml:space="preserve">
+    <value>Delete task?</value>
+  </data>
+  <data name="Main.DeleteTaskMessageFormat" xml:space="preserve">
+    <value>Delete the task "{0}" and {1}? This can't be undone.</value>
+  </data>
+  <data name="Main.DeleteTaskSuffix.One" xml:space="preserve">
+    <value>its 1 destination</value>
+  </data>
+  <data name="Main.DeleteTaskSuffix.Other" xml:space="preserve">
+    <value>its {0} destinations</value>
+  </data>
+
+  <!-- Task card -->
+  <data name="Task.TriggerManual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="Task.TriggerWatching" xml:space="preserve">
+    <value>Watching</value>
+  </data>
+  <data name="Task.TriggerScheduledFormat" xml:space="preserve">
+    <value>Scheduled · {0}</value>
+  </data>
+  <data name="Task.TriggerErrorBadge" xml:space="preserve">
+    <value>Trigger error</value>
+  </data>
+  <data name="Task.NextRunFormat" xml:space="preserve">
+    <value>next run {0}</value>
+  </data>
+  <data name="Task.HealthNoDestinations" xml:space="preserve">
+    <value>No destinations</value>
+  </data>
+  <data name="Task.HealthFailedFormat" xml:space="preserve">
+    <value>{0} of {1} failed</value>
+  </data>
+  <data name="Task.HealthAllSynced" xml:space="preserve">
+    <value>All synced</value>
+  </data>
+  <data name="Task.HealthPartlySynced" xml:space="preserve">
+    <value>Partly synced</value>
+  </data>
+  <data name="Task.RunNowTip" xml:space="preserve">
+    <value>Run now</value>
+  </data>
+  <data name="Task.StopTip" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Task.AddDestinationTip" xml:space="preserve">
+    <value>Add destination</value>
+  </data>
+  <data name="Task.EditTip" xml:space="preserve">
+    <value>Edit task</value>
+  </data>
+  <data name="Task.DeleteTip" xml:space="preserve">
+    <value>Delete task</value>
+  </data>
+  <data name="Task.TriggerErrorRecoverableFormat" xml:space="preserve">
+    <value>Automatic trigger error; automatic runs may be temporarily unavailable. You can still run the task manually. ({0})</value>
+  </data>
+  <data name="Task.TriggerErrorStartFormat" xml:space="preserve">
+    <value>This task's trigger failed to start, so it only runs when you run it manually. ({0})</value>
+  </data>
+  <data name="Task.OverlapRefusedFormat" xml:space="preserve">
+    <value>This task's paths overlap task "{0}"; fix the overlap and run again — no files were changed.</value>
+  </data>
+  <data name="Task.DeleteDestinationTitle" xml:space="preserve">
+    <value>Delete destination?</value>
+  </data>
+  <data name="Task.DeleteDestinationMessageFormat" xml:space="preserve">
+    <value>Remove the destination "{0}" from this task? This can't be undone.</value>
+  </data>
+
+  <!-- Sync status (shared by task health and destination rows) -->
+  <data name="Status.Syncing" xml:space="preserve">
+    <value>Syncing…</value>
+  </data>
+  <data name="Status.NeedsConfirmation" xml:space="preserve">
+    <value>Needs confirmation</value>
+  </data>
+  <data name="Status.NeverRun" xml:space="preserve">
+    <value>Never run</value>
+  </data>
+  <data name="Status.SyncedFormat" xml:space="preserve">
+    <value>Synced {0} · {1}</value>
+  </data>
+  <data name="Status.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Status.FailedFormat" xml:space="preserve">
+    <value>Failed · {0}</value>
+  </data>
+
+  <!-- Destination row -->
+  <data name="Dest.FiltersCountFormat" xml:space="preserve">
+    <value>{0} filters</value>
+  </data>
+  <data name="Dest.EditTip" xml:space="preserve">
+    <value>Edit destination</value>
+  </data>
+  <data name="Dest.DeleteTip" xml:space="preserve">
+    <value>Delete destination</value>
+  </data>
+
+  <!-- Live progress line -->
+  <data name="Progress.Copying" xml:space="preserve">
+    <value>Copying</value>
+  </data>
+  <data name="Progress.Moving" xml:space="preserve">
+    <value>Moving</value>
+  </data>
+  <data name="Progress.Removing" xml:space="preserve">
+    <value>Removing</value>
+  </data>
+  <data name="Progress.Syncing" xml:space="preserve">
+    <value>Syncing</value>
+  </data>
+  <data name="Progress.LineFormat" xml:space="preserve">
+    <value>{0} {1} ({2}/{3})</value>
+  </data>
+
+  <!-- Relative times -->
+  <data name="Time.DueNow" xml:space="preserve">
+    <value>due now</value>
+  </data>
+  <data name="Time.InUnderAMinute" xml:space="preserve">
+    <value>in under a minute</value>
+  </data>
+  <data name="Time.InMinutesFormat" xml:space="preserve">
+    <value>in {0} min</value>
+  </data>
+  <data name="Time.InHoursFormat" xml:space="preserve">
+    <value>in {0} h</value>
+  </data>
+  <data name="Time.InDaysFormat" xml:space="preserve">
+    <value>in {0} d</value>
+  </data>
+  <data name="Time.JustNow" xml:space="preserve">
+    <value>just now</value>
+  </data>
+  <data name="Time.MinutesAgoFormat" xml:space="preserve">
+    <value>{0} min ago</value>
+  </data>
+  <data name="Time.HoursAgoFormat" xml:space="preserve">
+    <value>{0} h ago</value>
+  </data>
+  <data name="Time.DaysAgoFormat" xml:space="preserve">
+    <value>{0} d ago</value>
+  </data>
+
+  <!-- Filter descriptions (FilterDescriber + editor preview). The connectives own their
+       surrounding spacing: CJK translations join without spaces. -->
+  <data name="Filter.AllFiles" xml:space="preserve">
+    <value>All files</value>
+  </data>
+  <data name="Filter.AllFilesInline" xml:space="preserve">
+    <value>all files</value>
+  </data>
+  <data name="Filter.Nothing" xml:space="preserve">
+    <value>nothing</value>
+  </data>
+  <data name="Filter.PathRowFormat" xml:space="preserve">
+    <value>Path: {0}</value>
+  </data>
+  <data name="Filter.ExtensionRowFormat" xml:space="preserve">
+    <value>Extension: {0}</value>
+  </data>
+  <data name="Filter.Not" xml:space="preserve">
+    <value>not </value>
+  </data>
+  <data name="Filter.And" xml:space="preserve">
+    <value> and </value>
+  </data>
+  <data name="Filter.Or" xml:space="preserve">
+    <value> or </value>
+  </data>
+  <data name="Filter.ExcludeRowFormat" xml:space="preserve">
+    <value>Exclude — {0}</value>
+  </data>
+  <data name="Filter.NoRulesPreview" xml:space="preserve">
+    <value>No rules yet — nothing will be synced.</value>
+  </data>
+  <data name="Filter.SyncsPreviewFormat" xml:space="preserve">
+    <value>Syncs: {0}</value>
+  </data>
+
+  <!-- Task editor dialog -->
+  <data name="TaskEditor.Title" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="TaskEditor.SourceFolderLabel" xml:space="preserve">
+    <value>Source folder</value>
+  </data>
+  <data name="TaskEditor.TriggerLabel" xml:space="preserve">
+    <value>Trigger</value>
+  </data>
+  <data name="TaskEditor.TriggerScheduled" xml:space="preserve">
+    <value>Scheduled</value>
+  </data>
+  <data name="TaskEditor.TriggerWatch" xml:space="preserve">
+    <value>Watch</value>
+  </data>
+  <data name="TaskEditor.CronLabel" xml:space="preserve">
+    <value>Cron expression</value>
+  </data>
+  <data name="TaskEditor.CronInvalid" xml:space="preserve">
+    <value>Enter a valid cron expression (e.g. */5 * * * *); times use local time</value>
+  </data>
+  <data name="TaskEditor.CronNoUpcoming" xml:space="preserve">
+    <value>Valid in local time, but has no upcoming runs</value>
+  </data>
+  <data name="TaskEditor.CronNextRunFormat" xml:space="preserve">
+    <value>Next run (local time): {0}</value>
+  </data>
+  <data name="TaskEditor.Save" xml:space="preserve">
+    <value>Save task</value>
+  </data>
+  <data name="TaskEditor.SourceOverlapHintFormat" xml:space="preserve">
+    <value>This folder overlaps the source of task "{0}" — tasks never share sources.</value>
+  </data>
+  <data name="TaskEditor.MissingFolderHint" xml:space="preserve">
+    <value>This folder doesn't exist. Check for typos — the task won't find anything to sync (and a watch trigger can't start) until it does.</value>
+  </data>
+
+  <!-- Destination editor dialog -->
+  <data name="DestEditor.Title" xml:space="preserve">
+    <value>Destination</value>
+  </data>
+  <data name="DestEditor.FolderLabel" xml:space="preserve">
+    <value>Destination folder</value>
+  </data>
+  <data name="DestEditor.Save" xml:space="preserve">
+    <value>Save destination</value>
+  </data>
+  <data name="DestEditor.StrategyLabel" xml:space="preserve">
+    <value>Sync strategy</value>
+  </data>
+  <data name="DestEditor.MirrorDesc" xml:space="preserve">
+    <value>Keep the destination identical — copies new and changed files, deletes extras.</value>
+  </data>
+  <data name="DestEditor.AddOnlyDesc" xml:space="preserve">
+    <value>Copy new and changed files; never delete from the destination.</value>
+  </data>
+  <data name="DestEditor.MoveDesc" xml:space="preserve">
+    <value>Move matching files to the destination, removing them from the source.</value>
+  </data>
+  <data name="DestEditor.FilesToSyncLabel" xml:space="preserve">
+    <value>Files to sync</value>
+  </data>
+  <data name="DestEditor.OnlyMatching" xml:space="preserve">
+    <value>Only matching</value>
+  </data>
+  <data name="DestEditor.MatchAnyGroup" xml:space="preserve">
+    <value>Match any group</value>
+  </data>
+  <data name="DestEditor.MatchAllGroups" xml:space="preserve">
+    <value>Match all groups</value>
+  </data>
+  <data name="DestEditor.MatchAnyGroupTip" xml:space="preserve">
+    <value>Sync files that match at least one group</value>
+  </data>
+  <data name="DestEditor.MatchAllGroupsTip" xml:space="preserve">
+    <value>Sync only files that match every group</value>
+  </data>
+  <data name="DestEditor.MatchLabel" xml:space="preserve">
+    <value>Match</value>
+  </data>
+  <data name="DestEditor.AnyRule" xml:space="preserve">
+    <value>any rule</value>
+  </data>
+  <data name="DestEditor.AllRules" xml:space="preserve">
+    <value>all rules</value>
+  </data>
+  <data name="DestEditor.AnyRuleTip" xml:space="preserve">
+    <value>A file matches this group when any rule matches (OR)</value>
+  </data>
+  <data name="DestEditor.AllRulesTip" xml:space="preserve">
+    <value>A file matches this group only when every rule matches (AND)</value>
+  </data>
+  <data name="DestEditor.RemoveGroupTip" xml:space="preserve">
+    <value>Remove group</value>
+  </data>
+  <data name="DestEditor.ExcludeTip" xml:space="preserve">
+    <value>Exclude — sync everything except files matching this rule</value>
+  </data>
+  <data name="DestEditor.RemoveTip" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
+    <value>e.g. photos/2024 or jpg</value>
+  </data>
+  <data name="DestEditor.AddGroup" xml:space="preserve">
+    <value>Add group</value>
+  </data>
+  <data name="DestEditor.AddGroupTip" xml:space="preserve">
+    <value>Combine groups to express e.g. (docs or photos) and jpg</value>
+  </data>
+  <data name="DestEditor.VerificationLabel" xml:space="preserve">
+    <value>Verification</value>
+  </data>
+  <data name="DestEditor.VerifyContents" xml:space="preserve">
+    <value>Verify file contents (xxHash) after each copy</value>
+  </data>
+  <data name="DestEditor.VerifyNetworkWarning" xml:space="preserve">
+    <value>This is a network location. Content verification re-reads every copied file over the network (slower, more bandwidth). It guards against silent/hardware corruption the network protocol does not.</value>
+  </data>
+  <data name="DestEditor.DeleteModeLabel" xml:space="preserve">
+    <value>When removing extra files</value>
+  </data>
+  <data name="DestEditor.ConfirmLargeDeletions" xml:space="preserve">
+    <value>Confirm before a large deletion</value>
+  </data>
+  <data name="DestEditor.AskWhenDeletingMoreThan" xml:space="preserve">
+    <value>Ask when deleting more than</value>
+  </data>
+  <data name="DestEditor.PercentOfDestination" xml:space="preserve">
+    <value>% of the destination</value>
+  </data>
+  <data name="DestEditor.NestedPathHint" xml:space="preserve">
+    <value>Destination must be a separate folder outside the source (and not contain it).</value>
+  </data>
+  <data name="DestEditor.DestinationOverlapHintFormat" xml:space="preserve">
+    <value>This folder overlaps a destination of task "{0}" — tasks never share destinations.</value>
+  </data>
+  <data name="DestEditor.MissingFolderHint" xml:space="preserve">
+    <value>This folder doesn't exist yet — it will be created on the first run. Double-check for typos.</value>
+  </data>
+
+  <!-- Enum display names -->
+  <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
+    <value>Mirror</value>
+  </data>
+  <data name="Enum.SyncStrategy.AddOnly" xml:space="preserve">
+    <value>Add-only</value>
+  </data>
+  <data name="Enum.SyncStrategy.Move" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Enum.DeleteMode.Recycle" xml:space="preserve">
+    <value>Recycle Bin</value>
+  </data>
+  <data name="Enum.DeleteMode.Permanent" xml:space="preserve">
+    <value>Delete permanently</value>
+  </data>
+  <data name="Enum.FilterKind.Path" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="Enum.FilterKind.Extension" xml:space="preserve">
+    <value>Extension</value>
+  </data>
+
+  <!-- Native folder-picker titles -->
+  <data name="Dialog.SelectSourceFolder" xml:space="preserve">
+    <value>Select Source Folder</value>
+  </data>
+  <data name="Dialog.SelectDestinationFolder" xml:space="preserve">
+    <value>Select Destination Folder</value>
+  </data>
+
+  <!-- Settings dialog -->
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings.LanguageLabel" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.SystemDefault" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="Settings.StartupLabel" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings.StartWithWindows" xml:space="preserve">
+    <value>Start SyncMaid when Windows starts</value>
+  </data>
+  <data name="Settings.StartWithWindowsDesc" xml:space="preserve">
+    <value>Opens the main window at sign-in.</value>
+  </data>
+  <data name="Settings.StartupDisabledByWindows" xml:space="preserve">
+    <value>Startup is turned off for SyncMaid in Windows Task Manager (Startup apps). Turn it back on there to allow starting with Windows.</value>
+  </data>
+  <data name="Settings.WindowLabel" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="Settings.CloseToTray" xml:space="preserve">
+    <value>Close to the system tray instead of exiting</value>
+  </data>
+  <data name="Settings.CloseToTrayDesc" xml:space="preserve">
+    <value>Keeps SyncMaid running in the tray when you close the window, so scheduled and watched tasks keep syncing.</value>
+  </data>
+  <data name="Settings.StorageLabel" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Settings.StoragePortable" xml:space="preserve">
+    <value>Next to the app (portable)</value>
+  </data>
+  <data name="Settings.StorageAppData" xml:space="preserve">
+    <value>App data folder</value>
+  </data>
+  <data name="Settings.SwitchToPortable" xml:space="preserve">
+    <value>Move data next to the app (portable)</value>
+  </data>
+  <data name="Settings.SwitchToAppData" xml:space="preserve">
+    <value>Move data to the app data folder</value>
+  </data>
+  <data name="Settings.SwitchStorageDesc" xml:space="preserve">
+    <value>Moves your tasks and settings to the new location and restarts SyncMaid.</value>
+  </data>
+  <data name="Settings.StorageNotWritableFormat" xml:space="preserve">
+    <value>Can't use {0} — the folder is not writable (a portable install under Program Files needs a writable location).</value>
+  </data>
+  <data name="Settings.StorageMoveFailed" xml:space="preserve">
+    <value>Couldn't move your data — it was left where it is.</value>
+  </data>
+  <data name="Settings.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+
+  <!-- Mirror mass-delete confirmation window -->
+  <data name="MirrorDelete.WindowTitle" xml:space="preserve">
+    <value>SyncMaid — confirm deletions</value>
+  </data>
+  <data name="MirrorDelete.ReviewDeletions" xml:space="preserve">
+    <value>Review deletions</value>
+  </data>
+  <data name="MirrorDelete.ExplanationRecycleFormat" xml:space="preserve">
+    <value>Syncing “{0}” will move {1} files to the Recycle Bin — they are no longer in the source.</value>
+  </data>
+  <data name="MirrorDelete.ExplanationPermanentFormat" xml:space="preserve">
+    <value>Syncing “{0}” will permanently delete {1} files that are no longer in the source.</value>
+  </data>
+  <data name="MirrorDelete.KeepThem" xml:space="preserve">
+    <value>Keep them</value>
+  </data>
+  <data name="MirrorDelete.MoveToRecycleBin" xml:space="preserve">
+    <value>Move to Recycle Bin</value>
+  </data>
+  <data name="MirrorDelete.DeleteCount.One" xml:space="preserve">
+    <value>Delete {0} file</value>
+  </data>
+  <data name="MirrorDelete.DeleteCount.Other" xml:space="preserve">
+    <value>Delete {0} files</value>
+  </data>
+  <data name="MirrorDelete.MoreFormat" xml:space="preserve">
+    <value>…and {0} more</value>
+  </data>
+
+  <!-- Tray icon menu -->
+  <data name="Tray.ShowMainWindow" xml:space="preserve">
+    <value>Show main window</value>
+  </data>
+  <data name="Tray.Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+</root>
