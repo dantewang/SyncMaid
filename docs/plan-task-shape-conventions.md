@@ -1,9 +1,24 @@
 # Implementation plan: task shape conventions
 
-**Status:** planned, not started. The rules themselves are recorded in
-[AGENT.md](../AGENT.md#task-shape-conventions); this document is how to land them. They
-came out of the July 2026 whole-project robustness review and the design discussion
-that followed it.
+**Status: implemented — all five plans shipped.** Kept as the record of the rationale
+and the enforcement design. The rules themselves are in
+[AGENT.md](../AGENT.md#task-shape-conventions); they came out of the July 2026
+whole-project robustness review and the design discussion that followed it.
+
+| Plan | Landed as |
+|------|-----------|
+| A — no nesting between source and destinations | `738ebf8` (+ `e18747d`, the shared `RelativePaths.Overlaps` fold) |
+| B — Move is exclusive | `0d065e5` (+ `bc7c2d3`, disabled-card styling) |
+| C — no same-kind path overlap across tasks | `31a2020` (+ `d5e257a`, hint wrapping) |
+| D — trigger notification discipline | `0022b5e` (shared `TriggerNotifier`) |
+| E — unplugged vs. empty source | `a5ef09c` |
+
+Implementation notes beyond the plan: E additionally guarded the mirror-deletion
+preview (an unplugged source during the confirm flow degrades to no-preview instead of
+faulting the command) and pinned first-run-creates-a-missing-destination so the
+provider-side tolerance can't regress; D's drain is deliberately non-blocking for
+concurrent notifiers (an in-flight delivery must not block watcher callbacks) while
+Stop keeps its blocking quiescence barrier.
 
 Plans A–C land the three conventions and follow the same shape: one validation rule,
 enforced at two layers — **editor** (friendly: hint + disabled OK/command) and **run
