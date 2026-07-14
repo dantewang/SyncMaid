@@ -5,6 +5,7 @@
              xmlns:vm="using:SyncMaid.ViewModels"
              xmlns:conv="using:SyncMaid.Converters"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="470"
              x:Class="SyncMaid.Views.TaskEditorView"
              x:DataType="vm:TaskEditorViewModel"
@@ -12,21 +13,21 @@
 
     <Border Classes="dialogCard" Width="470">
         <StackPanel Margin="24" Spacing="16">
-            <TextBlock Text="Task" FontSize="16" FontWeight="Medium" />
+            <TextBlock Text="{l:Loc TaskEditor.Title}" FontSize="16" FontWeight="Medium" />
 
             <StackPanel>
-                <TextBlock Text="Name" Classes="label" />
+                <TextBlock Text="{l:Loc Common.NameLabel}" Classes="label" />
                 <TextBox Text="{Binding Name}" />
             </StackPanel>
 
             <StackPanel>
-                <TextBlock Text="Source folder" Classes="label" />
+                <TextBlock Text="{l:Loc TaskEditor.SourceFolderLabel}" Classes="label" />
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBox Grid.Column="0" Text="{Binding Path}" Classes="path" />
                     <Button Grid.Column="1" Classes="secondary" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
-                            <TextBlock Text="Browse" />
+                            <TextBlock Text="{l:Loc Common.Browse}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -46,41 +47,41 @@
             </StackPanel>
 
             <StackPanel>
-                <TextBlock Text="Trigger" Classes="label" />
+                <TextBlock Text="{l:Loc TaskEditor.TriggerLabel}" Classes="label" />
                 <Grid ColumnDefinitions="*,8,*,8,*">
                     <RadioButton Grid.Column="0" Classes="segment" GroupName="trigger"
                                  IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Manual}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="CursorDefaultClickOutline" Width="15" Height="15" />
-                            <TextBlock Text="Manual" />
+                            <TextBlock Text="{l:Loc Task.TriggerManual}" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Grid.Column="2" Classes="segment" GroupName="trigger"
                                  IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Scheduled}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="ClockOutline" Width="15" Height="15" />
-                            <TextBlock Text="Scheduled" />
+                            <TextBlock Text="{l:Loc TaskEditor.TriggerScheduled}" />
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Grid.Column="4" Classes="segment" GroupName="trigger"
                                  IsChecked="{Binding SelectedTriggerType, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static vm:TaskTriggerType.Watch}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="Eye" Width="15" Height="15" />
-                            <TextBlock Text="Watch" />
+                            <TextBlock Text="{l:Loc TaskEditor.TriggerWatch}" />
                         </StackPanel>
                     </RadioButton>
                 </Grid>
             </StackPanel>
 
             <StackPanel IsVisible="{Binding IsScheduledTrigger}">
-                <TextBlock Text="Cron expression" Classes="label" />
+                <TextBlock Text="{l:Loc TaskEditor.CronLabel}" Classes="label" />
                 <TextBox Text="{Binding CronExpression}" Classes="path" PlaceholderText="*/5 * * * *" />
                 <TextBlock Text="{Binding CronPreview}" Classes="muted" Margin="0,5,0,0" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
-                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
-                <Button Classes="primary" Content="Save task" Command="{Binding OKCommand}" />
+                <Button Classes="secondary" Content="{l:Loc Common.Cancel}" Command="{Binding CancelCommand}" />
+                <Button Classes="primary" Content="{l:Loc TaskEditor.Save}" Command="{Binding OKCommand}" />
             </StackPanel>
         </StackPanel>
     </Border>

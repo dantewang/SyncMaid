@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -36,7 +37,7 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
         Func<string, string?>? sourceConflicts = null)
         : base(
             folderPicker,
-            "Select Source Folder",
+            Strings.Dialog_SelectSourceFolder,
             existing?.Id,
             existing?.Name,
             existing?.SourcePath,
@@ -58,8 +59,8 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
 
     /// <summary>Explains a blocked source overlap, or the non-blocking missing-folder hint.</summary>
     public string PathHintText => SourceConflictName is { } conflictingTask
-        ? $"This folder overlaps the source of task \"{conflictingTask}\" — tasks never share sources."
-        : "This folder doesn't exist. Check for typos — the task won't find anything to sync (and a watch trigger can't start) until it does.";
+        ? Localizer.Format(Strings.TaskEditor_SourceOverlapHintFormat, conflictingTask)
+        : Strings.TaskEditor_MissingFolderHint;
 
     protected override bool HasAdditionalPathWarning => SourceConflictName is not null;
 
@@ -76,13 +77,14 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
         {
             if (!CronSchedule.IsValid(CronExpression))
             {
-                return "Enter a valid cron expression (e.g. */5 * * * *); times use local time";
+                return Strings.TaskEditor_CronInvalid;
             }
 
             var next = CronSchedule.NextOccurrenceUtc(CronExpression, DateTime.UtcNow);
             return next is null
-                ? "Valid in local time, but has no upcoming runs"
-                : $"Next run (local time): {next.Value.ToLocalTime():yyyy-MM-dd HH:mm}";
+                ? Strings.TaskEditor_CronNoUpcoming
+                : Localizer.Format(Strings.TaskEditor_CronNextRunFormat,
+                    next.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
         }
     }
 
