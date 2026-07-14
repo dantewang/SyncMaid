@@ -84,8 +84,8 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     /// <summary>Human label for where data currently lives.</summary>
     public string StorageModeText =>
         _configLocation.CurrentMode == ConfigLocationMode.Portable
-            ? "Next to the app (portable)"
-            : "App data folder";
+            ? Strings.Settings_StoragePortable
+            : Strings.Settings_StorageAppData;
 
     /// <summary>The absolute folder currently in use, shown read-only.</summary>
     public string StoragePath => _configLocation.CurrentDirectory;
@@ -93,8 +93,8 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     /// <summary>Label for the switch button, naming the destination mode.</summary>
     public string SwitchStorageText =>
         OtherMode == ConfigLocationMode.Portable
-            ? "Move data next to the app (portable)"
-            : "Move data to the app data folder";
+            ? Strings.Settings_SwitchToPortable
+            : Strings.Settings_SwitchToAppData;
 
     /// <summary>True when a storage notice should be shown.</summary>
     public bool HasStorageError => !string.IsNullOrEmpty(StorageError);
@@ -110,8 +110,8 @@ public partial class SettingsViewModel : DialogViewModel<bool>
 
         if (!_configLocation.CanUse(target))
         {
-            StorageError = $"Can't use {_configLocation.DirectoryFor(target)} — the folder is not writable " +
-                           "(a portable install under Program Files needs a writable location).";
+            StorageError = Localizer.Format(
+                Strings.Settings_StorageNotWritableFormat, _configLocation.DirectoryFor(target));
             return;
         }
 
@@ -121,7 +121,7 @@ public partial class SettingsViewModel : DialogViewModel<bool>
         }
         else
         {
-            StorageError = "Couldn't move your data — it was left where it is.";
+            StorageError = Strings.Settings_StorageMoveFailed;
         }
     }
 
