@@ -3,6 +3,7 @@
         xmlns:vm="using:SyncMaid.ViewModels"
         xmlns:conv="using:SyncMaid.Converters"
         xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:l="using:SyncMaid.Markup"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -65,23 +66,23 @@
                 <!-- Column 1 is the star spacer: part of the draggable TitleBar strip. -->
 
                 <Button Grid.Column="2" Classes="caption" Command="{Binding OpenSettingsCommand}"
-                        ToolTip.Tip="Settings"
+                        ToolTip.Tip="{l:Loc Main.SettingsTip}"
                         chrome:WindowDecorationProperties.ElementRole="User">
                     <mi:MaterialIcon Kind="CogOutline" Width="16" Height="16" />
                 </Button>
 
                 <Button Grid.Column="3" Name="MinimizeButton" Classes="caption"
-                        Click="OnMinimize" ToolTip.Tip="Minimize"
+                        Click="OnMinimize" ToolTip.Tip="{l:Loc Main.MinimizeTip}"
                         chrome:WindowDecorationProperties.ElementRole="MinimizeButton">
                     <mi:MaterialIcon Kind="WindowMinimize" Width="16" Height="16" />
                 </Button>
                 <Button Grid.Column="4" Name="MaximizeButton" Classes="caption"
-                        Click="OnMaximizeRestore" ToolTip.Tip="Maximize"
+                        Click="OnMaximizeRestore" ToolTip.Tip="{l:Loc Main.MaximizeTip}"
                         chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
                     <mi:MaterialIcon Name="MaximizeIcon" Width="16" Height="16" />
                 </Button>
                 <Button Grid.Column="5" Name="CloseButton" Classes="caption close"
-                        Click="OnClose" ToolTip.Tip="Close"
+                        Click="OnClose" ToolTip.Tip="{l:Loc Main.CloseTip}"
                         chrome:WindowDecorationProperties.ElementRole="CloseButton">
                     <mi:MaterialIcon Kind="Close" Width="16" Height="16" />
                 </Button>
@@ -96,8 +97,8 @@
                     Background="Transparent">
                 <DockPanel Margin="8">
                     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="6,6,2,8">
-                        <TextBlock Grid.Column="0" Text="Tasks" Classes="muted" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="Hide sidebar">
+                        <TextBlock Grid.Column="0" Text="{l:Loc Main.TasksHeading}" Classes="muted" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{l:Loc Main.HideSidebarTip}">
                             <mi:MaterialIcon Kind="ChevronLeft" Width="16" Height="16" />
                         </Button>
                     </Grid>
@@ -124,7 +125,7 @@
             <Border Grid.Column="1" Width="40" IsVisible="{Binding !IsSidebarVisible}"
                     Background="Transparent">
                 <Button Classes="icon" Width="26" Height="26" Command="{Binding ToggleSidebarCommand}"
-                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="Show sidebar">
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="{l:Loc Main.ShowSidebarTip}">
                     <mi:MaterialIcon Kind="ChevronRight" Width="16" Height="16" />
                 </Button>
             </Border>
@@ -138,18 +139,18 @@
             <Border Grid.Column="2" Background="{StaticResource PageBrush}" CornerRadius="12,0,0,0">
             <DockPanel Margin="16,12">
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
-                    <TextBlock Grid.Column="0" Text="Sync tasks" Classes="h1" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0" Text="{l:Loc Main.SyncTasksHeading}" Classes="h1" VerticalAlignment="Center" />
                     <Button Grid.Column="2" Classes="secondary" Command="{Binding ToggleExpandAllCommand}" Content="{Binding ExpandCollapseLabel}" Margin="0,0,8,0" />
                     <Button Grid.Column="3" Classes="secondary" Command="{Binding RunAllCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="Play" Width="15" Height="15" />
-                            <TextBlock Text="Run all" />
+                            <TextBlock Text="{l:Loc Main.RunAll}" />
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="4" Classes="primary" Command="{Binding AddTaskCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <mi:MaterialIcon Kind="Plus" Width="15" Height="15" />
-                            <TextBlock Text="New task" />
+                            <TextBlock Text="{l:Loc Main.NewTask}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -196,7 +197,7 @@
                                                             <StackPanel Orientation="Horizontal" Spacing="4">
                                                                 <mi:MaterialIcon Kind="AlertOutline" Width="12" Height="12"
                                                                                  Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" />
-                                                                <TextBlock Text="Trigger error" />
+                                                                <TextBlock Text="{l:Loc Task.TriggerErrorBadge}" />
                                                             </StackPanel>
                                                         </Border>
                                                     </StackPanel>
@@ -212,11 +213,11 @@
                                                                Foreground="{Binding HealthOutcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
                                                 </StackPanel>
                                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                                    <Button Classes="icon run" Command="{Binding ExecuteCommand}" IsVisible="{Binding !IsRunning}" ToolTip.Tip="Run now"><mi:MaterialIcon Kind="Play" Width="16" Height="16" /></Button>
-                                                    <Button Classes="icon danger" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" ToolTip.Tip="Stop"><mi:MaterialIcon Kind="Stop" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon run" Command="{Binding ExecuteCommand}" IsVisible="{Binding !IsRunning}" ToolTip.Tip="{l:Loc Task.RunNowTip}"><mi:MaterialIcon Kind="Play" Width="16" Height="16" /></Button>
+                                                    <Button Classes="icon danger" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" ToolTip.Tip="{l:Loc Task.StopTip}"><mi:MaterialIcon Kind="Stop" Width="16" Height="16" /></Button>
                                                     <Button Classes="icon" Command="{Binding AddDestinationCommand}" ToolTip.Tip="{Binding AddDestinationHint}" ToolTip.ShowOnDisabled="True"><mi:MaterialIcon Kind="Plus" Width="16" Height="16" /></Button>
-                                                    <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit task"><mi:MaterialIcon Kind="Pencil" Width="15" Height="15" /></Button>
-                                                    <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete task"><mi:MaterialIcon Kind="TrashCanOutline" Width="15" Height="15" /></Button>
+                                                    <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="{l:Loc Task.EditTip}"><mi:MaterialIcon Kind="Pencil" Width="15" Height="15" /></Button>
+                                                    <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="{l:Loc Task.DeleteTip}"><mi:MaterialIcon Kind="TrashCanOutline" Width="15" Height="15" /></Button>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
@@ -254,11 +255,11 @@
                                                                 <TextBlock Text="{Binding DisplayStatus}" VerticalAlignment="Center"
                                                                            MaxWidth="280" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayStatus}"
                                                                            Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
-                                                                <Button Classes="icon" Command="{Binding ConfirmCommand}" IsVisible="{Binding NeedsConfirmation}" ToolTip.Tip="Review deletions">
+                                                                <Button Classes="icon" Command="{Binding ConfirmCommand}" IsVisible="{Binding NeedsConfirmation}" ToolTip.Tip="{l:Loc MirrorDelete.ReviewDeletions}">
                                                                     <mi:MaterialIcon Kind="AlertOutline" Width="15" Height="15" Foreground="{StaticResource WarningBrush}" />
                                                                 </Button>
-                                                                <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="Edit destination"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
-                                                                <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete destination"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
+                                                                <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="{l:Loc Dest.EditTip}"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
+                                                                <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="{l:Loc Dest.DeleteTip}"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>

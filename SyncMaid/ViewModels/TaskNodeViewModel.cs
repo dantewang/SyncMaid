@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -117,10 +118,10 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     public string TriggerText => Task.Trigger switch
     {
-        ManualTrigger => "Manual",
-        WatchTrigger => "Watching",
-        ScheduledTrigger scheduled => $"Scheduled · {scheduled.CronExpression}",
-        _ => "Manual",
+        ManualTrigger => Strings.Task_TriggerManual,
+        WatchTrigger => Strings.Task_TriggerWatching,
+        ScheduledTrigger scheduled => Localizer.Format(Strings.Task_TriggerScheduledFormat, scheduled.CronExpression),
+        _ => Strings.Task_TriggerManual,
     };
 
     public MaterialIconKind TriggerIconKind => Task.Trigger switch
@@ -143,7 +144,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     public bool HasNextRun => _nextRun is not null;
 
     /// <summary>Relative next-run label for the badge, e.g. "next run in 2 h".</summary>
-    public string NextRunText => _nextRun is { } when ? $"next run {Humanize(when - DateTimeOffset.UtcNow)}" : string.Empty;
+    public string NextRunText => _nextRun is { } when
+        ? Localizer.Format(Strings.Task_NextRunFormat, Humanize(when - DateTimeOffset.UtcNow))
+        : string.Empty;
 
     /// <summary>Absolute local next-run time, shown as the badge tooltip (never goes stale).</summary>
     public string? NextRunTooltip => _nextRun?.ToLocalTime().ToString("f");
@@ -164,11 +167,11 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private static string Humanize(TimeSpan span)
     {
-        if (span <= TimeSpan.Zero) return "due now";
-        if (span < TimeSpan.FromMinutes(1)) return "in under a minute";
-        if (span < TimeSpan.FromHours(1)) return $"in {(int)span.TotalMinutes} min";
-        if (span < TimeSpan.FromDays(1)) return $"in {(int)span.TotalHours} h";
-        return $"in {(int)span.TotalDays} d";
+        if (span <= TimeSpan.Zero) return Strings.Time_DueNow;
+        if (span < TimeSpan.FromMinutes(1)) return Strings.Time_InUnderAMinute;
+        if (span < TimeSpan.FromHours(1)) return Localizer.Format(Strings.Time_InMinutesFormat, (int)span.TotalMinutes);
+        if (span < TimeSpan.FromDays(1)) return Localizer.Format(Strings.Time_InHoursFormat, (int)span.TotalHours);
+        return Localizer.Format(Strings.Time_InDaysFormat, (int)span.TotalDays);
     }
 
     /// <summary>At-a-glance health shown on the (possibly collapsed) card header.</summary>
@@ -189,14 +192,14 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     {
         get
         {
-            if (Children.Count == 0) return "No destinations";
-            if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return "Syncing…";
-            if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return "Needs confirmation";
+            if (Children.Count == 0) return Strings.Task_HealthNoDestinations;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return Strings.Status_Syncing;
+            if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return Strings.Status_NeedsConfirmation;
             var failed = Children.Count(c => c.Outcome == SyncOutcome.Failed);
-            if (failed > 0) return $"{failed} of {Children.Count} failed";
-            if (Children.All(c => c.Outcome == SyncOutcome.Success)) return "All synced";
-            if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return "Partly synced";
-            return "Never run";
+            if (failed > 0) return Localizer.Format(Strings.Task_HealthFailedFormat, failed, Children.Count);
+            if (Children.All(c => c.Outcome == SyncOutcome.Success)) return Strings.Task_HealthAllSynced;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return Strings.Task_HealthPartlySynced;
+            return Strings.Status_NeverRun;
         }
     }
 
@@ -262,8 +265,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     /// <summary>Tooltip for the add-destination button, explaining why it is disabled.</summary>
     public string AddDestinationHint => CanAddDestination()
-        ? "Add destination"
-        : "A Move destination must be the only destination of its task.";
+        ? Strings.Task_AddDestinationTip
+        : Strings.Common_MoveExclusiveHint;
 
     [RelayCommand(CanExecute = nameof(CanAddDestination))]
     private async Task AddDestination()
@@ -292,9 +295,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private async Task DeleteLeaf(DestinationNodeViewModel node)
     {
         var confirmed = await _dialogs.ConfirmAsync(
-            "Delete destination?",
-            $"Remove the destination \"{node.Name}\" from this task? This can't be undone.",
-            "Delete");
+            Strings.Task_DeleteDestinationTitle,
+            Localizer.Format(Strings.Task_DeleteDestinationMessageFormat, node.Name),
+            Strings.Common_Delete);
         if (!confirmed)
         {
             return;
@@ -375,11 +378,12 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private void ReportTriggerFailure(Exception exception, bool mayRecover)
     {
         _logger.LogError(exception, "Trigger failed for task '{Task}'.", Task.Name);
-        _dispatcher.Post(() => TriggerError = mayRecover
-            ? $"Automatic trigger error; automatic runs may be temporarily unavailable. " +
-              $"You can still run the task manually. ({exception.Message})"
-            : $"This task's trigger failed to start, so it only runs when you run it manually. " +
-              $"({exception.Message})");
+        // The inner exception message stays as the engine produced it (English); only the
+        // wrapper sentence is localized, and it re-renders on the next trigger event rather
+        // than on a language switch (stored, not computed — acceptable staleness).
+        _dispatcher.Post(() => TriggerError = Localizer.Format(
+            mayRecover ? Strings.Task_TriggerErrorRecoverableFormat : Strings.Task_TriggerErrorStartFormat,
+            exception.Message));
     }
 
     private void OnTriggerRecovered() => _dispatcher.Post(() => TriggerError = null);
@@ -523,7 +527,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
                 var refused = runChildren
                     .Select(child => new DestinationSyncStatus(
                         child.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
-                        $"This task's paths overlap task \"{overlap}\"; fix the overlap and run again — no files were changed."))
+                        Localizer.Format(Strings.Task_OverlapRefusedFormat, overlap)))
                     .ToList();
                 _dispatcher.Post(() =>
                 {
@@ -615,14 +619,16 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     {
         var verb = progress.Operation switch
         {
-            CopyOperation => "Copying",
-            MoveOperation => "Moving",
-            DeleteOperation => "Removing",
-            _ => "Syncing",
+            CopyOperation => Strings.Progress_Copying,
+            MoveOperation => Strings.Progress_Moving,
+            DeleteOperation => Strings.Progress_Removing,
+            _ => Strings.Progress_Syncing,
         };
 
-        ChildById(progress.Destination.Id)?.SetProgress(
-            $"{verb} {progress.Operation.RelativePath} ({progress.CompletedOperations + 1}/{progress.TotalOperations})");
+        ChildById(progress.Destination.Id)?.SetProgress(Localizer.Format(
+            Strings.Progress_LineFormat,
+            verb, progress.Operation.RelativePath,
+            progress.CompletedOperations + 1, progress.TotalOperations));
     }
 
     private DestinationNodeViewModel? ChildById(Guid id) => Children.FirstOrDefault(c => c.Id == id);

@@ -3,6 +3,7 @@
              xmlns:materialIcons="using:Material.Icons.Avalonia"
              xmlns:vm="using:SyncMaid.ViewModels"
              xmlns:views="using:SyncMaid.Views"
+             xmlns:l="using:SyncMaid.Markup"
              x:Class="SyncMaid.App"
              RequestedThemeVariant="Light">
 
@@ -27,9 +28,9 @@
                       Command="{Binding ShowMainWindowCommand}">
                 <TrayIcon.Menu>
                     <NativeMenu>
-                        <NativeMenuItem Header="Show main window" Command="{Binding ShowMainWindowCommand}" />
+                        <NativeMenuItem Header="{l:Loc Tray.ShowMainWindow}" Command="{Binding ShowMainWindowCommand}" />
                         <NativeMenuItemSeparator />
-                        <NativeMenuItem Header="Exit" Command="{Binding ExitCommand}" />
+                        <NativeMenuItem Header="{l:Loc Tray.Exit}" Command="{Binding ExitCommand}" />
                     </NativeMenu>
                 </TrayIcon.Menu>
             </TrayIcon>

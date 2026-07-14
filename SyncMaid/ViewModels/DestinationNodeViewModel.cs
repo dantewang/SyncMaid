@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.Input;
 using Material.Icons;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
+using SyncMaid.Lang;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
@@ -52,9 +54,9 @@ public partial class DestinationNodeViewModel : ViewModelBase
 
     public string StrategyText => Destination.Strategy switch
     {
-        SyncStrategy.Mirror => "Mirror",
-        SyncStrategy.AddOnly => "Add-only",
-        SyncStrategy.Move => "Move",
+        SyncStrategy.Mirror => Strings.Enum_SyncStrategy_Mirror,
+        SyncStrategy.AddOnly => Strings.Enum_SyncStrategy_AddOnly,
+        SyncStrategy.Move => Strings.Enum_SyncStrategy_Move,
         _ => Destination.Strategy.ToString(),
     };
 
@@ -70,11 +72,16 @@ public partial class DestinationNodeViewModel : ViewModelBase
 
     public string StatusText => Status.Outcome switch
     {
-        SyncOutcome.Running => "Syncing…",
-        SyncOutcome.Success => $"Synced {Relative(Status.LastRun)} · {Status.FilesCopied} files",
-        SyncOutcome.Failed => string.IsNullOrEmpty(Status.Error) ? "Failed" : $"Failed · {Status.Error}",
-        SyncOutcome.NeedsConfirmation => "Needs confirmation",
-        _ => "Never run",
+        SyncOutcome.Running => Strings.Status_Syncing,
+        SyncOutcome.Success => Localizer.Format(
+            Strings.Status_SyncedFormat,
+            Relative(Status.LastRun),
+            Localizer.Plural("Common.FilesCount", Status.FilesCopied)),
+        SyncOutcome.Failed => string.IsNullOrEmpty(Status.Error)
+            ? Strings.Status_Failed
+            : Localizer.Format(Strings.Status_FailedFormat, Status.Error),
+        SyncOutcome.NeedsConfirmation => Strings.Status_NeedsConfirmation,
+        _ => Strings.Status_NeverRun,
     };
 
     /// <summary>What the row shows: the live progress line while running, else the status.</summary>
@@ -115,10 +122,12 @@ public partial class DestinationNodeViewModel : ViewModelBase
         var filters = Destination.Filters;
         if (filters is [AllFilesFilter])
         {
-            return "All files";
+            return Strings.Filter_AllFiles;
         }
 
-        return filters.Count == 1 ? FilterDescriber.DescribeRow(filters[0]) : $"{filters.Count} filters";
+        return filters.Count == 1
+            ? FilterDescriber.DescribeRow(filters[0])
+            : Localizer.Format(Strings.Dest_FiltersCountFormat, filters.Count);
     }
 
     private static string Relative(DateTimeOffset? when)
@@ -131,22 +140,22 @@ public partial class DestinationNodeViewModel : ViewModelBase
         var span = DateTimeOffset.UtcNow - when.Value;
         if (span < TimeSpan.FromMinutes(1))
         {
-            return "just now";
+            return Strings.Time_JustNow;
         }
 
         if (span < TimeSpan.FromHours(1))
         {
-            return $"{(int)span.TotalMinutes} min ago";
+            return Localizer.Format(Strings.Time_MinutesAgoFormat, (int)span.TotalMinutes);
         }
 
         if (span < TimeSpan.FromDays(1))
         {
-            return $"{(int)span.TotalHours} h ago";
+            return Localizer.Format(Strings.Time_HoursAgoFormat, (int)span.TotalHours);
         }
 
         if (span < TimeSpan.FromDays(7))
         {
-            return $"{(int)span.TotalDays} d ago";
+            return Localizer.Format(Strings.Time_DaysAgoFormat, (int)span.TotalDays);
         }
 
         return when.Value.ToLocalTime().ToString("yyyy-MM-dd");

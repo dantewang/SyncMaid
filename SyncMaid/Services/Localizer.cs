@@ -34,16 +34,16 @@ public sealed class Localizer : INotifyPropertyChanged
     public string this[string key] =>
         Strings.ResourceManager.GetString(key, CultureInfo.CurrentUICulture) ?? key;
 
-    /// <summary>Formats the composite-format resource at <paramref name="key"/> with
-    /// <paramref name="args"/> using the current (formatting) culture.</summary>
-    public string Format(string key, params object?[] args) =>
-        string.Format(CultureInfo.CurrentCulture, this[key], args);
+    /// <summary>Formats a composite-format resource (pass a <c>Strings.*Format</c>
+    /// property, keeping the key compile-checked) with the current formatting culture.</summary>
+    public static string Format(string compositeFormat, params object?[] args) =>
+        string.Format(CultureInfo.CurrentCulture, compositeFormat, args);
 
     /// <summary>Count-aware lookup: formats <c>&lt;baseKey&gt;.One</c> when
     /// <paramref name="count"/> is 1, else <c>&lt;baseKey&gt;.Other</c> — right for
     /// English, harmless for languages without plural inflection.</summary>
-    public string Plural(string baseKey, int count) =>
-        Format(count == 1 ? baseKey + ".One" : baseKey + ".Other", count);
+    public static string Plural(string baseKey, int count) =>
+        Format(Instance[count == 1 ? baseKey + ".One" : baseKey + ".Other"], count);
 
     /// <summary>
     /// Switches the UI culture: a BCP-47 tag (e.g. "zh-Hans"), or null/empty for the OS

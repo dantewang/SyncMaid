@@ -11,6 +11,7 @@ using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Persistence;
 using SyncMaid.Core.Triggers;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -89,7 +90,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>The in-window modal host; the view binds an overlay to its CurrentDialog.</summary>
     public IDialogHost DialogHost => _dialogHost;
 
-    public string ExpandCollapseLabel => AllExpanded ? "Collapse all" : "Expand all";
+    public string ExpandCollapseLabel => AllExpanded ? Strings.Main_CollapseAll : Strings.Main_ExpandAll;
 
     /// <summary>Recomputes every task's next-run label. Driven by a one-minute UI timer in the
     /// view so the relative "next run in 2 h" badges stay current without per-node timers.</summary>
@@ -174,12 +175,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task DeleteTask(TaskNodeViewModel node)
     {
-        var count = node.Children.Count;
-        var suffix = count == 1 ? "its 1 destination" : $"its {count} destinations";
+        var suffix = Localizer.Plural("Main.DeleteTaskSuffix", node.Children.Count);
         var confirmed = await _dialogs.ConfirmAsync(
-            "Delete task?",
-            $"Delete the task \"{node.Name}\" and {suffix}? This can't be undone.",
-            "Delete");
+            Strings.Main_DeleteTaskTitle,
+            Localizer.Format(Strings.Main_DeleteTaskMessageFormat, node.Name, suffix),
+            Strings.Common_Delete);
         if (!confirmed)
         {
             return;
