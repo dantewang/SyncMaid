@@ -1,17 +1,19 @@
 using System;
 using System.Collections.Generic;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Model;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
 /// <summary>
 /// Backs the independent mirror-delete confirmation window. Raises <see cref="Decided"/>
-/// with the user's choice; the window host closes on it.
+/// with the user's choice; the window host closes on it. Derives from
+/// <see cref="ViewModelBase"/> (not <c>ObservableObject</c> directly) because this window
+/// can be open while the language switches — the base's culture hook re-renders it.
 /// </summary>
-public partial class ConfirmMirrorDeleteViewModel : ObservableObject
+public partial class ConfirmMirrorDeleteViewModel : ViewModelBase
 {
     private readonly bool _recycle;
 
@@ -29,16 +31,19 @@ public partial class ConfirmMirrorDeleteViewModel : ObservableObject
     public int Count { get; }
     public IReadOnlyList<string> Sample { get; }
 
-    public string Explanation =>
-        _recycle
-            ? $"Syncing “{DestinationName}” will move {Count} files to the Recycle Bin — they are no longer in the source."
-            : $"Syncing “{DestinationName}” will permanently delete {Count} files that are no longer in the source.";
+    public string Explanation => Localizer.Format(
+        _recycle ? Strings.MirrorDelete_ExplanationRecycleFormat : Strings.MirrorDelete_ExplanationPermanentFormat,
+        DestinationName, Count);
 
-    public string ConfirmLabel => _recycle ? "Move to Recycle Bin" : $"Delete {Count} files";
+    public string ConfirmLabel => _recycle
+        ? Strings.MirrorDelete_MoveToRecycleBin
+        : Localizer.Plural("MirrorDelete.DeleteCount", Count);
 
     public bool HasMore => Count > Sample.Count;
 
-    public string MoreText => HasMore ? $"…and {Count - Sample.Count} more" : string.Empty;
+    public string MoreText => HasMore
+        ? Localizer.Format(Strings.MirrorDelete_MoreFormat, Count - Sample.Count)
+        : string.Empty;
 
     /// <summary>Raised with the user's decision: true to delete, false to keep.</summary>
     public event Action<bool>? Decided;

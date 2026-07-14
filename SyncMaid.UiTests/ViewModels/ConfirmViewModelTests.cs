@@ -7,7 +7,7 @@ public class ConfirmViewModelTests
     [Fact]
     public void Confirm_returns_true()
     {
-        var vm = new ConfirmViewModel("Delete?", "Are you sure?");
+        var vm = new ConfirmViewModel("Delete?", "Are you sure?", "Delete");
         bool? result = null;
         vm.CloseRequested += r => result = r;
 
@@ -19,7 +19,7 @@ public class ConfirmViewModelTests
     [Fact]
     public void Esc_cancel_closes_as_not_confirmed()
     {
-        var vm = new ConfirmViewModel("Delete?", "Are you sure?");
+        var vm = new ConfirmViewModel("Delete?", "Are you sure?", "Delete");
         bool? result = null;
         vm.CloseRequested += r => result = r;
 
@@ -31,7 +31,7 @@ public class ConfirmViewModelTests
     [Fact]
     public void Enter_does_nothing_so_a_destructive_confirm_is_not_accidental()
     {
-        var vm = new ConfirmViewModel("Delete?", "Are you sure?");
+        var vm = new ConfirmViewModel("Delete?", "Are you sure?", "Delete");
         var closed = false;
         vm.CloseRequested += _ => closed = true;
 

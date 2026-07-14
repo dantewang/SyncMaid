@@ -30,6 +30,6 @@ public sealed class DialogService : IDialogService
             _folderPicker, existing, sourcePath,
             hasSiblings: hasSiblings, destinationConflicts: destinationConflicts));
 
-    public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true) =>
+    public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel, bool isDestructive = true) =>
         await _host.ShowAsync(new ConfirmViewModel(title, message, confirmLabel, isDestructive));
 }

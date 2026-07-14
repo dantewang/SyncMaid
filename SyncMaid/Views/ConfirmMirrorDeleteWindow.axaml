@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SyncMaid.ViewModels"
         xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:l="using:SyncMaid.Markup"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="480"
@@ -11,13 +12,13 @@
         Width="480" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/syncmaid.ico"
-        Title="SyncMaid — confirm deletions">
+        Title="{l:Loc MirrorDelete.WindowTitle}">
 
     <StackPanel Margin="24" Spacing="14">
         <StackPanel Orientation="Horizontal" Spacing="10">
             <mi:MaterialIcon Kind="AlertOutline" Width="22" Height="22"
                              Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" />
-            <TextBlock Text="Review deletions" FontSize="16" FontWeight="Medium" VerticalAlignment="Center" />
+            <TextBlock Text="{l:Loc MirrorDelete.ReviewDeletions}" FontSize="16" FontWeight="Medium" VerticalAlignment="Center" />
         </StackPanel>
 
         <TextBlock Text="{Binding Explanation}" Classes="muted" TextWrapping="Wrap" />
@@ -37,7 +38,7 @@
         <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="muted" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
-            <Button Classes="secondary" Content="Keep them" Command="{Binding KeepCommand}" />
+            <Button Classes="secondary" Content="{l:Loc MirrorDelete.KeepThem}" Command="{Binding KeepCommand}" />
             <Button Classes="danger" Content="{Binding ConfirmLabel}" Command="{Binding DeleteCommand}" />
         </StackPanel>
     </StackPanel>

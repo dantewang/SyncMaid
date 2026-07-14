@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="400"
              x:Class="SyncMaid.Views.ConfirmView"
              x:DataType="vm:ConfirmViewModel"
@@ -14,7 +15,7 @@
             <TextBlock Text="{Binding Message}" Classes="muted" TextWrapping="Wrap" />
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
-                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                <Button Classes="secondary" Content="{l:Loc Common.Cancel}" Command="{Binding CancelCommand}" />
                 <Button Content="{Binding ConfirmLabel}" Command="{Binding ConfirmCommand}"
                         Classes.danger="{Binding IsDestructive}" Classes.primary="{Binding !IsDestructive}" />
             </StackPanel>

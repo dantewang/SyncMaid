@@ -10,7 +10,7 @@ namespace SyncMaid.ViewModels;
 /// </summary>
 public partial class ConfirmViewModel : DialogViewModel<bool>
 {
-    public ConfirmViewModel(string title, string message, string confirmLabel = "Delete", bool isDestructive = true)
+    public ConfirmViewModel(string title, string message, string confirmLabel, bool isDestructive = true)
     {
         Title = title;
         Message = message;

@@ -29,7 +29,8 @@ public interface IDialogService
     /// <summary>Shows a modal yes/no confirmation. Returns true only if the user confirms.</summary>
     /// <param name="title">Dialog heading.</param>
     /// <param name="message">Explanatory body text.</param>
-    /// <param name="confirmLabel">Label of the confirming button (e.g. "Delete").</param>
+    /// <param name="confirmLabel">Label of the confirming button (e.g. "Delete"). Required —
+    /// callers pass a localized resource; a constant default couldn't be one.</param>
     /// <param name="isDestructive">When true, the confirm button is styled as destructive.</param>
-    Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true);
+    Task<bool> ConfirmAsync(string title, string message, string confirmLabel, bool isDestructive = true);
 }
