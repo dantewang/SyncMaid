@@ -15,16 +15,519 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
+  <!-- Shared -->
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Common.Browse" xml:space="preserve">
+    <value>浏览</value>
+  </data>
+  <data name="Common.NameLabel" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="Common.Add" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Common.Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Common.MoveExclusiveHint" xml:space="preserve">
+    <value>“移动”策略的目标必须是其任务的唯一目标。</value>
+  </data>
+  <data name="Common.FilesCount.One" xml:space="preserve">
+    <value>{0} 个文件</value>
+  </data>
+  <data name="Common.FilesCount.Other" xml:space="preserve">
+    <value>{0} 个文件</value>
+  </data>
+
+  <!-- Main window -->
+  <data name="Main.SettingsTip" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Main.MinimizeTip" xml:space="preserve">
+    <value>最小化</value>
+  </data>
+  <data name="Main.MaximizeTip" xml:space="preserve">
+    <value>最大化</value>
+  </data>
+  <data name="Main.CloseTip" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Main.TasksHeading" xml:space="preserve">
+    <value>任务</value>
+  </data>
+  <data name="Main.HideSidebarTip" xml:space="preserve">
+    <value>隐藏侧边栏</value>
+  </data>
+  <data name="Main.ShowSidebarTip" xml:space="preserve">
+    <value>显示侧边栏</value>
+  </data>
+  <data name="Main.SyncTasksHeading" xml:space="preserve">
+    <value>同步任务</value>
+  </data>
   <data name="Main.RunAll" xml:space="preserve">
     <value>运行全部</value>
   </data>
   <data name="Main.NewTask" xml:space="preserve">
     <value>新建任务</value>
   </data>
-  <data name="Settings.Title" xml:space="preserve">
-    <value>设置</value>
+  <data name="Main.CollapseAll" xml:space="preserve">
+    <value>全部折叠</value>
+  </data>
+  <data name="Main.ExpandAll" xml:space="preserve">
+    <value>全部展开</value>
+  </data>
+  <data name="Main.DeleteTaskTitle" xml:space="preserve">
+    <value>删除任务？</value>
+  </data>
+  <data name="Main.DeleteTaskMessageFormat" xml:space="preserve">
+    <value>删除任务“{0}”及{1}？此操作无法撤销。</value>
+  </data>
+  <data name="Main.DeleteTaskSuffix.One" xml:space="preserve">
+    <value>其 1 个目标</value>
+  </data>
+  <data name="Main.DeleteTaskSuffix.Other" xml:space="preserve">
+    <value>其 {0} 个目标</value>
+  </data>
+
+  <!-- Task card -->
+  <data name="Task.TriggerManual" xml:space="preserve">
+    <value>手动</value>
+  </data>
+  <data name="Task.TriggerWatching" xml:space="preserve">
+    <value>监视中</value>
+  </data>
+  <data name="Task.TriggerScheduledFormat" xml:space="preserve">
+    <value>定时 · {0}</value>
+  </data>
+  <data name="Task.TriggerErrorBadge" xml:space="preserve">
+    <value>触发器错误</value>
+  </data>
+  <data name="Task.NextRunFormat" xml:space="preserve">
+    <value>下次运行：{0}</value>
+  </data>
+  <data name="Task.HealthNoDestinations" xml:space="preserve">
+    <value>没有目标</value>
+  </data>
+  <data name="Task.HealthFailedFormat" xml:space="preserve">
+    <value>{1} 个中有 {0} 个失败</value>
   </data>
   <data name="Task.HealthAllSynced" xml:space="preserve">
     <value>全部已同步</value>
+  </data>
+  <data name="Task.HealthPartlySynced" xml:space="preserve">
+    <value>部分已同步</value>
+  </data>
+  <data name="Task.RunNowTip" xml:space="preserve">
+    <value>立即运行</value>
+  </data>
+  <data name="Task.StopTip" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="Task.AddDestinationTip" xml:space="preserve">
+    <value>添加目标</value>
+  </data>
+  <data name="Task.EditTip" xml:space="preserve">
+    <value>编辑任务</value>
+  </data>
+  <data name="Task.DeleteTip" xml:space="preserve">
+    <value>删除任务</value>
+  </data>
+  <data name="Task.TriggerErrorRecoverableFormat" xml:space="preserve">
+    <value>自动触发器出错；自动运行可能暂时不可用。你仍可以手动运行该任务。（{0}）</value>
+  </data>
+  <data name="Task.TriggerErrorStartFormat" xml:space="preserve">
+    <value>此任务的触发器启动失败，因此只能手动运行。（{0}）</value>
+  </data>
+  <data name="Task.OverlapRefusedFormat" xml:space="preserve">
+    <value>此任务的路径与任务“{0}”重叠；请解决重叠后重新运行 — 没有任何文件被更改。</value>
+  </data>
+  <data name="Task.DeleteDestinationTitle" xml:space="preserve">
+    <value>删除目标？</value>
+  </data>
+  <data name="Task.DeleteDestinationMessageFormat" xml:space="preserve">
+    <value>从此任务中移除目标“{0}”？此操作无法撤销。</value>
+  </data>
+
+  <!-- Sync status -->
+  <data name="Status.Syncing" xml:space="preserve">
+    <value>正在同步…</value>
+  </data>
+  <data name="Status.NeedsConfirmation" xml:space="preserve">
+    <value>需要确认</value>
+  </data>
+  <data name="Status.NeverRun" xml:space="preserve">
+    <value>从未运行</value>
+  </data>
+  <data name="Status.SyncedFormat" xml:space="preserve">
+    <value>{0}同步 · {1}</value>
+  </data>
+  <data name="Status.Failed" xml:space="preserve">
+    <value>失败</value>
+  </data>
+  <data name="Status.FailedFormat" xml:space="preserve">
+    <value>失败 · {0}</value>
+  </data>
+
+  <!-- Destination row -->
+  <data name="Dest.FiltersCountFormat" xml:space="preserve">
+    <value>{0} 个筛选器</value>
+  </data>
+  <data name="Dest.EditTip" xml:space="preserve">
+    <value>编辑目标</value>
+  </data>
+  <data name="Dest.DeleteTip" xml:space="preserve">
+    <value>删除目标</value>
+  </data>
+
+  <!-- Live progress line -->
+  <data name="Progress.Copying" xml:space="preserve">
+    <value>正在复制</value>
+  </data>
+  <data name="Progress.Moving" xml:space="preserve">
+    <value>正在移动</value>
+  </data>
+  <data name="Progress.Removing" xml:space="preserve">
+    <value>正在删除</value>
+  </data>
+  <data name="Progress.Syncing" xml:space="preserve">
+    <value>正在同步</value>
+  </data>
+  <data name="Progress.LineFormat" xml:space="preserve">
+    <value>{0} {1} ({2}/{3})</value>
+  </data>
+
+  <!-- Relative times -->
+  <data name="Time.DueNow" xml:space="preserve">
+    <value>即将运行</value>
+  </data>
+  <data name="Time.InUnderAMinute" xml:space="preserve">
+    <value>1 分钟内</value>
+  </data>
+  <data name="Time.InMinutesFormat" xml:space="preserve">
+    <value>{0} 分钟后</value>
+  </data>
+  <data name="Time.InHoursFormat" xml:space="preserve">
+    <value>{0} 小时后</value>
+  </data>
+  <data name="Time.InDaysFormat" xml:space="preserve">
+    <value>{0} 天后</value>
+  </data>
+  <data name="Time.JustNow" xml:space="preserve">
+    <value>刚刚</value>
+  </data>
+  <data name="Time.MinutesAgoFormat" xml:space="preserve">
+    <value>{0} 分钟前</value>
+  </data>
+  <data name="Time.HoursAgoFormat" xml:space="preserve">
+    <value>{0} 小时前</value>
+  </data>
+  <data name="Time.DaysAgoFormat" xml:space="preserve">
+    <value>{0} 天前</value>
+  </data>
+
+  <!-- Filter descriptions -->
+  <data name="Filter.AllFiles" xml:space="preserve">
+    <value>所有文件</value>
+  </data>
+  <data name="Filter.AllFilesInline" xml:space="preserve">
+    <value>所有文件</value>
+  </data>
+  <data name="Filter.Nothing" xml:space="preserve">
+    <value>无</value>
+  </data>
+  <data name="Filter.PathRowFormat" xml:space="preserve">
+    <value>路径：{0}</value>
+  </data>
+  <data name="Filter.ExtensionRowFormat" xml:space="preserve">
+    <value>扩展名：{0}</value>
+  </data>
+  <data name="Filter.Not" xml:space="preserve">
+    <value>非 </value>
+  </data>
+  <data name="Filter.And" xml:space="preserve">
+    <value> 且 </value>
+  </data>
+  <data name="Filter.Or" xml:space="preserve">
+    <value> 或 </value>
+  </data>
+  <data name="Filter.ExcludeRowFormat" xml:space="preserve">
+    <value>排除 — {0}</value>
+  </data>
+  <data name="Filter.NoRulesPreview" xml:space="preserve">
+    <value>尚无规则 — 不会同步任何内容。</value>
+  </data>
+  <data name="Filter.SyncsPreviewFormat" xml:space="preserve">
+    <value>同步：{0}</value>
+  </data>
+
+  <!-- Task editor -->
+  <data name="TaskEditor.Title" xml:space="preserve">
+    <value>任务</value>
+  </data>
+  <data name="TaskEditor.SourceFolderLabel" xml:space="preserve">
+    <value>源文件夹</value>
+  </data>
+  <data name="TaskEditor.TriggerLabel" xml:space="preserve">
+    <value>触发器</value>
+  </data>
+  <data name="TaskEditor.TriggerScheduled" xml:space="preserve">
+    <value>定时</value>
+  </data>
+  <data name="TaskEditor.TriggerWatch" xml:space="preserve">
+    <value>监视</value>
+  </data>
+  <data name="TaskEditor.CronLabel" xml:space="preserve">
+    <value>Cron 表达式</value>
+  </data>
+  <data name="TaskEditor.CronInvalid" xml:space="preserve">
+    <value>请输入有效的 cron 表达式（例如 */5 * * * *）；时间使用本地时间</value>
+  </data>
+  <data name="TaskEditor.CronNoUpcoming" xml:space="preserve">
+    <value>表达式有效（本地时间），但没有即将到来的运行</value>
+  </data>
+  <data name="TaskEditor.CronNextRunFormat" xml:space="preserve">
+    <value>下次运行（本地时间）：{0}</value>
+  </data>
+  <data name="TaskEditor.Save" xml:space="preserve">
+    <value>保存任务</value>
+  </data>
+  <data name="TaskEditor.SourceOverlapHintFormat" xml:space="preserve">
+    <value>此文件夹与任务“{0}”的源重叠 — 任务之间不能共享源。</value>
+  </data>
+  <data name="TaskEditor.MissingFolderHint" xml:space="preserve">
+    <value>此文件夹不存在。请检查拼写 — 在它存在之前，任务找不到可同步的内容（监视触发器也无法启动）。</value>
+  </data>
+
+  <!-- Destination editor -->
+  <data name="DestEditor.Title" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="DestEditor.FolderLabel" xml:space="preserve">
+    <value>目标文件夹</value>
+  </data>
+  <data name="DestEditor.Save" xml:space="preserve">
+    <value>保存目标</value>
+  </data>
+  <data name="DestEditor.StrategyLabel" xml:space="preserve">
+    <value>同步策略</value>
+  </data>
+  <data name="DestEditor.MirrorDesc" xml:space="preserve">
+    <value>保持目标与源完全一致 — 复制新增和更改的文件，删除多余的文件。</value>
+  </data>
+  <data name="DestEditor.AddOnlyDesc" xml:space="preserve">
+    <value>复制新增和更改的文件；从不删除目标中的文件。</value>
+  </data>
+  <data name="DestEditor.MoveDesc" xml:space="preserve">
+    <value>将匹配的文件移动到目标，并从源中移除。</value>
+  </data>
+  <data name="DestEditor.FilesToSyncLabel" xml:space="preserve">
+    <value>要同步的文件</value>
+  </data>
+  <data name="DestEditor.OnlyMatching" xml:space="preserve">
+    <value>仅匹配项</value>
+  </data>
+  <data name="DestEditor.MatchAnyGroup" xml:space="preserve">
+    <value>匹配任一组</value>
+  </data>
+  <data name="DestEditor.MatchAllGroups" xml:space="preserve">
+    <value>匹配所有组</value>
+  </data>
+  <data name="DestEditor.MatchAnyGroupTip" xml:space="preserve">
+    <value>同步至少匹配一个组的文件</value>
+  </data>
+  <data name="DestEditor.MatchAllGroupsTip" xml:space="preserve">
+    <value>仅同步匹配每个组的文件</value>
+  </data>
+  <data name="DestEditor.MatchLabel" xml:space="preserve">
+    <value>匹配</value>
+  </data>
+  <data name="DestEditor.AnyRule" xml:space="preserve">
+    <value>任一规则</value>
+  </data>
+  <data name="DestEditor.AllRules" xml:space="preserve">
+    <value>所有规则</value>
+  </data>
+  <data name="DestEditor.AnyRuleTip" xml:space="preserve">
+    <value>任一规则匹配时，文件即匹配此组（或）</value>
+  </data>
+  <data name="DestEditor.AllRulesTip" xml:space="preserve">
+    <value>仅当每条规则都匹配时，文件才匹配此组（且）</value>
+  </data>
+  <data name="DestEditor.RemoveGroupTip" xml:space="preserve">
+    <value>移除组</value>
+  </data>
+  <data name="DestEditor.ExcludeTip" xml:space="preserve">
+    <value>排除 — 同步除匹配此规则以外的所有文件</value>
+  </data>
+  <data name="DestEditor.RemoveTip" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
+    <value>例如 photos/2024 或 jpg</value>
+  </data>
+  <data name="DestEditor.AddGroup" xml:space="preserve">
+    <value>添加组</value>
+  </data>
+  <data name="DestEditor.AddGroupTip" xml:space="preserve">
+    <value>组合多个组以表达例如（docs 或 photos）且 jpg</value>
+  </data>
+  <data name="DestEditor.VerificationLabel" xml:space="preserve">
+    <value>校验</value>
+  </data>
+  <data name="DestEditor.VerifyContents" xml:space="preserve">
+    <value>每次复制后校验文件内容（xxHash）</value>
+  </data>
+  <data name="DestEditor.VerifyNetworkWarning" xml:space="preserve">
+    <value>这是网络位置。内容校验会通过网络重新读取每个已复制的文件（更慢、占用更多带宽）。它可以防范网络协议无法发现的静默/硬件损坏。</value>
+  </data>
+  <data name="DestEditor.DeleteModeLabel" xml:space="preserve">
+    <value>删除多余文件时</value>
+  </data>
+  <data name="DestEditor.ConfirmLargeDeletions" xml:space="preserve">
+    <value>大量删除前确认</value>
+  </data>
+  <data name="DestEditor.AskWhenDeletingMoreThan" xml:space="preserve">
+    <value>当删除超过</value>
+  </data>
+  <data name="DestEditor.PercentOfDestination" xml:space="preserve">
+    <value>% 的目标内容时询问</value>
+  </data>
+  <data name="DestEditor.NestedPathHint" xml:space="preserve">
+    <value>目标必须是源之外的独立文件夹（也不能包含源）。</value>
+  </data>
+  <data name="DestEditor.DestinationOverlapHintFormat" xml:space="preserve">
+    <value>此文件夹与任务“{0}”的一个目标重叠 — 任务之间不能共享目标。</value>
+  </data>
+  <data name="DestEditor.MissingFolderHint" xml:space="preserve">
+    <value>此文件夹尚不存在 — 将在首次运行时创建。请仔细检查拼写。</value>
+  </data>
+
+  <!-- Enum display names -->
+  <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
+    <value>镜像</value>
+  </data>
+  <data name="Enum.SyncStrategy.AddOnly" xml:space="preserve">
+    <value>仅添加</value>
+  </data>
+  <data name="Enum.SyncStrategy.Move" xml:space="preserve">
+    <value>移动</value>
+  </data>
+  <data name="Enum.DeleteMode.Recycle" xml:space="preserve">
+    <value>回收站</value>
+  </data>
+  <data name="Enum.DeleteMode.Permanent" xml:space="preserve">
+    <value>永久删除</value>
+  </data>
+  <data name="Enum.FilterKind.Path" xml:space="preserve">
+    <value>路径</value>
+  </data>
+  <data name="Enum.FilterKind.Extension" xml:space="preserve">
+    <value>扩展名</value>
+  </data>
+
+  <!-- Native folder-picker titles -->
+  <data name="Dialog.SelectSourceFolder" xml:space="preserve">
+    <value>选择源文件夹</value>
+  </data>
+  <data name="Dialog.SelectDestinationFolder" xml:space="preserve">
+    <value>选择目标文件夹</value>
+  </data>
+
+  <!-- Settings dialog -->
+  <data name="Settings.Title" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Settings.LanguageLabel" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings.SystemDefault" xml:space="preserve">
+    <value>系统默认</value>
+  </data>
+  <data name="Settings.StartupLabel" xml:space="preserve">
+    <value>启动</value>
+  </data>
+  <data name="Settings.StartWithWindows" xml:space="preserve">
+    <value>随 Windows 启动 SyncMaid</value>
+  </data>
+  <data name="Settings.StartWithWindowsDesc" xml:space="preserve">
+    <value>登录时打开主窗口。</value>
+  </data>
+  <data name="Settings.StartupDisabledByWindows" xml:space="preserve">
+    <value>SyncMaid 的开机启动已在 Windows 任务管理器（启动应用）中被关闭。请在那里重新开启以允许随 Windows 启动。</value>
+  </data>
+  <data name="Settings.WindowLabel" xml:space="preserve">
+    <value>窗口</value>
+  </data>
+  <data name="Settings.CloseToTray" xml:space="preserve">
+    <value>关闭时最小化到系统托盘而不退出</value>
+  </data>
+  <data name="Settings.CloseToTrayDesc" xml:space="preserve">
+    <value>关闭窗口后 SyncMaid 会继续在托盘中运行，定时和监视任务照常同步。</value>
+  </data>
+  <data name="Settings.StorageLabel" xml:space="preserve">
+    <value>存储</value>
+  </data>
+  <data name="Settings.StoragePortable" xml:space="preserve">
+    <value>应用旁边（便携模式）</value>
+  </data>
+  <data name="Settings.StorageAppData" xml:space="preserve">
+    <value>应用数据文件夹</value>
+  </data>
+  <data name="Settings.SwitchToPortable" xml:space="preserve">
+    <value>将数据移到应用旁边（便携模式）</value>
+  </data>
+  <data name="Settings.SwitchToAppData" xml:space="preserve">
+    <value>将数据移到应用数据文件夹</value>
+  </data>
+  <data name="Settings.SwitchStorageDesc" xml:space="preserve">
+    <value>将你的任务和设置移到新位置，并重启 SyncMaid。</value>
+  </data>
+  <data name="Settings.StorageNotWritableFormat" xml:space="preserve">
+    <value>无法使用 {0} — 该文件夹不可写（安装在 Program Files 下的便携版需要一个可写位置）。</value>
+  </data>
+  <data name="Settings.StorageMoveFailed" xml:space="preserve">
+    <value>无法移动你的数据 — 数据仍保留在原处。</value>
+  </data>
+  <data name="Settings.Done" xml:space="preserve">
+    <value>完成</value>
+  </data>
+
+  <!-- Mirror mass-delete confirmation window -->
+  <data name="MirrorDelete.WindowTitle" xml:space="preserve">
+    <value>SyncMaid — 确认删除</value>
+  </data>
+  <data name="MirrorDelete.ReviewDeletions" xml:space="preserve">
+    <value>检查将删除的内容</value>
+  </data>
+  <data name="MirrorDelete.ExplanationRecycleFormat" xml:space="preserve">
+    <value>同步“{0}”会将 {1} 个文件移入回收站 — 它们已不在源中。</value>
+  </data>
+  <data name="MirrorDelete.ExplanationPermanentFormat" xml:space="preserve">
+    <value>同步“{0}”会永久删除 {1} 个已不在源中的文件。</value>
+  </data>
+  <data name="MirrorDelete.KeepThem" xml:space="preserve">
+    <value>保留它们</value>
+  </data>
+  <data name="MirrorDelete.MoveToRecycleBin" xml:space="preserve">
+    <value>移入回收站</value>
+  </data>
+  <data name="MirrorDelete.DeleteCount.One" xml:space="preserve">
+    <value>删除 {0} 个文件</value>
+  </data>
+  <data name="MirrorDelete.DeleteCount.Other" xml:space="preserve">
+    <value>删除 {0} 个文件</value>
+  </data>
+  <data name="MirrorDelete.MoreFormat" xml:space="preserve">
+    <value>…还有 {0} 个</value>
+  </data>
+
+  <!-- Tray icon menu -->
+  <data name="Tray.ShowMainWindow" xml:space="preserve">
+    <value>显示主窗口</value>
+  </data>
+  <data name="Tray.Exit" xml:space="preserve">
+    <value>退出</value>
   </data>
 </root>
