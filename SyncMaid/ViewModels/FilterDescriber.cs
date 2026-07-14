@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using SyncMaid.Core.Filtering;
+using SyncMaid.Lang;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
@@ -8,6 +10,8 @@ namespace SyncMaid.ViewModels;
 /// Renders a <see cref="FilterRule"/> expression as compact plain text — e.g.
 /// <c>docs/ and (jpg or png)</c> — for the editor's live preview and the destination-row
 /// badge. Lives in the app layer to keep display strings out of the domain model.
+/// The connective resources carry their own surrounding spacing (" and " in English,
+/// none in CJK), so joining concatenates them verbatim.
 /// </summary>
 public static class FilterDescriber
 {
@@ -16,9 +20,9 @@ public static class FilterDescriber
     /// <summary>Describes one rule using the labelled wording shared by rule rows.</summary>
     public static string DescribeRow(FilterRule rule) => rule switch
     {
-        AllFilesFilter => "All files",
-        PathFilter path => $"Path: {path.Prefix}",
-        ExtensionFilter extension => $"Extension: {extension.Extension}",
+        AllFilesFilter => Strings.Filter_AllFiles,
+        PathFilter path => Localizer.Format(Strings.Filter_PathRowFormat, path.Prefix),
+        ExtensionFilter extension => Localizer.Format(Strings.Filter_ExtensionRowFormat, extension.Extension),
         // Composite expression from hand-edited JSON: use its compact plain-text form.
         _ => Describe(rule),
     };
@@ -26,19 +30,19 @@ public static class FilterDescriber
     /// <summary>Describes a persisted filter list (OR semantics across elements).</summary>
     public static string Describe(IReadOnlyList<FilterRule> filters) => filters switch
     {
-        [] => "nothing",
+        [] => Strings.Filter_Nothing,
         [var single] => Describe(single),
-        _ => Join(filters, " or ", nested: false),
+        _ => Join(filters, Strings.Filter_Or, nested: false),
     };
 
     private static string Describe(FilterRule rule, bool nested) => rule switch
     {
-        AllFilesFilter => "all files",
+        AllFilesFilter => Strings.Filter_AllFilesInline,
         PathFilter path => path.Prefix.TrimEnd('/', '\\') + "/",
         ExtensionFilter extension => extension.Extension.TrimStart('.'),
-        NotFilter not => "not " + Describe(not.Rule, nested: true),
-        AllOfFilter allOf => Join(allOf.Rules, " and ", nested),
-        AnyOfFilter anyOf => Join(anyOf.Rules, " or ", nested),
+        NotFilter not => Strings.Filter_Not + Describe(not.Rule, nested: true),
+        AllOfFilter allOf => Join(allOf.Rules, Strings.Filter_And, nested),
+        AnyOfFilter anyOf => Join(anyOf.Rules, Strings.Filter_Or, nested),
         _ => rule.ToString() ?? string.Empty,
     };
 
@@ -46,7 +50,7 @@ public static class FilterDescriber
     {
         if (rules.Count == 0)
         {
-            return "nothing";
+            return Strings.Filter_Nothing;
         }
 
         var joined = string.Join(connective, rules.Select(rule => Describe(rule, nested: true)));

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
+using SyncMaid.Lang;
 using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
@@ -65,7 +66,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         Func<string, string?>? destinationConflicts = null)
         : base(
             folderPicker,
-            "Select Destination Folder",
+            Strings.Dialog_SelectDestinationFolder,
             existing?.Id,
             existing?.Name,
             existing?.LocalPath,
@@ -122,7 +123,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     /// <summary>Tooltip for the disabled Move option; null when Move is available.</summary>
     public string? MoveUnavailableHint =>
-        CanChooseMove ? null : "A Move destination must be the only destination of its task.";
+        CanChooseMove ? null : Strings.Common_MoveExclusiveHint;
 
     /// <summary>The rule groups; each combines its own rules with its ANY/ALL connective.</summary>
     public ObservableCollection<FilterGroupViewModel> Groups { get; }
@@ -138,8 +139,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         {
             var filters = BuildFilters();
             return filters.Count == 0
-                ? "No rules yet — nothing will be synced."
-                : "Syncs: " + FilterDescriber.Describe(filters);
+                ? Strings.Filter_NoRulesPreview
+                : Localizer.Format(Strings.Filter_SyncsPreviewFormat, FilterDescriber.Describe(filters));
         }
     }
 
@@ -153,10 +154,10 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <summary>Explains a blocked nested path or cross-task overlap, or the non-blocking
     /// missing-folder hint.</summary>
     public string PathHintText => HasUnsafeNesting
-        ? "Destination must be a separate folder outside the source (and not contain it)."
+        ? Strings.DestEditor_NestedPathHint
         : DestinationConflictName is { } conflictingTask
-            ? $"This folder overlaps a destination of task \"{conflictingTask}\" — tasks never share destinations."
-            : "This folder doesn't exist yet — it will be created on the first run. Double-check for typos.";
+            ? Localizer.Format(Strings.DestEditor_DestinationOverlapHintFormat, conflictingTask)
+            : Strings.DestEditor_MissingFolderHint;
 
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()

@@ -6,6 +6,7 @@
              xmlns:conv="using:SyncMaid.Converters"
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:model="using:SyncMaid.Core.Model"
+             xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="510"
              x:Class="SyncMaid.Views.DestinationEditorView"
              x:DataType="vm:DestinationEditorViewModel"
@@ -13,28 +14,28 @@
 
     <Border Classes="dialogCard" Width="510" MaxHeight="640">
         <DockPanel Margin="24">
-            <TextBlock DockPanel.Dock="Top" Text="Destination" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
+            <TextBlock DockPanel.Dock="Top" Text="{l:Loc DestEditor.Title}" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
 
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,16,0,0">
-                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
-                <Button Classes="primary" Content="Save destination" Command="{Binding OKCommand}" />
+                <Button Classes="secondary" Content="{l:Loc Common.Cancel}" Command="{Binding CancelCommand}" />
+                <Button Classes="primary" Content="{l:Loc DestEditor.Save}" Command="{Binding OKCommand}" />
             </StackPanel>
 
             <ScrollViewer>
                 <StackPanel Spacing="16" Margin="0,0,12,0">
                     <StackPanel>
-                        <TextBlock Text="Name" Classes="label" />
+                        <TextBlock Text="{l:Loc Common.NameLabel}" Classes="label" />
                         <TextBox Text="{Binding Name}" />
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Destination folder" Classes="label" />
+                        <TextBlock Text="{l:Loc DestEditor.FolderLabel}" Classes="label" />
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBox Grid.Column="0" Text="{Binding Path}" Classes="path" />
                             <Button Grid.Column="1" Classes="secondary" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
-                                    <TextBlock Text="Browse" />
+                                    <TextBlock Text="{l:Loc Common.Browse}" />
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -54,15 +55,15 @@
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Sync strategy" Classes="label" />
+                        <TextBlock Text="{l:Loc DestEditor.StrategyLabel}" Classes="label" />
                         <StackPanel Spacing="8">
                             <RadioButton Classes="card" GroupName="strategy"
                                          IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Mirror}}">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <mi:MaterialIcon Grid.Column="0" Kind="Sync" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Mirror" FontWeight="Medium" />
-                                        <TextBlock Text="Keep the destination identical — copies new and changed files, deletes extras." Classes="muted" TextWrapping="Wrap" />
+                                        <TextBlock Text="{l:Loc Enum.SyncStrategy.Mirror}" FontWeight="Medium" />
+                                        <TextBlock Text="{l:Loc DestEditor.MirrorDesc}" Classes="muted" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
                             </RadioButton>
@@ -71,8 +72,8 @@
                                 <Grid ColumnDefinitions="Auto,*">
                                     <mi:MaterialIcon Grid.Column="0" Kind="Plus" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Add-only" FontWeight="Medium" />
-                                        <TextBlock Text="Copy new and changed files; never delete from the destination." Classes="muted" TextWrapping="Wrap" />
+                                        <TextBlock Text="{l:Loc Enum.SyncStrategy.AddOnly}" FontWeight="Medium" />
+                                        <TextBlock Text="{l:Loc DestEditor.AddOnlyDesc}" Classes="muted" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
                             </RadioButton>
@@ -84,8 +85,8 @@
                                 <Grid ColumnDefinitions="Auto,*">
                                     <mi:MaterialIcon Grid.Column="0" Kind="ArrowRight" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Move" FontWeight="Medium" />
-                                        <TextBlock Text="Move matching files to the destination, removing them from the source." Classes="muted" TextWrapping="Wrap" />
+                                        <TextBlock Text="{l:Loc Enum.SyncStrategy.Move}" FontWeight="Medium" />
+                                        <TextBlock Text="{l:Loc DestEditor.MoveDesc}" Classes="muted" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
                             </RadioButton>
@@ -93,18 +94,18 @@
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Files to sync" Classes="label" />
+                        <TextBlock Text="{l:Loc DestEditor.FilesToSyncLabel}" Classes="label" />
                         <Grid ColumnDefinitions="*,8,*">
                             <RadioButton Grid.Column="0" Classes="segment" GroupName="files" IsChecked="{Binding SyncAll}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="Asterisk" Width="15" Height="15" />
-                                    <TextBlock Text="All files" />
+                                    <TextBlock Text="{l:Loc Filter.AllFiles}" />
                                 </StackPanel>
                             </RadioButton>
                             <RadioButton Grid.Column="2" Classes="segment" GroupName="files" IsChecked="{Binding !SyncAll}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="FilterOutline" Width="15" Height="15" />
-                                    <TextBlock Text="Only matching" />
+                                    <TextBlock Text="{l:Loc DestEditor.OnlyMatching}" />
                                 </StackPanel>
                             </RadioButton>
                         </Grid>
@@ -114,12 +115,12 @@
                                  there is more than one group). -->
                             <Grid ColumnDefinitions="*,8,*" IsVisible="{Binding HasMultipleGroups}">
                                 <RadioButton Grid.Column="0" Classes="segment" GroupName="groupsConnective" IsChecked="{Binding !MatchAllGroups}"
-                                             ToolTip.Tip="Sync files that match at least one group">
-                                    <TextBlock Text="Match any group" />
+                                             ToolTip.Tip="{l:Loc DestEditor.MatchAnyGroupTip}">
+                                    <TextBlock Text="{l:Loc DestEditor.MatchAnyGroup}" />
                                 </RadioButton>
                                 <RadioButton Grid.Column="2" Classes="segment" GroupName="groupsConnective" IsChecked="{Binding MatchAllGroups}"
-                                             ToolTip.Tip="Sync only files that match every group">
-                                    <TextBlock Text="Match all groups" />
+                                             ToolTip.Tip="{l:Loc DestEditor.MatchAllGroupsTip}">
+                                    <TextBlock Text="{l:Loc DestEditor.MatchAllGroups}" />
                                 </RadioButton>
                             </Grid>
 
@@ -132,18 +133,18 @@
                                                      when there are multiple groups. No GroupName on the
                                                      radios — they group by parent, per card. -->
                                                 <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                                                    <TextBlock Grid.Column="0" Text="Match" Classes="muted" VerticalAlignment="Center" Margin="2,0,8,0" />
+                                                    <TextBlock Grid.Column="0" Text="{l:Loc DestEditor.MatchLabel}" Classes="muted" VerticalAlignment="Center" Margin="2,0,8,0" />
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                                                         <RadioButton Classes="segment small" IsChecked="{Binding !MatchAll}"
-                                                                     ToolTip.Tip="A file matches this group when any rule matches (OR)">
-                                                            <TextBlock Text="any rule" />
+                                                                     ToolTip.Tip="{l:Loc DestEditor.AnyRuleTip}">
+                                                            <TextBlock Text="{l:Loc DestEditor.AnyRule}" />
                                                         </RadioButton>
                                                         <RadioButton Classes="segment small" IsChecked="{Binding MatchAll}"
-                                                                     ToolTip.Tip="A file matches this group only when every rule matches (AND)">
-                                                            <TextBlock Text="all rules" />
+                                                                     ToolTip.Tip="{l:Loc DestEditor.AllRulesTip}">
+                                                            <TextBlock Text="{l:Loc DestEditor.AllRules}" />
                                                         </RadioButton>
                                                     </StackPanel>
-                                                    <Button Grid.Column="3" Classes="icon" Width="26" Height="26" ToolTip.Tip="Remove group"
+                                                    <Button Grid.Column="3" Classes="icon" Width="26" Height="26" ToolTip.Tip="{l:Loc DestEditor.RemoveGroupTip}"
                                                             IsVisible="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).HasMultipleGroups, FallbackValue=False}"
                                                             Command="{Binding $parent[ItemsControl].((vm:DestinationEditorViewModel)DataContext).RemoveGroupCommand, FallbackValue={x:Null}}"
                                                             CommandParameter="{Binding}">
@@ -159,12 +160,12 @@
                                                                     <mi:MaterialIcon Grid.Column="0" Kind="FilterOutline" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}" />
                                                                     <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}" />
                                                                     <ToggleButton Grid.Column="2" Classes="exclude" IsChecked="{Binding IsExcluded}" Margin="0,0,4,0"
-                                                                                  ToolTip.Tip="Exclude — sync everything except files matching this rule">
+                                                                                  ToolTip.Tip="{l:Loc DestEditor.ExcludeTip}">
                                                                         <mi:MaterialIcon Kind="Cancel" Width="13" Height="13" />
                                                                     </ToggleButton>
                                                                     <Button Grid.Column="3" Classes="icon" Width="26" Height="26"
                                                                             Command="{Binding $parent[ItemsControl].((vm:FilterGroupViewModel)DataContext).RemoveRuleCommand, FallbackValue={x:Null}}"
-                                                                            CommandParameter="{Binding}" ToolTip.Tip="Remove">
+                                                                            CommandParameter="{Binding}" ToolTip.Tip="{l:Loc DestEditor.RemoveTip}">
                                                                         <mi:MaterialIcon Kind="Close" Width="13" Height="13" />
                                                                     </Button>
                                                                 </Grid>
@@ -174,12 +175,19 @@
                                                 </ItemsControl>
 
                                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                                    <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}" SelectedItem="{Binding SelectedFilterKind}" Width="120" />
-                                                    <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path" PlaceholderText="e.g. photos/2024 or jpg" />
+                                                    <ComboBox Grid.Column="0" ItemsSource="{Binding FilterKinds}" SelectedItem="{Binding SelectedFilterKind}" Width="120">
+                                                        <ComboBox.ItemTemplate>
+                                                            <!-- Raw enum values would render via ToString; the converter localizes them. -->
+                                                            <DataTemplate x:DataType="vm:FilterKind">
+                                                                <TextBlock Text="{Binding Converter={x:Static conv:FilterKindToTextConverter.Instance}}" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <TextBox Grid.Column="1" Text="{Binding NewFilterPattern}" Margin="8,0" Classes="path" PlaceholderText="{l:Loc DestEditor.PatternPlaceholder}" />
                                                     <Button Grid.Column="2" Classes="primary" Command="{Binding AddRuleCommand}">
                                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                                             <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
-                                                            <TextBlock Text="Add" />
+                                                            <TextBlock Text="{l:Loc Common.Add}" />
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
@@ -190,10 +198,10 @@
                             </ItemsControl>
 
                             <Button Classes="secondary" Command="{Binding AddGroupCommand}" HorizontalAlignment="Left"
-                                    ToolTip.Tip="Combine groups to express e.g. (docs or photos) and jpg">
+                                    ToolTip.Tip="{l:Loc DestEditor.AddGroupTip}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
-                                    <TextBlock Text="Add group" />
+                                    <TextBlock Text="{l:Loc DestEditor.AddGroup}" />
                                 </StackPanel>
                             </Button>
 
@@ -209,46 +217,46 @@
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Verification" Classes="label" />
+                        <TextBlock Text="{l:Loc DestEditor.VerificationLabel}" Classes="label" />
                         <CheckBox IsChecked="{Binding VerifyContents}"
-                                  Content="Verify file contents (xxHash) after each copy" />
+                                  Content="{l:Loc DestEditor.VerifyContents}" />
                         <Border IsVisible="{Binding ShowVerifyNetworkWarning}" Classes="filterRow" Margin="0,8,0,0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
                                                  Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
                                 <TextBlock Classes="muted" TextWrapping="Wrap"
-                                           Text="This is a network location. Content verification re-reads every copied file over the network (slower, more bandwidth). It guards against silent/hardware corruption the network protocol does not." />
+                                           Text="{l:Loc DestEditor.VerifyNetworkWarning}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Mirror}}">
-                        <TextBlock Text="When removing extra files" Classes="label" />
+                        <TextBlock Text="{l:Loc DestEditor.DeleteModeLabel}" Classes="label" />
                         <Grid ColumnDefinitions="*,8,*">
                             <RadioButton Grid.Column="0" Classes="segment" GroupName="delete"
                                          IsChecked="{Binding SelectedDeleteMode, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:DeleteMode.Recycle}}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="RecycleVariant" Width="15" Height="15" />
-                                    <TextBlock Text="Recycle Bin" />
+                                    <TextBlock Text="{l:Loc Enum.DeleteMode.Recycle}" />
                                 </StackPanel>
                             </RadioButton>
                             <RadioButton Grid.Column="2" Classes="segment" GroupName="delete"
                                          IsChecked="{Binding SelectedDeleteMode, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:DeleteMode.Permanent}}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <mi:MaterialIcon Kind="DeleteForeverOutline" Width="15" Height="15" />
-                                    <TextBlock Text="Delete permanently" />
+                                    <TextBlock Text="{l:Loc Enum.DeleteMode.Permanent}" />
                                 </StackPanel>
                             </RadioButton>
                         </Grid>
 
                         <CheckBox IsChecked="{Binding ConfirmLargeDeletions}"
-                                  Content="Confirm before a large deletion" Margin="0,10,0,0" />
+                                  Content="{l:Loc DestEditor.ConfirmLargeDeletions}" Margin="0,10,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="24,2,0,0"
                                     IsVisible="{Binding ConfirmLargeDeletions}">
-                            <TextBlock Text="Ask when deleting more than" Classes="muted" VerticalAlignment="Center" />
+                            <TextBlock Text="{l:Loc DestEditor.AskWhenDeletingMoreThan}" Classes="muted" VerticalAlignment="Center" />
                             <NumericUpDown Value="{Binding MassDeletePercent}" Minimum="1" Maximum="100"
                                            Increment="5" FormatString="0" Width="120" />
-                            <TextBlock Text="% of the destination" Classes="muted" VerticalAlignment="Center" />
+                            <TextBlock Text="{l:Loc DestEditor.PercentOfDestination}" Classes="muted" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

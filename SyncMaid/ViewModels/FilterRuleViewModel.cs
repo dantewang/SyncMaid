@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SyncMaid.Core.Filtering;
+using SyncMaid.Lang;
+using SyncMaid.Services;
 
 namespace SyncMaid.ViewModels;
 
@@ -33,7 +35,7 @@ public sealed partial class FilterRuleViewModel : ViewModelBase
         get
         {
             var body = FilterDescriber.DescribeRow(Rule);
-            return IsExcluded ? $"Exclude — {body}" : body;
+            return IsExcluded ? Localizer.Format(Strings.Filter_ExcludeRowFormat, body) : body;
         }
     }
 }
