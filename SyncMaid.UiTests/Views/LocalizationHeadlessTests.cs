@@ -1,7 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Microsoft.Extensions.Logging.Abstractions;
+using SyncMaid.Core.Filtering;
+using SyncMaid.Core.Model;
+using SyncMaid.Core.Triggers;
 using SyncMaid.Services;
+using SyncMaid.UiTests.Fakes;
+using SyncMaid.ViewModels;
+using SyncMaid.Views;
 
 namespace SyncMaid.UiTests.Views;
 
@@ -46,6 +57,50 @@ public class LocalizationHeadlessTests
         finally
         {
             Localizer.Instance.Apply("en");
+        }
+    }
+
+    [AvaloniaFact]
+    public void Switching_the_language_in_settings_re_renders_the_main_window_and_persists()
+    {
+        var dest = new Destination("Backup", @"D:\b", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var task = new SyncTask("Photos", @"C:\p", new ManualTrigger(), [dest]);
+        var statusStore = new RecordingStatusStore(new Dictionary<Guid, DestinationSyncStatus>
+        {
+            [dest.Id] = new(dest.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 5, null),
+        });
+        var settings = new FakeAppSettingsService();
+        var viewModel = new MainWindowViewModel(
+            new FakeDialogService(), new RecordingTaskStore([task]), statusStore, new FakeSyncEngine(),
+            new FakeTriggerSourceFactory(), new FakeUiDispatcher(), new DialogHost(),
+            new FakeAutoStartService(), new FakeMirrorDeleteConfirmer(), settings,
+            new FakeConfigLocationService(), new FakeAppRestartService(), NullLoggerFactory.Instance);
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            List<string?> Texts() =>
+                window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
+
+            Assert.Contains("Run all", Texts());     // toolbar {l:Loc}
+            Assert.Contains("All synced", Texts());  // computed VM health string
+
+            // Pick a language exactly as the Settings dialog would.
+            var settingsVm = new SettingsViewModel(
+                new FakeAutoStartService(), settings,
+                new FakeConfigLocationService(), new FakeAppRestartService());
+            settingsVm.SelectedLanguage = settingsVm.Languages.Single(option => option.Tag == "zh-Hans");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("zh-Hans", settings.Language); // persisted
+            Assert.Contains("运行全部", Texts());        // {l:Loc} re-rendered in place
+            Assert.Contains("全部已同步", Texts());      // VM computed string re-rendered
+        }
+        finally
+        {
+            Localizer.Instance.Apply("en");
+            viewModel.Dispose();
         }
     }
 }

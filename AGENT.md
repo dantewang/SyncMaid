@@ -14,6 +14,28 @@ Guidance for AI agents working in this repository.
   attached property in `App.axaml` (see https://docs.avaloniaui.net/controls/navigation/trayicon),
   not with `new TrayIcon(...)` + `TrayIcon.SetIcons(...)` in `App.axaml.cs`.
 
+## Localization
+
+- **Never hardcode user-facing text.** Every display string lives in
+  `SyncMaid/Lang/Strings.resx` (neutral English), with full translations in
+  `Strings.zh-Hans.resx`, `Strings.zh-Hant.resx`, and `Strings.ja.resx` — keep all four
+  files key-identical. Brand strings ("SyncMaid" window title, tray tooltip) and the cron
+  placeholder pattern are the only deliberate literals.
+- **XAML**: `{l:Loc Some.Key}` with `xmlns:l="using:SyncMaid.Markup"` — a reflection-free
+  compiled binding to the `Localizer` singleton that re-renders in place when the language
+  switches at runtime.
+- **C#**: `Strings.Some_Key` (dots become underscores) for plain strings,
+  `Localizer.Format(Strings.Some_KeyFormat, ...)` for composite formats, and
+  `Localizer.Plural("Some.Key", count)` for `.One`/`.Other` plural pairs.
+- After adding/renaming/removing keys in `Strings.resx`, regenerate the accessor class:
+  `powershell -File tools/generate-strings.ps1`.
+- Engine (`SyncMaid.Core`) exception messages stay English — localize only the UI wrapper
+  sentence around them. Core carries no display strings.
+- Tests that call `Localizer.Apply` must be `[AvaloniaFact]` (the change notifies UI-bound
+  view models, so it must run on the UI thread) and must restore English in `finally`;
+  the test bootstrap pins English and disables test parallelization because the UI culture
+  is process-global.
+
 ## Task shape conventions
 
 These are product rules, not implementation details: enforce them, don't engineer around
