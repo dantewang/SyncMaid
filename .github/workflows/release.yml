@@ -36,7 +36,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json  # single source of truth, kept current by Dependabot
 
       - name: Publish native AOT (win-x64)
         run: dotnet publish SyncMaid/SyncMaid.csproj -c Release -r win-x64 -o publish
