@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0  # MinVer derives the version from the full tag history
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json  # single source of truth, kept current by Dependabot
 
