@@ -493,6 +493,12 @@
   <data name="Settings.Done" xml:space="preserve">
     <value>完成</value>
   </data>
+  <data name="Settings.AboutLabel" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Settings.VersionFormat" xml:space="preserve">
+    <value>版本 {0}</value>
+  </data>
 
   <!-- Mirror mass-delete confirmation window -->
   <data name="MirrorDelete.WindowTitle" xml:space="preserve">

@@ -308,6 +308,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Syncing".</summary>
     public static string Progress_Syncing => Get("Progress.Syncing");
 
+    /// <summary>Looks up a localized string similar to "About".</summary>
+    public static string Settings_AboutLabel => Get("Settings.AboutLabel");
+
     /// <summary>Looks up a localized string similar to "Close to the system tray instead of exiting".</summary>
     public static string Settings_CloseToTray => Get("Settings.CloseToTray");
 
@@ -361,6 +364,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Settings".</summary>
     public static string Settings_Title => Get("Settings.Title");
+
+    /// <summary>Looks up a localized string similar to "Version {0}".</summary>
+    public static string Settings_VersionFormat => Get("Settings.VersionFormat");
 
     /// <summary>Looks up a localized string similar to "Window".</summary>
     public static string Settings_WindowLabel => Get("Settings.WindowLabel");

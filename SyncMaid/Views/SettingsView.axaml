@@ -68,6 +68,11 @@
                 </Border>
             </StackPanel>
 
+            <StackPanel>
+                <TextBlock Text="{l:Loc Settings.AboutLabel}" Classes="label" />
+                <TextBlock Text="{Binding AppVersion}" Classes="muted" />
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
                 <Button Classes="primary" Content="{l:Loc Settings.Done}" Command="{Binding DoneCommand}" />
             </StackPanel>

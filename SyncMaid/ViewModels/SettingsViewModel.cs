@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Persistence;
@@ -98,6 +99,24 @@ public partial class SettingsViewModel : DialogViewModel<bool>
 
     /// <summary>True when a storage notice should be shown.</summary>
     public bool HasStorageError => !string.IsNullOrEmpty(StorageError);
+
+    /// <summary>The app version for the About section, e.g. "Version 1.2.3". Derived from the
+    /// MinVer-stamped <see cref="AssemblyInformationalVersionAttribute"/> (tag-driven at build
+    /// time); the git-metadata suffix after "+" is trimmed off for display.</summary>
+    public string AppVersion => Localizer.Format(Strings.Settings_VersionFormat, ReadVersion());
+
+    private static string ReadVersion()
+    {
+        var informational = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrEmpty(informational))
+        {
+            return "0.0.0";
+        }
+
+        var plus = informational.IndexOf('+');
+        return plus >= 0 ? informational[..plus] : informational;
+    }
 
     // Migrates the config files to the other location and restarts so the new paths take
     // effect. Refuses (with a notice, no restart) if the target is not writable or the move

@@ -493,6 +493,12 @@
   <data name="Settings.Done" xml:space="preserve">
     <value>完了</value>
   </data>
+  <data name="Settings.AboutLabel" xml:space="preserve">
+    <value>バージョン情報</value>
+  </data>
+  <data name="Settings.VersionFormat" xml:space="preserve">
+    <value>バージョン {0}</value>
+  </data>
 
   <!-- Mirror mass-delete confirmation window -->
   <data name="MirrorDelete.WindowTitle" xml:space="preserve">

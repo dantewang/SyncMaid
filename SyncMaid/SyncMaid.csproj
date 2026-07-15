@@ -15,6 +15,11 @@
              for normal builds too, so regressions surface early. Native publish needs the
              MSVC C++ toolchain (e.g. from a VS Developer Command Prompt). -->
         <PublishAot>true</PublishAot>
+        <!-- Versioning is tag-driven via MinVer: the app version is derived from the nearest
+             `v*` git tag (e.g. tag `v1.2.3` → 1.2.3), with an auto pre-release version for
+             untagged builds. Nothing to bump by hand; the SettingsView reads it back at
+             runtime from AssemblyInformationalVersion. -->
+        <MinVerTagPrefix>v</MinVerTagPrefix>
     </PropertyGroup>
 
     <ItemGroup>
@@ -32,6 +37,7 @@
         <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+        <PackageReference Include="MinVer" Version="6.0.0" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
