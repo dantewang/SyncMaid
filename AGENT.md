@@ -56,6 +56,13 @@ run fails without touching files), so hand-edited config is covered too.
   precondition (the source is the truth), so combinations have no coherent semantics —
   within a run they are order-dependent, and across runs Mirror+Move deadlocks on the
   empty-source guard.
+- **Mirror takes no file filters.** A Mirror destination always syncs all files.
+  Rationale: Mirror's contract is tree identity — whenever no task is running, a
+  file-tree compare of source and destination reports identical, empty directories
+  included — and a filtered subset contradicts that by definition. The editor hides
+  the filter section for Mirror and persists a lone all-files filter (normalizing
+  legacy config on save); the engine refuses a hand-edited Mirror destination whose
+  filter list is anything but a lone all-files filter.
 - **Tasks never share same-kind paths.** Across tasks, a source may not equal or nest
   with another task's source, and a destination may not equal or nest with another
   task's destination — in either direction. A destination feeding another task's source

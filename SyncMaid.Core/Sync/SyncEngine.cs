@@ -1,3 +1,4 @@
+using SyncMaid.Core.Filtering;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 using System.Runtime.ExceptionServices;
@@ -63,6 +64,7 @@ public sealed class SyncEngine : ISyncEngine
                 var destination = task.Destinations.FirstOrDefault(d => d.Id == destinationId);
                 if (destination is null
                     || destination.Strategy != SyncStrategy.Mirror
+                    || destination.Filters is not [AllFilesFilter] // invalid config never runs, so preview nothing
                     || RelativePaths.Overlaps(destination.LocalPath, task.SourcePath))
                 {
                     return MirrorDeletePreview.None;
@@ -177,20 +179,24 @@ public sealed class SyncEngine : ISyncEngine
                     "Destination must be a separate folder outside the source (and not contain it); no files were changed.");
             }
 
+            // Product rule: Mirror's contract is tree identity — the destination
+            // replicates the whole source tree — so file filters have no coherent
+            // meaning for it. The editor hides the filter section for Mirror;
+            // hand-edited config is refused here, before any file is touched.
+            if (destination.Strategy == SyncStrategy.Mirror
+                && destination.Filters is not [AllFilesFilter])
+            {
+                return new DestinationSyncStatus(
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                    "Mirror replicates the whole source tree and cannot be combined with file filters; no files were changed.");
+            }
+
             if (sourceEnumerationError is not null)
             {
                 sourceEnumerationError.Throw();
             }
 
             var filtered = sourceFiles.Where(destination.Includes).ToList();
-            if (destination.Strategy == SyncStrategy.Mirror
-                && filtered.Count == 0
-                && sourceFiles.Count > 0)
-            {
-                return new DestinationSyncStatus(
-                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
-                    "Filters matched no files; skipped deletions to avoid wiping the destination.");
-            }
 
             var provider = _destinations.Create(destination.Target);
 

@@ -48,6 +48,7 @@ public class DestinationEditorViewModelTests
         var vm = New();
         vm.Name = "Backup";
         vm.Path = @"D:\backup";
+        vm.SelectedStrategy = SyncStrategy.AddOnly; // Mirror has no filter section
         vm.SyncAll = false;
 
         Assert.False(vm.OKCommand.CanExecute(null));
@@ -58,6 +59,55 @@ public class DestinationEditorViewModelTests
         group.AddRuleCommand.Execute(null);
 
         Assert.True(vm.OKCommand.CanExecute(null));
+    }
+
+    // Product rule (AGENT.md): Mirror takes no file filters — the section is hidden
+    // and a lone all-files filter is persisted no matter what the editor holds.
+    [Fact]
+    public void Mirror_hides_the_filter_editor_and_always_saves_all_files()
+    {
+        var vm = New();
+        vm.Name = "Backup";
+        vm.Path = @"D:\backup";
+        Assert.Equal(SyncStrategy.Mirror, vm.SelectedStrategy);
+        Assert.False(vm.ShowFilterEditor);
+
+        vm.SyncAll = false; // hidden editor state must not block or leak into the save
+        Assert.True(vm.OKCommand.CanExecute(null));
+
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+
+        Assert.IsType<AllFilesFilter>(Assert.Single(result!.Filters));
+    }
+
+    [Fact]
+    public void Switching_the_strategy_toggles_the_filter_editor()
+    {
+        var vm = New();
+        Assert.False(vm.ShowFilterEditor);
+
+        vm.SelectedStrategy = SyncStrategy.AddOnly;
+        Assert.True(vm.ShowFilterEditor);
+
+        vm.SelectedStrategy = SyncStrategy.Mirror;
+        Assert.False(vm.ShowFilterEditor);
+    }
+
+    [Fact]
+    public void Saving_a_legacy_filtered_mirror_normalizes_it_to_all_files()
+    {
+        var existing = new Destination(
+            "Backup", @"D:\backup", [new ExtensionFilter("jpg")], SyncStrategy.Mirror);
+        var vm = New(existing: existing);
+        Assert.False(vm.ShowFilterEditor);
+
+        Destination? result = null;
+        vm.CloseRequested += d => result = d;
+        vm.OKCommand.Execute(null);
+
+        Assert.IsType<AllFilesFilter>(Assert.Single(result!.Filters));
     }
 
     [Fact]
@@ -141,6 +191,7 @@ public class DestinationEditorViewModelTests
         var vm = New();
         vm.Name = "Backup";
         vm.Path = @"D:\backup";
+        vm.SelectedStrategy = SyncStrategy.AddOnly; // Mirror has no filter section
         vm.SyncAll = false;
         return vm;
     }
@@ -257,7 +308,8 @@ public class DestinationEditorViewModelTests
             new AnyOfFilter([new PathFilter("docs"), new PathFilter("photos")]),
             new NotFilter(new ExtensionFilter("tmp")),
         ]);
-        var existing = new Destination("D", @"D:\d", [expression], SyncStrategy.Mirror);
+        // AddOnly: a filtered Mirror would be normalized to all-files on save.
+        var existing = new Destination("D", @"D:\d", [expression], SyncStrategy.AddOnly);
 
         var vm = New(existing: existing);
 

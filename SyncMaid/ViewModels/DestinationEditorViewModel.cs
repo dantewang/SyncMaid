@@ -28,6 +28,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     private bool _syncAll = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFilterEditor))]
+    [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
 
     [ObservableProperty]
@@ -125,6 +127,15 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     public string? MoveUnavailableHint =>
         CanChooseMove ? null : Strings.Common_MoveExclusiveHint;
 
+    /// <summary>
+    /// False for Mirror, hiding the whole "files to sync" section. Mirror's contract is
+    /// tree identity — the destination replicates the whole source tree — so file filters
+    /// are a conceptual conflict there. Group state is kept, so switching the strategy
+    /// back restores whatever was built; saving as Mirror persists a lone
+    /// <see cref="AllFilesFilter"/> (normalizing legacy hand-edited config too).
+    /// </summary>
+    public bool ShowFilterEditor => SelectedStrategy != SyncStrategy.Mirror;
+
     /// <summary>The rule groups; each combines its own rules with its ANY/ALL connective.</summary>
     public ObservableCollection<FilterGroupViewModel> Groups { get; }
 
@@ -162,7 +173,9 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
     {
-        IReadOnlyList<FilterRule> filters = SyncAll ? [new AllFilesFilter()] : BuildFilters();
+        IReadOnlyList<FilterRule> filters = !ShowFilterEditor || SyncAll
+            ? [new AllFilesFilter()]
+            : BuildFilters();
 
         Close(new Destination(Name, Path, filters, SelectedStrategy)
         {
@@ -180,7 +193,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         && !string.IsNullOrWhiteSpace(Path)
         && !HasUnsafeNesting
         && DestinationConflictName is null
-        && (SyncAll || Groups.Any(group => group.Rules.Count > 0));
+        && (!ShowFilterEditor || SyncAll || Groups.Any(group => group.Rules.Count > 0));
 
     // Task shape convention (AGENT.md): source and destinations never nest, in either
     // direction, for every strategy. The engine enforces the same rule at run start.

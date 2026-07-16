@@ -121,34 +121,25 @@ public class SyncEngineGuardTests
         Assert.Null(status.Error);
     }
 
-    [Theory]
-    [InlineData(0, 0)]
-    [InlineData(1, 0)]
-    [InlineData(20, 0.5)]
-    public async Task Mirror_with_no_filtered_source_files_fails_without_deletions(
-        int destinationFileCount,
-        double massDeleteThreshold)
+    // Product rule (AGENT.md): Mirror takes no file filters — its contract is tree
+    // identity, which a filtered subset contradicts. The editor prevents this; a
+    // hand-edited config is refused before any file is touched.
+    [Fact]
+    public async Task Mirror_with_file_filters_is_refused_without_touching_files()
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile(@"S:\src\photo.jpg", "source exists");
-        for (var i = 0; i < destinationFileCount; i++)
-        {
-            fs.AddFile($@"D:\dst\important{i}.txt", "keep");
-        }
+        fs.AddFile(@"D:\dst\important.txt", "keep");
+        var pathsBefore = fs.AllPaths;
 
         var destination = new Destination(
-            "filtered mirror", @"D:\dst", [new ExtensionFilter("pdf")], SyncStrategy.Mirror)
-        {
-            MassDeleteThreshold = massDeleteThreshold,
-        };
+            "filtered mirror", @"D:\dst", [new ExtensionFilter("pdf")], SyncStrategy.Mirror);
 
         var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
 
         Assert.Equal(SyncOutcome.Failed, status.Outcome);
-        Assert.Contains("filters matched no files", status.Error, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(
-            destinationFileCount,
-            fs.AllPaths.Count(path => path.StartsWith(@"D:/dst", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains("file filters", status.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(pathsBefore.OrderBy(p => p), fs.AllPaths.OrderBy(p => p));
     }
 
     private static InMemoryFileSystem MassDeleteScenario(out Destination dest)

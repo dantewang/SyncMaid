@@ -93,7 +93,9 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <StackPanel>
+                    <!-- Mirror replicates the whole source tree (tree identity), so the
+                         filter section only applies to the other strategies. -->
+                    <StackPanel IsVisible="{Binding ShowFilterEditor}">
                         <TextBlock Text="{l:Loc DestEditor.FilesToSyncLabel}" Classes="label" />
                         <Grid ColumnDefinitions="*,8,*">
                             <RadioButton Grid.Column="0" Classes="segment" GroupName="files" IsChecked="{Binding SyncAll}">
