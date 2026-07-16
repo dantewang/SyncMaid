@@ -37,6 +37,24 @@ public sealed record DeleteOperation(string RelativePath)
 }
 
 /// <summary>
+/// Create a destination directory so the destination replicates the source directory
+/// tree even where no files exist. Emitted only by Mirror, before its copies,
+/// parents-first. Idempotent: an existing directory is left as-is.
+/// </summary>
+public sealed record CreateDirectoryOperation(string RelativePath)
+    : SyncOperation(RelativePath);
+
+/// <summary>
+/// Remove a destination directory that no longer exists in the source. Emitted only by
+/// Mirror, after its <see cref="DeleteOperation"/>s, deepest-first, never for the
+/// destination root. Applied best-effort and non-recursively: a directory that gained
+/// content since planning (or already vanished) is skipped, so unknown content is
+/// never deleted.
+/// </summary>
+public sealed record DeleteDirectoryOperation(string RelativePath)
+    : SyncOperation(RelativePath);
+
+/// <summary>
 /// Move a file from the source into the destination: copy it across, then remove the
 /// source. Emitted only by the Move strategy. <c>SourceFullPath</c> is the absolute local
 /// source path.

@@ -32,6 +32,63 @@ public class SyncEngineTests
         Assert.False(fs.FileExists(@"D:\dst\orphan.txt"));
     }
 
+    // The Eagle shape: removing an item drops a whole per-item folder from the source;
+    // Mirror must remove the destination folder, not just the files in it.
+    [Fact]
+    public async Task End_to_end_mirror_run_removes_directories_no_longer_in_the_source()
+    {
+        var fs = new InMemoryFileSystem();
+        var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\image1\photo.png", "stale", t);
+        fs.AddFile(@"D:\dst\image1\thumb.png", "stale", t);
+        fs.AddFile(@"D:\dst\image1\metadata.json", "stale", t);
+
+        // 3 of the 4 destination files are orphans, but the ratio guard only arms on
+        // destinations holding at least MirrorGuard.MinDestinationFilesForRatioGuard files.
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.DoesNotContain(fs.AllPaths, path => path.StartsWith(@"D:/dst/image1"));
+        Assert.Contains(@"D:/dst/image1", fs.DeletedDirectories);
+    }
+
+    // The tree-identity contract: a tree compare of source and destination must report
+    // identical after a run — empty directories included, in both directions.
+    [Fact]
+    public async Task End_to_end_mirror_run_replicates_an_empty_source_directory()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.EnsureDirectory(@"S:\src\empty");
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.Contains("empty", fs.EnumerateDirectories(@"D:\dst"));
+    }
+
+    [Fact]
+    public async Task End_to_end_mirror_run_keeps_a_directory_the_source_still_has_after_deleting_its_files()
+    {
+        var fs = new InMemoryFileSystem();
+        var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\keep.txt", "keep", t);
+        fs.EnsureDirectory(@"S:\src\a");                 // emptied of files, but still exists
+        fs.AddFile(@"D:\dst\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\a\orphan.txt", "stale", t);
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.False(fs.FileExists(@"D:\dst\a\orphan.txt"));
+        Assert.Empty(fs.DeletedDirectories); // the folder itself must survive
+    }
+
     // A destination that does not exist yet is an empty destination — the first run
     // creates it. Only a missing SOURCE is an error (see the guard tests).
     [Fact]

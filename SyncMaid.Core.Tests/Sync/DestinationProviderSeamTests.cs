@@ -52,6 +52,7 @@ public class DestinationProviderSeamTests
 
         public DestinationCapabilities Capabilities => new(IsRemote: true, SupportsRecycle: false);
         public IEnumerable<string> Enumerate() => _files.Keys;
+        public IEnumerable<string> EnumerateDirectories() => [];
         public FileStamp GetStamp(string relativePath) =>
             _files.TryGetValue(relativePath, out var stamp)
                 ? stamp
@@ -70,6 +71,16 @@ public class DestinationProviderSeamTests
         {
             Deleted.Add(relativePath);
             _files.Remove(relativePath);
+        }
+
+        public void EnsureDirectory(string relativePath)
+        {
+            // Nothing to do: this in-memory backend has no directories.
+        }
+
+        public void DeleteEmptyDirectory(string relativePath)
+        {
+            // Nothing to do: this in-memory backend has no directories.
         }
     }
 

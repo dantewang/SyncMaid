@@ -88,4 +88,38 @@ public class SyncApplierTests
         Assert.False(fs.FileExists(@"D:\dst\a.txt"));
         Assert.Contains(fs.Recycled, p => p.Contains("a.txt"));
     }
+
+    [Fact]
+    public void CreateDirectory_creates_the_destination_directory()
+    {
+        var (fs, dest) = Setup();
+        fs.EnsureDirectory(DestRoot);
+
+        SyncApplier.Apply(fs, dest, new CreateDirectoryOperation("empty/nested"));
+
+        Assert.Contains("empty/nested", fs.EnumerateDirectories(DestRoot));
+    }
+
+    [Fact]
+    public void DeleteDirectory_removes_an_empty_destination_directory()
+    {
+        var (fs, dest) = Setup();
+        fs.EnsureDirectory(@"D:\dst\gone");
+
+        SyncApplier.Apply(fs, dest, new DeleteDirectoryOperation("gone"));
+
+        Assert.Contains(fs.DeletedDirectories, d => d.EndsWith("dst/gone", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void DeleteDirectory_skips_a_directory_that_gained_content_since_planning()
+    {
+        var (fs, dest) = Setup();
+        fs.AddFile(@"D:\dst\gone\late.txt", "written after the plan");
+
+        SyncApplier.Apply(fs, dest, new DeleteDirectoryOperation("gone"));
+
+        Assert.True(fs.FileExists(@"D:\dst\gone\late.txt"));
+        Assert.Empty(fs.DeletedDirectories);
+    }
 }

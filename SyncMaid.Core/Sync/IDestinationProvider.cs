@@ -29,6 +29,11 @@ public interface IDestinationProvider
     /// <summary>Enumerates existing files under the destination as relative paths (forward slashes).</summary>
     IEnumerable<string> Enumerate();
 
+    /// <summary>Enumerates existing directories under the destination as relative paths
+    /// (forward slashes, the root itself excluded). A destination that does not exist yet
+    /// has no directories.</summary>
+    IEnumerable<string> EnumerateDirectories();
+
     /// <summary>The change-detection stamp of the destination file at <paramref name="relativePath"/>.
     /// Throws <see cref="FileNotFoundException"/> when the file does not exist.</summary>
     FileStamp GetStamp(string relativePath);
@@ -46,4 +51,15 @@ public interface IDestinationProvider
 
     /// <summary>Deletes the destination file at <paramref name="relativePath"/> per <paramref name="mode"/>.</summary>
     void Delete(string relativePath, DeleteMode mode);
+
+    /// <summary>Ensures the destination directory at <paramref name="relativePath"/> exists
+    /// (parents included), so Mirror can replicate directories that hold no files.</summary>
+    void EnsureDirectory(string relativePath);
+
+    /// <summary>
+    /// Removes the destination directory at <paramref name="relativePath"/> only if it is
+    /// empty. Best-effort: a directory that has content (planning raced new writes) or no
+    /// longer exists is left alone without error, so unknown content is never deleted.
+    /// </summary>
+    void DeleteEmptyDirectory(string relativePath);
 }

@@ -296,6 +296,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Copying".</summary>
     public static string Progress_Copying => Get("Progress.Copying");
 
+    /// <summary>Looks up a localized string similar to "Creating".</summary>
+    public static string Progress_Creating => Get("Progress.Creating");
+
     /// <summary>Looks up a localized string similar to "{0} {1} ({2}/{3})".</summary>
     public static string Progress_LineFormat => Get("Progress.LineFormat");
 

@@ -124,6 +124,55 @@ public sealed class InMemoryFileSystem : IFileSystem
         }
     }
 
+    public IEnumerable<string> EnumerateDirectories(string root)
+    {
+        var normalizedRoot = Normalize(root);
+        var prefix = normalizedRoot + "/";
+        var exists = _directories.Contains(normalizedRoot)
+            || _directories.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            || _files.Keys.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        if (!exists)
+        {
+            // Matches PhysicalFileSystem: a missing root is not an empty one.
+            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
+        }
+
+        // Directories are implied by file paths (every ancestor of a file exists) plus
+        // whatever was registered explicitly via EnsureDirectory — including the
+        // registered directory's own ancestors, as on a real filesystem.
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in _files.Keys)
+        {
+            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                AddDirectoryChain(directories, path[prefix.Length..], includeSelf: false);
+            }
+        }
+
+        foreach (var directory in _directories)
+        {
+            if (directory.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                AddDirectoryChain(directories, directory[prefix.Length..], includeSelf: true);
+            }
+        }
+
+        return directories;
+    }
+
+    private static void AddDirectoryChain(HashSet<string> directories, string relative, bool includeSelf)
+    {
+        for (var i = relative.IndexOf('/'); i >= 0; i = relative.IndexOf('/', i + 1))
+        {
+            directories.Add(relative[..i]);
+        }
+
+        if (includeSelf)
+        {
+            directories.Add(relative);
+        }
+    }
+
     public bool FileExists(string path) => _files.ContainsKey(Normalize(path));
 
     public FileStamp GetStamp(string path)
@@ -209,6 +258,25 @@ public sealed class InMemoryFileSystem : IFileSystem
         // Tracked so EnumerateFiles can tell a created-but-empty root from a missing
         // one. Tests seed an existing empty folder with this too.
         _directories.Add(Normalize(path));
+    }
+
+    /// <summary>Paths removed by <see cref="DeleteEmptyDirectory"/>, for assertions.
+    /// Directories here are implied by file paths, so a directory whose files were all
+    /// deleted counts as empty even if it was never registered explicitly.</summary>
+    public List<string> DeletedDirectories { get; } = [];
+
+    public void DeleteEmptyDirectory(string path)
+    {
+        var key = Normalize(path);
+        var prefix = key + "/";
+        if (_files.Keys.Any(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+        {
+            // Not empty — matches PhysicalFileSystem's non-recursive, best-effort skip.
+            return;
+        }
+
+        _directories.Remove(key);
+        DeletedDirectories.Add(key);
     }
 
     public Stream OpenRead(string path)

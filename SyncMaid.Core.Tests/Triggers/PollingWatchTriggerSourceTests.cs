@@ -51,6 +51,26 @@ public class PollingWatchTriggerSourceTests
     }
 
     [Fact]
+    public void Fires_when_an_empty_directory_appears_or_vanishes()
+    {
+        // Mirror replicates directory structure, so a structure-only change must
+        // trigger a run even though no file stamp moved.
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        using var source = Source(fs);
+        source.Start();
+        Assert.False(source.PollOnce());
+
+        fs.EnsureDirectory($@"{Root}\empty");
+        Assert.True(source.PollOnce());
+
+        fs.DeleteEmptyDirectory($@"{Root}\empty");
+        Assert.True(source.PollOnce());
+
+        Assert.False(source.PollOnce());
+    }
+
+    [Fact]
     public void First_poll_after_start_takes_a_baseline_without_firing()
     {
         var fs = new InMemoryFileSystem();
@@ -268,6 +288,9 @@ public class PollingWatchTriggerSourceTests
             yield break;
         }
 
+        // The poll's snapshot also lists directories; only the file walk blocks.
+        public IEnumerable<string> EnumerateDirectories(string root) => [];
+
         public bool FileExists(string path) => throw new NotSupportedException();
         public FileStamp GetStamp(string path) => throw new NotSupportedException();
         public byte[] ReadAllBytes(string path) => throw new NotSupportedException();
@@ -275,6 +298,7 @@ public class PollingWatchTriggerSourceTests
         public void DeleteFile(string path) => throw new NotSupportedException();
         public void Recycle(string path) => throw new NotSupportedException();
         public void EnsureDirectory(string path) => throw new NotSupportedException();
+        public void DeleteEmptyDirectory(string path) => throw new NotSupportedException();
         public Stream OpenRead(string path) => throw new NotSupportedException();
         public Stream CreateWriteThrough(string path) => throw new NotSupportedException();
         public void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc) => throw new NotSupportedException();

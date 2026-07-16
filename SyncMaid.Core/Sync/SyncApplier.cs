@@ -25,8 +25,16 @@ public static class SyncApplier
                 destination.Write(copy.RelativePath, SourceFile(sourceFileSystem, copy.RelativePath, copy.SourceFullPath), copy.Verify);
                 break;
 
+            case CreateDirectoryOperation createDirectory:
+                destination.EnsureDirectory(createDirectory.RelativePath);
+                break;
+
             case DeleteOperation delete:
                 destination.Delete(delete.RelativePath, delete.Mode);
+                break;
+
+            case DeleteDirectoryOperation deleteDirectory:
+                destination.DeleteEmptyDirectory(deleteDirectory.RelativePath);
                 break;
 
             case MoveOperation move:

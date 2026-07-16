@@ -1,7 +1,10 @@
 using System.Text;
+using SyncMaid.Core.Filtering;
 using SyncMaid.Core.IO;
+using SyncMaid.Core.Model;
 using SyncMaid.Core.Persistence;
 using SyncMaid.Core.Sync;
+using SyncMaid.Core.Triggers;
 
 namespace SyncMaid.Core.Tests.IO;
 
@@ -103,6 +106,72 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
     }
 
     [Fact]
+    public void EnumerateDirectories_yields_nested_relative_paths_and_throws_for_a_missing_root()
+    {
+        var root = Path.Combine(_root, "tree");
+        Directory.CreateDirectory(Path.Combine(root, "a", "b"));
+        Directory.CreateDirectory(Path.Combine(root, "empty"));
+        File.WriteAllText(Path.Combine(root, "a", "file.txt"), "x");
+
+        var directories = _physical.EnumerateDirectories(root).OrderBy(d => d).ToList();
+
+        Assert.Equal(new[] { "a", "a/b", "empty" }, directories);
+        Assert.Throws<DirectoryNotFoundException>(
+            () => _physical.EnumerateDirectories(Path.Combine(_root, "missing")));
+    }
+
+    [Fact]
+    public void DeleteEmptyDirectory_removes_only_empty_directories_and_tolerates_missing_ones()
+    {
+        var empty = Path.Combine(_root, "empty");
+        var full = Path.Combine(_root, "full");
+        Directory.CreateDirectory(empty);
+        Directory.CreateDirectory(full);
+        File.WriteAllText(Path.Combine(full, "keep.txt"), "content");
+
+        _physical.DeleteEmptyDirectory(empty);
+        _physical.DeleteEmptyDirectory(full);
+        _physical.DeleteEmptyDirectory(Path.Combine(_root, "missing"));
+
+        Assert.False(Directory.Exists(empty));
+        Assert.True(File.Exists(Path.Combine(full, "keep.txt")));
+    }
+
+    // Mirror's whole contract on real disk: after a run, a tree compare of source and
+    // destination reports identical — files, folders, and empty folders alike.
+    [Fact]
+    public async Task Mirror_run_makes_source_and_destination_trees_identical_on_disk()
+    {
+        var source = Path.Combine(_root, "src");
+        var destination = Path.Combine(_root, "dst");
+        Directory.CreateDirectory(Path.Combine(source, "item1"));
+        Directory.CreateDirectory(Path.Combine(source, "kept-empty"));
+        File.WriteAllText(Path.Combine(source, "item1", "photo.png"), "img");
+        // Stale destination content: an orphaned tree that must disappear entirely.
+        Directory.CreateDirectory(Path.Combine(destination, "removed", "nested"));
+        File.WriteAllText(Path.Combine(destination, "removed", "nested", "old.txt"), "stale");
+
+        var dest = new Destination("d", destination, [new AllFilesFilter()], SyncStrategy.Mirror)
+        {
+            DeleteMode = DeleteMode.Permanent,
+        };
+        var task = new SyncTask("t", source, new ManualTrigger(), [dest]);
+
+        var statuses = await new SyncEngine(_physical).ExecuteAsync(task);
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.Equal(RelativeTree(source), RelativeTree(destination));
+        Assert.True(Directory.Exists(Path.Combine(destination, "kept-empty")));
+        Assert.False(Directory.Exists(Path.Combine(destination, "removed")));
+    }
+
+    private IReadOnlyList<string> RelativeTree(string root) =>
+        _physical.EnumerateDirectories(root).Select(directory => "dir:" + directory)
+            .Concat(_physical.EnumerateFiles(root).Select(file => "file:" + file))
+            .OrderBy(entry => entry, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    [Fact]
     public void Recycle_path_is_absolute_and_uses_Win32_separators()
     {
         var mixedPath = Path.Combine(_root, "nested", "file.txt").Replace('\\', '/');
@@ -134,6 +203,7 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         public string? FailFileExistsPath { get; init; }
 
         public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
+        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
 
         public bool FileExists(string path)
         {
@@ -151,6 +221,7 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
+        public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
 
         public Stream OpenRead(string path)
         {

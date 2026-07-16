@@ -188,6 +188,9 @@
   <data name="Progress.Moving" xml:space="preserve">
     <value>正在移动</value>
   </data>
+  <data name="Progress.Creating" xml:space="preserve">
+    <value>正在创建</value>
+  </data>
   <data name="Progress.Removing" xml:space="preserve">
     <value>正在删除</value>
   </data>

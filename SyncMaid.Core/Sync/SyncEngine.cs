@@ -74,7 +74,9 @@ public sealed class SyncEngine : ISyncEngine
                     var filtered = _fileSystem.EnumerateFiles(task.SourcePath)
                         .Where(destination.Includes)
                         .ToList();
-                    var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
+                    var sourceDirectories = _fileSystem.EnumerateDirectories(task.SourcePath).ToList();
+                    var plan = SyncPlanner.Plan(
+                        _fileSystem, task.SourcePath, provider, destination, filtered, sourceDirectories);
 
                     var deletions = plan.Operations
                         .OfType<DeleteOperation>()
@@ -117,10 +119,12 @@ public sealed class SyncEngine : ISyncEngine
         }
 
         IReadOnlyList<string> sourceFiles = [];
+        IReadOnlyList<string> sourceDirectories = [];
         ExceptionDispatchInfo? sourceEnumerationError = null;
         try
         {
             sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
+            sourceDirectories = _fileSystem.EnumerateDirectories(task.SourcePath).ToList();
         }
         catch (OperationCanceledException)
         {
@@ -139,6 +143,7 @@ public sealed class SyncEngine : ISyncEngine
                 task,
                 destination,
                 sourceFiles,
+                sourceDirectories,
                 sourceEnumerationError,
                 cancellationToken,
                 progress,
@@ -152,6 +157,7 @@ public sealed class SyncEngine : ISyncEngine
         SyncTask task,
         Destination destination,
         IReadOnlyList<string> sourceFiles,
+        IReadOnlyList<string> sourceDirectories,
         ExceptionDispatchInfo? sourceEnumerationError,
         CancellationToken cancellationToken,
         IProgress<SyncProgress>? progress,
@@ -188,7 +194,8 @@ public sealed class SyncEngine : ISyncEngine
 
             var provider = _destinations.Create(destination.Target);
 
-            var plan = SyncPlanner.Plan(_fileSystem, task.SourcePath, provider, destination, filtered);
+            var plan = SyncPlanner.Plan(
+                _fileSystem, task.SourcePath, provider, destination, filtered, sourceDirectories);
 
             // Guard Mirror deletions before applying anything: an empty/unavailable source is
             // refused; a mass-delete needs the user's confirmation (unless already given).

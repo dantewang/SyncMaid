@@ -194,6 +194,9 @@
   <data name="Progress.Moving" xml:space="preserve">
     <value>Moving</value>
   </data>
+  <data name="Progress.Creating" xml:space="preserve">
+    <value>Creating</value>
+  </data>
   <data name="Progress.Removing" xml:space="preserve">
     <value>Removing</value>
   </data>

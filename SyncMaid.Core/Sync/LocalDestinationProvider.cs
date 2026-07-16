@@ -40,6 +40,18 @@ public sealed class LocalDestinationProvider : IDestinationProvider
         }
     }
 
+    public IEnumerable<string> EnumerateDirectories()
+    {
+        try
+        {
+            return _fileSystem.EnumerateDirectories(_root).ToList();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return [];
+        }
+    }
+
     public FileStamp GetStamp(string relativePath) => _fileSystem.GetStamp(Full(relativePath));
 
     public bool TryGetStamp(string relativePath, out FileStamp stamp)
@@ -82,6 +94,12 @@ public sealed class LocalDestinationProvider : IDestinationProvider
             _fileSystem.DeleteFile(full);
         }
     }
+
+    public void EnsureDirectory(string relativePath) =>
+        _fileSystem.EnsureDirectory(Full(relativePath));
+
+    public void DeleteEmptyDirectory(string relativePath) =>
+        _fileSystem.DeleteEmptyDirectory(Full(relativePath));
 
     private string Full(string relativePath) => RelativePaths.Join(_root, relativePath);
 }

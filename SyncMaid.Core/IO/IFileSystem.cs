@@ -18,6 +18,14 @@ public interface IFileSystem
     /// </summary>
     IEnumerable<string> EnumerateFiles(string root);
 
+    /// <summary>
+    /// Enumerates every directory under <paramref name="root"/> (recursively, the root
+    /// itself excluded) as paths relative to that root, using forward slashes. Shares
+    /// <see cref="EnumerateFiles"/>'s missing-root behavior: a root that does not exist
+    /// throws rather than reading as empty.
+    /// </summary>
+    IEnumerable<string> EnumerateDirectories(string root);
+
     /// <summary>True when a file exists at <paramref name="path"/>.</summary>
     bool FileExists(string path);
 
@@ -48,6 +56,12 @@ public interface IFileSystem
 
     /// <summary>Ensures the directory at <paramref name="path"/> exists, creating parents as needed.</summary>
     void EnsureDirectory(string path);
+
+    /// <summary>
+    /// Deletes the directory at <paramref name="path"/> only if it is empty; a directory
+    /// that has content or does not exist is left alone without error. Never recursive.
+    /// </summary>
+    void DeleteEmptyDirectory(string path);
 
     /// <summary>
     /// Opens the file at <paramref name="path"/> for reading. The caller disposes the

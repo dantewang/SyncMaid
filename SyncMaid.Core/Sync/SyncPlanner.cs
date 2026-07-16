@@ -28,12 +28,18 @@ public static class SyncPlanner
     /// <param name="filteredRelativePaths">
     /// Source files (relative paths, forward slashes) that passed the destination's filters.
     /// </param>
+    /// <param name="sourceRelativeDirectories">
+    /// Every directory under the source root (relative paths, forward slashes). Used only
+    /// by Mirror, which replicates the source directory tree exactly — file filters select
+    /// files, not structure.
+    /// </param>
     public static SyncPlan Plan(
         IFileSystem sourceFileSystem,
         string sourceRoot,
         IDestinationProvider destinationProvider,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths)
+        IReadOnlyCollection<string> filteredRelativePaths,
+        IReadOnlyCollection<string> sourceRelativeDirectories)
     {
         if (destination.Strategy == SyncStrategy.Move)
         {
@@ -66,7 +72,7 @@ public static class SyncPlanner
 
         var snapshot = DestinationSnapshot.Create(destinationProvider);
         var operations = PlanMirror(
-            sourceFileSystem, sourceRoot, destination, filteredRelativePaths, snapshot);
+            sourceFileSystem, sourceRoot, destination, filteredRelativePaths, sourceRelativeDirectories, snapshot);
 
         return new SyncPlan(operations, snapshot.FileCount);
     }
@@ -96,15 +102,27 @@ public static class SyncPlanner
         return operations;
     }
 
-    // Mirror: AddOnly's copies, plus delete every destination file not in the filtered set.
+    // Mirror: AddOnly's copies, plus delete every destination file not in the filtered
+    // set — and reconcile the directory tree itself, so the destination replicates the
+    // source structure exactly (empty directories included) and a tree compare of the
+    // two reports identical.
     private static List<SyncOperation> PlanMirror(
         IFileSystem sourceFileSystem,
         string sourceRoot,
         Destination destination,
         IReadOnlyCollection<string> filteredRelativePaths,
+        IReadOnlyCollection<string> sourceRelativeDirectories,
         DestinationSnapshot destinationSnapshot)
     {
-        var operations = PlanCopies(
+        // Ancestors of the filtered files are source directories by definition; folding
+        // them in guards against a directory listing that raced a concurrent change.
+        var sourceDirectories = new HashSet<string>(sourceRelativeDirectories, StringComparer.OrdinalIgnoreCase);
+        foreach (var relativePath in filteredRelativePaths)
+        {
+            sourceDirectories.UnionWith(AncestorDirectories(relativePath));
+        }
+
+        var copies = PlanCopies(
             sourceFileSystem,
             sourceRoot,
             destination,
@@ -112,6 +130,22 @@ public static class SyncPlanner
             relativePath => destinationSnapshot.Stamps.TryGetValue(relativePath, out var stamp)
                 ? stamp
                 : null);
+
+        // Copies create their parent directories as a side effect, so explicit creates
+        // are only planned for directories no copy will touch (typically empty ones).
+        var createdByCopies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var copy in copies)
+        {
+            createdByCopies.UnionWith(AncestorDirectories(copy.RelativePath));
+        }
+
+        var operations = new List<SyncOperation>();
+        operations.AddRange(sourceDirectories
+            .Where(directory => !destinationSnapshot.Directories.Contains(directory)
+                                && !createdByCopies.Contains(directory))
+            .OrderBy(directory => directory, StringComparer.OrdinalIgnoreCase) // parents first
+            .Select(directory => new CreateDirectoryOperation(directory)));
+        operations.AddRange(copies);
 
         var keep = new HashSet<string>(filteredRelativePaths, StringComparer.OrdinalIgnoreCase);
         foreach (var destRelative in destinationSnapshot.RelativePaths)
@@ -122,7 +156,26 @@ public static class SyncPlanner
             }
         }
 
+        // Destination directories that no longer exist in the source go last, after the
+        // file deletions that empty them. A child is its parent plus "/…", so it sorts
+        // after the parent ordinally; descending order deletes children before parents.
+        // The enumerations exclude the roots themselves, so the root is never planned.
+        operations.AddRange(destinationSnapshot.Directories
+            .Where(directory => !sourceDirectories.Contains(directory))
+            .OrderByDescending(directory => directory, StringComparer.OrdinalIgnoreCase)
+            .Select(directory => new DeleteDirectoryOperation(directory)));
+
         return operations;
+    }
+
+    // "a/b/c.txt" yields "a" then "a/b" — every directory between the root (exclusive)
+    // and the file. Relative paths use forward slashes throughout the engine.
+    private static IEnumerable<string> AncestorDirectories(string relativePath)
+    {
+        for (var i = relativePath.IndexOf('/'); i >= 0; i = relativePath.IndexOf('/', i + 1))
+        {
+            yield return relativePath[..i];
+        }
     }
 
     // Move: move each filtered source file to the destination (copy then remove source).
@@ -166,14 +219,17 @@ public static class SyncPlanner
     {
         private DestinationSnapshot(
             IReadOnlyList<string> relativePaths,
-            IReadOnlyDictionary<string, FileStamp> stamps)
+            IReadOnlyDictionary<string, FileStamp> stamps,
+            IReadOnlySet<string> directories)
         {
             RelativePaths = relativePaths;
             Stamps = stamps;
+            Directories = directories;
         }
 
         public IReadOnlyList<string> RelativePaths { get; }
         public IReadOnlyDictionary<string, FileStamp> Stamps { get; }
+        public IReadOnlySet<string> Directories { get; }
         public int FileCount => RelativePaths.Count;
 
         public static DestinationSnapshot Create(IDestinationProvider provider)
@@ -197,7 +253,9 @@ public static class SyncPlanner
                 }
             }
 
-            return new DestinationSnapshot(relativePaths, stamps);
+            var directories = new HashSet<string>(
+                provider.EnumerateDirectories(), StringComparer.OrdinalIgnoreCase);
+            return new DestinationSnapshot(relativePaths, stamps, directories);
         }
     }
 }

@@ -35,6 +35,28 @@ public sealed class PhysicalFileSystem : IFileSystem
     }
 
     /// <inheritdoc />
+    public IEnumerable<string> EnumerateDirectories(string root)
+    {
+        // Same missing-vs-empty distinction as EnumerateFiles: an unavailable root is an
+        // error, not an empty tree.
+        if (!Directory.Exists(root))
+        {
+            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
+        }
+
+        return EnumerateDirectoriesCore(Path.GetFullPath(root));
+    }
+
+    private static IEnumerable<string> EnumerateDirectoriesCore(string fullRoot)
+    {
+        foreach (var directory in Directory.EnumerateDirectories(fullRoot, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(fullRoot, directory);
+            yield return relative.Replace('\\', '/');
+        }
+    }
+
+    /// <inheritdoc />
     public bool FileExists(string path) => File.Exists(path);
 
     /// <inheritdoc />
@@ -100,6 +122,25 @@ public sealed class PhysicalFileSystem : IFileSystem
 
     /// <inheritdoc />
     public void EnsureDirectory(string path) => Directory.CreateDirectory(path);
+
+    /// <inheritdoc />
+    public void DeleteEmptyDirectory(string path)
+    {
+        try
+        {
+            // Non-recursive: a directory that gained content since it was planned for
+            // removal throws (not empty) and is kept — unknown content is never deleted.
+            Directory.Delete(path, recursive: false);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Already gone (e.g. a parent raced it away); the desired state holds.
+        }
+        catch (IOException)
+        {
+            // Not empty or momentarily in use — leave it; cleanup is best-effort.
+        }
+    }
 
     /// <inheritdoc />
     public Stream OpenRead(string path) => File.OpenRead(path);

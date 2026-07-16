@@ -6,7 +6,9 @@ namespace SyncMaid.Core.Triggers;
 /// A watch trigger for sources where <see cref="System.IO.FileSystemWatcher"/> is
 /// unreliable — mounted network paths (UNC / mapped drives), where events are frequently
 /// missed. Instead of OS change events it periodically snapshots the source tree (relative
-/// path → <see cref="FileStamp"/>) and fires when the snapshot changes.
+/// path → <see cref="FileStamp"/>, plus the directory set, so an empty directory appearing
+/// or vanishing counts as a change — Mirror replicates structure) and fires when the
+/// snapshot changes.
 /// </summary>
 public sealed class PollingWatchTriggerSource : ITriggerSource
 {
@@ -21,7 +23,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private readonly TriggerNotifier _notifier = new();
 
     private IPollingTimer? _timer;
-    private Dictionary<string, FileStamp> _snapshot = new(StringComparer.OrdinalIgnoreCase);
+    private TreeSnapshot _snapshot = TreeSnapshot.Empty;
     private bool _hasBaseline;
     private bool _failureReported;
     private bool _disposed;
@@ -113,7 +115,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                 return false;
             }
 
-            Dictionary<string, FileStamp>? current = null;
+            TreeSnapshot? current = null;
             Exception? failure = null;
             try
             {
@@ -141,7 +143,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                     _snapshot = current!;
                     _hasBaseline = true;
                 }
-                else if (Differs(current!, _snapshot))
+                else if (current!.Differs(_snapshot))
                 {
                     _snapshot = current!;
                     changed = true;
@@ -206,14 +208,14 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         }
     }
 
-    private Dictionary<string, FileStamp> Snapshot()
+    private TreeSnapshot Snapshot()
     {
-        var snapshot = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
+        var files = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
         foreach (var relative in _fileSystem.EnumerateFiles(_path))
         {
             try
             {
-                snapshot[relative] = _fileSystem.GetStamp(RelativePaths.Join(_path, relative));
+                files[relative] = _fileSystem.GetStamp(RelativePaths.Join(_path, relative));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -222,25 +224,43 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             }
         }
 
-        return snapshot;
+        var directories = new HashSet<string>(
+            _fileSystem.EnumerateDirectories(_path), StringComparer.OrdinalIgnoreCase);
+        return new TreeSnapshot(files, directories);
     }
 
-    private static bool Differs(Dictionary<string, FileStamp> a, Dictionary<string, FileStamp> b)
+    private sealed class TreeSnapshot
     {
-        if (a.Count != b.Count)
+        private readonly Dictionary<string, FileStamp> _files;
+        private readonly HashSet<string> _directories;
+
+        public TreeSnapshot(Dictionary<string, FileStamp> files, HashSet<string> directories)
         {
-            return true;
+            _files = files;
+            _directories = directories;
         }
 
-        foreach (var (path, stamp) in a)
+        public static readonly TreeSnapshot Empty = new(
+            new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+        public bool Differs(TreeSnapshot other)
         {
-            if (!b.TryGetValue(path, out var other) || other != stamp)
+            if (_files.Count != other._files.Count || !_directories.SetEquals(other._directories))
             {
                 return true;
             }
-        }
 
-        return false;
+            foreach (var (path, stamp) in _files)
+            {
+                if (!other._files.TryGetValue(path, out var otherStamp) || otherStamp != stamp)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 
     /// <inheritdoc />

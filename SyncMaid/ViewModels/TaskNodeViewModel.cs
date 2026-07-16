@@ -621,7 +621,8 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         {
             CopyOperation => Strings.Progress_Copying,
             MoveOperation => Strings.Progress_Moving,
-            DeleteOperation => Strings.Progress_Removing,
+            CreateDirectoryOperation => Strings.Progress_Creating,
+            DeleteOperation or DeleteDirectoryOperation => Strings.Progress_Removing,
             _ => Strings.Progress_Syncing,
         };
 

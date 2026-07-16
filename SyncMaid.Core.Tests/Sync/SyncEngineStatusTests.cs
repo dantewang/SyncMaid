@@ -24,6 +24,7 @@ public class SyncEngineStatusTests
     private sealed class FaultyFileSystem(InMemoryFileSystem inner, string failMarker) : IFileSystem
     {
         public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
+        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
         public bool FileExists(string path) => inner.FileExists(path);
         public FileStamp GetStamp(string path) => inner.GetStamp(path);
         public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
@@ -31,6 +32,7 @@ public class SyncEngineStatusTests
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
+        public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
         public Stream OpenRead(string path) => inner.OpenRead(path);
         public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);
         public void Replace(string source, string destination) => inner.Replace(source, destination);
@@ -64,6 +66,8 @@ public class SyncEngineStatusTests
             }
         }
 
+        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
+
         public bool FileExists(string path)
         {
             FileExistsCalls++;
@@ -76,6 +80,7 @@ public class SyncEngineStatusTests
         public void DeleteFile(string path) => inner.DeleteFile(path);
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
+        public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
         public Stream OpenRead(string path) => inner.OpenRead(path);
         public Stream CreateWriteThrough(string path) => inner.CreateWriteThrough(path);
         public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);
