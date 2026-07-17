@@ -10,65 +10,73 @@
              x:DataType="vm:SettingsViewModel"
              x:CompileBindings="True">
 
-    <Border Classes="dialogCard" Width="440">
-        <StackPanel Margin="24" Spacing="16">
-            <TextBlock Text="{l:Loc Settings.Title}" FontSize="16" FontWeight="Medium" />
+    <!-- Same shell as the destination editor: title and Done stay docked while the options
+         scroll, so a small main window never puts a setting (or the Done button) out of
+         reach — the overlay caps the card at the window height and the ScrollViewer
+         takes over from there. -->
+    <Border Classes="dialogCard" Width="440" MaxHeight="640">
+        <DockPanel Margin="24">
+            <TextBlock DockPanel.Dock="Top" Text="{l:Loc Settings.Title}" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
 
-            <StackPanel>
-                <TextBlock Text="{l:Loc Settings.LanguageLabel}" Classes="label" />
-                <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
-                          MinWidth="220">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:LanguageOption">
-                            <TextBlock Text="{Binding DisplayName}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </StackPanel>
-
-            <StackPanel>
-                <TextBlock Text="{l:Loc Settings.StartupLabel}" Classes="label" />
-                <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding !IsDisabledByWindows}"
-                          Content="{l:Loc Settings.StartWithWindows}" />
-                <TextBlock Text="{l:Loc Settings.StartWithWindowsDesc}" Classes="muted" Margin="0,4,0,0" />
-
-                <c:HintBox Classes="danger" IsVisible="{Binding IsDisabledByWindows}"
-                           Text="{l:Loc Settings.StartupDisabledByWindows}" Margin="0,8,0,0" />
-            </StackPanel>
-
-            <StackPanel>
-                <TextBlock Text="{l:Loc Settings.WindowLabel}" Classes="label" />
-                <CheckBox IsChecked="{Binding CloseToTray}"
-                          Content="{l:Loc Settings.CloseToTray}" />
-                <TextBlock Text="{l:Loc Settings.CloseToTrayDesc}"
-                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <CheckBox IsChecked="{Binding StartMinimized}"
-                          Content="{l:Loc Settings.StartMinimized}" Margin="0,8,0,0" />
-                <TextBlock Text="{l:Loc Settings.StartMinimizedDesc}"
-                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
-            </StackPanel>
-
-            <StackPanel>
-                <TextBlock Text="{l:Loc Settings.StorageLabel}" Classes="label" />
-                <TextBlock Text="{Binding StorageModeText}" />
-                <TextBlock Text="{Binding StoragePath}" Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
-                <Button Classes="secondary" Content="{Binding SwitchStorageText}"
-                        Command="{Binding SwitchStorageCommand}" Margin="0,8,0,0" />
-                <TextBlock Text="{l:Loc Settings.SwitchStorageDesc}"
-                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
-
-                <c:HintBox Classes="danger" IsVisible="{Binding HasStorageError}"
-                           Text="{Binding StorageError}" Margin="0,8,0,0" />
-            </StackPanel>
-
-            <StackPanel>
-                <TextBlock Text="{l:Loc Settings.AboutLabel}" Classes="label" />
-                <TextBlock Text="{Binding AppVersion}" Classes="muted" />
-            </StackPanel>
-
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,16,0,0">
                 <Button Classes="primary" Content="{l:Loc Settings.Done}" Command="{Binding DoneCommand}" />
             </StackPanel>
-        </StackPanel>
+
+            <ScrollViewer>
+                <StackPanel Spacing="16" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="{l:Loc Settings.LanguageLabel}" Classes="label" />
+                        <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                                  MinWidth="220">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LanguageOption">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="{l:Loc Settings.StartupLabel}" Classes="label" />
+                        <CheckBox IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding !IsDisabledByWindows}"
+                                  Content="{l:Loc Settings.StartWithWindows}" />
+                        <TextBlock Text="{l:Loc Settings.StartWithWindowsDesc}" Classes="muted" Margin="0,4,0,0" />
+
+                        <c:HintBox Classes="danger" IsVisible="{Binding IsDisabledByWindows}"
+                                   Text="{l:Loc Settings.StartupDisabledByWindows}" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="{l:Loc Settings.WindowLabel}" Classes="label" />
+                        <CheckBox IsChecked="{Binding CloseToTray}"
+                                  Content="{l:Loc Settings.CloseToTray}" />
+                        <TextBlock Text="{l:Loc Settings.CloseToTrayDesc}"
+                                   Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <CheckBox IsChecked="{Binding StartMinimized}"
+                                  Content="{l:Loc Settings.StartMinimized}" Margin="0,8,0,0" />
+                        <TextBlock Text="{l:Loc Settings.StartMinimizedDesc}"
+                                   Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="{l:Loc Settings.StorageLabel}" Classes="label" />
+                        <TextBlock Text="{Binding StorageModeText}" />
+                        <TextBlock Text="{Binding StoragePath}" Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <Button Classes="secondary" Content="{Binding SwitchStorageText}"
+                                Command="{Binding SwitchStorageCommand}" Margin="0,8,0,0" />
+                        <TextBlock Text="{l:Loc Settings.SwitchStorageDesc}"
+                                   Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                        <c:HintBox Classes="danger" IsVisible="{Binding HasStorageError}"
+                                   Text="{Binding StorageError}" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="{l:Loc Settings.AboutLabel}" Classes="label" />
+                        <TextBlock Text="{Binding AppVersion}" Classes="muted" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </UserControl>

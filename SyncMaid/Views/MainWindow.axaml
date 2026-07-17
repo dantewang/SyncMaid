@@ -12,6 +12,7 @@
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="True"
         Width="940" Height="620"
+        MinWidth="640" MinHeight="480"
         Icon="/Assets/syncmaid.ico"
         TransparencyLevelHint="AcrylicBlur,Blur,None"
         Background="Transparent"
