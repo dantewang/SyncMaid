@@ -45,22 +45,32 @@ public partial class App : Application
                 e.SetObserved();
             };
 
+            var settings = services.GetRequiredService<IAppSettingsService>();
+
             // Apply the persisted UI language before the main window is created. The tray
             // XAML loaded earlier (Initialize) in the OS language; the apply re-renders its
             // bindings too, so nothing is visible in the wrong language.
-            Localizer.Instance.Apply(services.GetRequiredService<IAppSettingsService>().Language);
+            Localizer.Instance.Apply(settings.Language);
 
             var mainWindow = new MainWindow
             {
                 DataContext = services.GetRequiredService<MainWindowViewModel>(),
             };
-            desktop.MainWindow = mainWindow;
+
+            // Start minimized to tray: the lifetime auto-shows MainWindow after this method
+            // returns, so leaving it unassigned is what keeps the window hidden (no flash, no
+            // taskbar entry). The window still exists — triggers run off the view model built
+            // above — and the shell controller adopts it as MainWindow on first show.
+            if (!settings.StartMinimized)
+            {
+                desktop.MainWindow = mainWindow;
+            }
 
             // Close-to-tray: hiding the main window must not quit the app, so the app owns its
             // own lifetime and exits explicitly (a normal close falls through to Shutdown()
             // in the tray controller when close-to-tray is off).
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            SetupTray(desktop, mainWindow, services.GetRequiredService<IAppSettingsService>());
+            SetupTray(desktop, mainWindow, settings);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -105,6 +115,10 @@ public partial class App : Application
 
         public void ShowMainWindow()
         {
+            // After a start-minimized launch the lifetime has no MainWindow yet; adopt the
+            // window on first show so anything keying off MainWindow behaves normally.
+            _desktop.MainWindow ??= _window;
+
             if (_window.WindowState == WindowState.Minimized)
             {
                 _window.WindowState = WindowState.Normal;

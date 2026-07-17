@@ -476,6 +476,12 @@
   <data name="Settings.CloseToTrayDesc" xml:space="preserve">
     <value>Keeps SyncMaid running in the tray when you close the window, so scheduled and watched tasks keep syncing.</value>
   </data>
+  <data name="Settings.StartMinimized" xml:space="preserve">
+    <value>Start minimized to the system tray</value>
+  </data>
+  <data name="Settings.StartMinimizedDesc" xml:space="preserve">
+    <value>SyncMaid launches hidden with only the tray icon; tasks run as usual. Click the tray icon to open the window. Takes effect on the next launch.</value>
+  </data>
   <data name="Settings.StorageLabel" xml:space="preserve">
     <value>Storage</value>
   </data>

@@ -84,10 +84,10 @@ Details that matter:
 
 ### Behavior note (worth a line in the dialog)
 
-Starting with Windows currently opens the main window (there is no tray icon /
-minimize-to-tray yet — see improvement backlog). That's acceptable for v1; when a tray
-icon lands, add "start minimized" as a second checkbox and pass a `--minimized` argument
-in the Run value.
+Starting with Windows opens the main window by default. ✅ Superseded by "Start minimized
+to the system tray" (issue #13): a persisted `AppSettings.StartMinimized` setting —
+deliberately independent of autostart, applying to every launch — rather than the
+`--minimized` Run-value argument originally sketched here. See guide-tray-icon.md.
 
 ## Test plan
 

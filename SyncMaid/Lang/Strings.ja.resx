@@ -469,6 +469,12 @@
   <data name="Settings.CloseToTrayDesc" xml:space="preserve">
     <value>ウィンドウを閉じても SyncMaid はトレイで動作し続け、スケジュールおよび監視タスクは同期を続けます。</value>
   </data>
+  <data name="Settings.StartMinimized" xml:space="preserve">
+    <value>起動時にシステムトレイへ最小化する</value>
+  </data>
+  <data name="Settings.StartMinimizedDesc" xml:space="preserve">
+    <value>SyncMaid はウィンドウを表示せずトレイアイコンのみで起動し、タスクは通常どおり実行されます。トレイアイコンをクリックするとウィンドウが開きます。次回の起動から有効になります。</value>
+  </data>
   <data name="Settings.StorageLabel" xml:space="preserve">
     <value>ストレージ</value>
   </data>

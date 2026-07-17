@@ -7,5 +7,7 @@ public sealed class FakeAppSettingsService : IAppSettingsService
 {
     public bool CloseToTray { get; set; }
 
+    public bool StartMinimized { get; set; }
+
     public string? Language { get; set; }
 }

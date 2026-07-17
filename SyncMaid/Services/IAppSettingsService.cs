@@ -12,6 +12,10 @@ public interface IAppSettingsService
     /// Setting the value persists it.</summary>
     bool CloseToTray { get; set; }
 
+    /// <summary>When true, the app launches with the main window hidden to the tray.
+    /// Setting the value persists it; it takes effect on the next launch.</summary>
+    bool StartMinimized { get; set; }
+
     /// <summary>The UI language as a BCP-47 tag, or null to follow the OS language.
     /// Setting the value persists it; applying it to the running UI is
     /// <c>Localizer.Apply</c>'s job (done at startup and by the Settings dialog).</summary>

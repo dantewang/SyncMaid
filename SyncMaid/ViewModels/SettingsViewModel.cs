@@ -34,6 +34,11 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private bool _closeToTray;
 
+    /// <summary>When on, the app launches hidden to the tray; takes effect on the next
+    /// launch. Independent of <see cref="StartWithWindows"/> — it applies to every launch.</summary>
+    [ObservableProperty]
+    private bool _startMinimized;
+
     /// <summary>The picked UI language; switching applies immediately, like every other
     /// option here.</summary>
     [ObservableProperty]
@@ -61,6 +66,7 @@ public partial class SettingsViewModel : DialogViewModel<bool>
         _startWithWindows = state == AutoStartState.Enabled;
         _isDisabledByWindows = state == AutoStartState.DisabledByWindows;
         _closeToTray = appSettings.CloseToTray;
+        _startMinimized = appSettings.StartMinimized;
         // An unrecognized persisted tag (hand-edited settings.json) shows as system default.
         _selectedLanguage = Languages.FirstOrDefault(option => option.Tag == appSettings.Language)
                             ?? Languages[0];
@@ -162,6 +168,8 @@ public partial class SettingsViewModel : DialogViewModel<bool>
     }
 
     partial void OnCloseToTrayChanged(bool value) => _appSettings.CloseToTray = value;
+
+    partial void OnStartMinimizedChanged(bool value) => _appSettings.StartMinimized = value;
 
     partial void OnSelectedLanguageChanged(LanguageOption value)
     {

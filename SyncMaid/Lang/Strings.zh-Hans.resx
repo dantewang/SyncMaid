@@ -469,6 +469,12 @@
   <data name="Settings.CloseToTrayDesc" xml:space="preserve">
     <value>关闭窗口后 SyncMaid 会继续在托盘中运行，定时和监视任务照常同步。</value>
   </data>
+  <data name="Settings.StartMinimized" xml:space="preserve">
+    <value>启动时最小化到系统托盘</value>
+  </data>
+  <data name="Settings.StartMinimizedDesc" xml:space="preserve">
+    <value>SyncMaid 启动时隐藏窗口，仅显示托盘图标，任务照常运行。点击托盘图标即可打开窗口。下次启动时生效。</value>
+  </data>
   <data name="Settings.StorageLabel" xml:space="preserve">
     <value>存储</value>
   </data>

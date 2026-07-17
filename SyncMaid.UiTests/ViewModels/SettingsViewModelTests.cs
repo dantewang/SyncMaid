@@ -110,6 +110,28 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public void Reflects_the_stored_start_minimized_value_without_writing_on_load()
+    {
+        var settings = new FakeAppSettingsService { StartMinimized = true };
+
+        var vm = New(settings: settings);
+
+        Assert.True(vm.StartMinimized);
+        Assert.True(settings.StartMinimized); // seeding must not toggle it back
+    }
+
+    [Fact]
+    public void Toggling_start_minimized_updates_the_setting()
+    {
+        var settings = new FakeAppSettingsService { StartMinimized = false };
+        var vm = New(settings: settings);
+
+        vm.StartMinimized = true;
+
+        Assert.True(settings.StartMinimized);
+    }
+
+    [Fact]
     public void Seeds_the_stored_language_without_writing_on_load()
     {
         var settings = new FakeAppSettingsService { Language = "ja" };

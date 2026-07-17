@@ -469,6 +469,12 @@
   <data name="Settings.CloseToTrayDesc" xml:space="preserve">
     <value>關閉視窗後 SyncMaid 會繼續在系統匣中執行，排程和監看任務照常同步。</value>
   </data>
+  <data name="Settings.StartMinimized" xml:space="preserve">
+    <value>啟動時最小化到系統匣</value>
+  </data>
+  <data name="Settings.StartMinimizedDesc" xml:space="preserve">
+    <value>SyncMaid 啟動時隱藏視窗，僅顯示系統匣圖示，任務照常執行。點擊系統匣圖示即可開啟視窗。下次啟動時生效。</value>
+  </data>
   <data name="Settings.StorageLabel" xml:space="preserve">
     <value>儲存</value>
   </data>

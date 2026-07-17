@@ -73,9 +73,13 @@ scheduled/watch tasks keep running while hidden.
 
 ### Interactions / follow-ons (note, don't necessarily build)
 
-- **Start minimized:** with autostart on + close-to-tray, ideally start hidden to the tray.
-  Implement by passing `--minimized` in the Run-key value (the autostart guide flagged this)
-  and honoring it at startup (don't `Show()` the main window; just create the tray icon).
+- **Start minimized:** ✅ done (issue #13). Implemented as a persisted setting
+  (`AppSettings.StartMinimized`, "Start minimized to the system tray" in Settings → Window)
+  rather than a `--minimized` Run-key argument: the option is deliberately independent of
+  autostart and applies to every launch. When on, startup skips assigning
+  `desktop.MainWindow`, which is what suppresses the lifetime's auto-`Show()` — the window
+  is still created (triggers run off its view model) and the shell controller adopts it as
+  `MainWindow` on first show from the tray.
 - **Single instance:** launching a second copy (e.g. autostart + manual) should focus the
   existing one rather than start a second tray icon. Out of scope here; note as a follow-up
   (a named-mutex / single-instance check at startup).

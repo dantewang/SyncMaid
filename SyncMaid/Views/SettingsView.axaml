@@ -48,6 +48,10 @@
                           Content="{l:Loc Settings.CloseToTray}" />
                 <TextBlock Text="{l:Loc Settings.CloseToTrayDesc}"
                            Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <CheckBox IsChecked="{Binding StartMinimized}"
+                          Content="{l:Loc Settings.StartMinimized}" Margin="0,8,0,0" />
+                <TextBlock Text="{l:Loc Settings.StartMinimizedDesc}"
+                           Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
             </StackPanel>
 
             <StackPanel>

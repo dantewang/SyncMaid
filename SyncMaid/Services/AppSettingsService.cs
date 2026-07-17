@@ -34,6 +34,21 @@ public sealed class AppSettingsService : IAppSettingsService
         }
     }
 
+    public bool StartMinimized
+    {
+        get => _current.StartMinimized;
+        set
+        {
+            if (value == _current.StartMinimized)
+            {
+                return;
+            }
+
+            _current = _current with { StartMinimized = value };
+            _store.Save(_current);
+        }
+    }
+
     public string? Language
     {
         get => _current.Language;

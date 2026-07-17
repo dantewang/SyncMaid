@@ -326,6 +326,12 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Language".</summary>
     public static string Settings_LanguageLabel => Get("Settings.LanguageLabel");
 
+    /// <summary>Looks up a localized string similar to "Start minimized to the system tray".</summary>
+    public static string Settings_StartMinimized => Get("Settings.StartMinimized");
+
+    /// <summary>Looks up a localized string similar to "SyncMaid launches hidden with only the tray icon; tasks run as usual. Click t...".</summary>
+    public static string Settings_StartMinimizedDesc => Get("Settings.StartMinimizedDesc");
+
     /// <summary>Looks up a localized string similar to "Startup is turned off for SyncMaid in Windows Task Manager (Startup apps). Tu...".</summary>
     public static string Settings_StartupDisabledByWindows => Get("Settings.StartupDisabledByWindows");
 
