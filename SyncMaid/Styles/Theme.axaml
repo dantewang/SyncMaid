@@ -250,6 +250,21 @@
     <Style Selector="ComboBox /template/ Border#Background">
         <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
     </Style>
+    <!-- Numeric input (mass-delete threshold). Fluent's default chrome is the near-black
+         TextControlBorderBrush; the brush set here flows through the template to the inner
+         ButtonSpinner, its spin-button separators, and the text field, matching TextBox. -->
+    <Style Selector="NumericUpDown">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="NumericUpDown ButtonSpinner:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+    <Style Selector="NumericUpDown ButtonSpinner:focus-within">
+        <Setter Property="BorderBrush" Value="{StaticResource TealBrush}" />
+    </Style>
 
     <!-- Segmented selector (trigger type) -->
     <Style Selector="RadioButton.segment">
