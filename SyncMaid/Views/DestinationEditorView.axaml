@@ -5,6 +5,7 @@
              xmlns:vm="using:SyncMaid.ViewModels"
              xmlns:conv="using:SyncMaid.Converters"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:c="using:SyncMaid.Controls"
              xmlns:model="using:SyncMaid.Core.Model"
              xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="510"
@@ -41,17 +42,8 @@
                         </Grid>
                         <!-- Non-blocking typo guard: the first run creates the folder, but a
                              typo would silently sync somewhere unintended. -->
-                        <Border IsVisible="{Binding ShowPathHint}" Classes="filterRow" Margin="0,6,0,0">
-                            <!-- Auto,* grid, not a horizontal StackPanel: the text needs a
-                                 bounded width or TextWrapping never engages. -->
-                            <Grid ColumnDefinitions="Auto,*">
-                                <mi:MaterialIcon Grid.Column="0" Kind="AlertOutline" Width="16" Height="16"
-                                                 Foreground="{StaticResource WarningBrush}"
-                                                 VerticalAlignment="Top" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="1" Classes="muted" TextWrapping="Wrap"
-                                           Text="{Binding PathHintText}" />
-                            </Grid>
-                        </Border>
+                        <c:HintBox Classes="warning" IsVisible="{Binding ShowPathHint}"
+                                   Text="{Binding PathHintText}" Margin="0,6,0,0" />
                     </StackPanel>
 
                     <StackPanel>
@@ -208,13 +200,7 @@
                             </Button>
 
                             <!-- Live plain-text preview of the whole expression. -->
-                            <Border Classes="filterRow">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <mi:MaterialIcon Kind="EyeOutline" Width="14" Height="14" VerticalAlignment="Center"
-                                                     Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBlock Text="{Binding FilterPreview}" Classes="muted" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Border>
+                            <c:HintBox Icon="EyeOutline" Text="{Binding FilterPreview}" />
                         </StackPanel>
                     </StackPanel>
 
@@ -222,14 +208,8 @@
                         <TextBlock Text="{l:Loc DestEditor.VerificationLabel}" Classes="label" />
                         <CheckBox IsChecked="{Binding VerifyContents}"
                                   Content="{l:Loc DestEditor.VerifyContents}" />
-                        <Border IsVisible="{Binding ShowVerifyNetworkWarning}" Classes="filterRow" Margin="0,8,0,0">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
-                                                 Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
-                                <TextBlock Classes="muted" TextWrapping="Wrap"
-                                           Text="{l:Loc DestEditor.VerifyNetworkWarning}" />
-                            </StackPanel>
-                        </Border>
+                        <c:HintBox Classes="danger" IsVisible="{Binding ShowVerifyNetworkWarning}"
+                                   Text="{l:Loc DestEditor.VerifyNetworkWarning}" Margin="0,8,0,0" />
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Mirror}}">

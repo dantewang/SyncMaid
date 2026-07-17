@@ -1,5 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:c="using:SyncMaid.Controls">
 
     <!-- Surfaces. Default text colour lives on Window/UserControl so it INHERITS — letting
          buttons (white) and selected segments (teal) override their content text. -->
@@ -327,6 +329,34 @@
         <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Padding" Value="10,6" />
+    </Style>
+
+    <!-- Notice row (hints / warnings / previews): icon + wrapping text on the filterRow
+         chrome. Every notice goes through this control — the Auto,* grid is what bounds the
+         text's width so TextWrapping engages; an icon + text in a horizontal StackPanel
+         measures the text unbounded and long messages overflow the box (issue #14).
+         Foreground colours the icon: muted by default, or the "warning"/"danger" class. -->
+    <Style Selector="c|HintBox">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{StaticResource SubtleBrush}" CornerRadius="6" Padding="10,6">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <mi:MaterialIcon Grid.Column="0" Kind="{TemplateBinding Icon}"
+                                         Width="16" Height="16" Foreground="{TemplateBinding Foreground}"
+                                         VerticalAlignment="Top" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Classes="muted" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Text="{TemplateBinding Text}" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="c|HintBox.warning">
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+    </Style>
+    <Style Selector="c|HintBox.danger">
+        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
     </Style>
 
     <!-- Filter group card (destination editor): a bordered container for a set of rule rows. -->

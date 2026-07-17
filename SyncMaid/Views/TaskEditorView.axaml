@@ -5,6 +5,7 @@
              xmlns:vm="using:SyncMaid.ViewModels"
              xmlns:conv="using:SyncMaid.Converters"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:c="using:SyncMaid.Controls"
              xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="470"
              x:Class="SyncMaid.Views.TaskEditorView"
@@ -33,17 +34,8 @@
                 </Grid>
                 <!-- Missing folder is a non-blocking typo guard; a cross-task source overlap
                      blocks saving — the text explains whichever applies. -->
-                <Border IsVisible="{Binding ShowPathHint}" Classes="filterRow" Margin="0,6,0,0">
-                    <!-- Auto,* grid, not a horizontal StackPanel: the text needs a
-                         bounded width or TextWrapping never engages. -->
-                    <Grid ColumnDefinitions="Auto,*">
-                        <mi:MaterialIcon Grid.Column="0" Kind="AlertOutline" Width="16" Height="16"
-                                         Foreground="{StaticResource WarningBrush}"
-                                         VerticalAlignment="Top" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="1" Classes="muted" TextWrapping="Wrap"
-                                   Text="{Binding PathHintText}" />
-                    </Grid>
-                </Border>
+                <c:HintBox Classes="warning" IsVisible="{Binding ShowPathHint}"
+                           Text="{Binding PathHintText}" Margin="0,6,0,0" />
             </StackPanel>
 
             <StackPanel>

@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:SyncMaid.ViewModels"
-             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:c="using:SyncMaid.Controls"
              xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="440"
              x:Class="SyncMaid.Views.SettingsView"
@@ -32,14 +32,8 @@
                           Content="{l:Loc Settings.StartWithWindows}" />
                 <TextBlock Text="{l:Loc Settings.StartWithWindowsDesc}" Classes="muted" Margin="0,4,0,0" />
 
-                <Border IsVisible="{Binding IsDisabledByWindows}" Classes="filterRow" Margin="0,8,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
-                                         Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
-                        <TextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="{l:Loc Settings.StartupDisabledByWindows}" />
-                    </StackPanel>
-                </Border>
+                <c:HintBox Classes="danger" IsVisible="{Binding IsDisabledByWindows}"
+                           Text="{l:Loc Settings.StartupDisabledByWindows}" Margin="0,8,0,0" />
             </StackPanel>
 
             <StackPanel>
@@ -63,13 +57,8 @@
                 <TextBlock Text="{l:Loc Settings.SwitchStorageDesc}"
                            Classes="muted" TextWrapping="Wrap" Margin="0,4,0,0" />
 
-                <Border IsVisible="{Binding HasStorageError}" Classes="filterRow" Margin="0,8,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <mi:MaterialIcon Kind="AlertOutline" Width="16" Height="16"
-                                         Foreground="{StaticResource DangerBrush}" VerticalAlignment="Top" />
-                        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding StorageError}" />
-                    </StackPanel>
-                </Border>
+                <c:HintBox Classes="danger" IsVisible="{Binding HasStorageError}"
+                           Text="{Binding StorageError}" Margin="0,8,0,0" />
             </StackPanel>
 
             <StackPanel>
