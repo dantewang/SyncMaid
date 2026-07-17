@@ -256,11 +256,15 @@
                                                                 <TextBlock Text="{Binding DisplayStatus}" VerticalAlignment="Center"
                                                                            MaxWidth="280" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayStatus}"
                                                                            Foreground="{Binding Outcome, Converter={x:Static conv:SyncOutcomeToBrushConverter.Instance}}" />
-                                                                <Button Classes="icon" Command="{Binding ConfirmCommand}" IsVisible="{Binding NeedsConfirmation}" ToolTip.Tip="{l:Loc MirrorDelete.ReviewDeletions}">
-                                                                    <mi:MaterialIcon Kind="AlertOutline" Width="15" Height="15" Foreground="{StaticResource WarningBrush}" />
-                                                                </Button>
-                                                                <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="{l:Loc Dest.EditTip}"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
-                                                                <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="{l:Loc Dest.DeleteTip}"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
+                                                                <!-- Own panel so the button gap matches the task row's (5), while the
+                                                                     status text keeps its wider gap to the group. -->
+                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                    <Button Classes="icon" Command="{Binding ConfirmCommand}" IsVisible="{Binding NeedsConfirmation}" ToolTip.Tip="{l:Loc MirrorDelete.ReviewDeletions}">
+                                                                        <mi:MaterialIcon Kind="AlertOutline" Width="15" Height="15" Foreground="{StaticResource WarningBrush}" />
+                                                                    </Button>
+                                                                    <Button Classes="icon" Command="{Binding EditCommand}" ToolTip.Tip="{l:Loc Dest.EditTip}"><mi:MaterialIcon Kind="Pencil" Width="14" Height="14" /></Button>
+                                                                    <Button Classes="icon" Command="{Binding DeleteCommand}" ToolTip.Tip="{l:Loc Dest.DeleteTip}"><mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" /></Button>
+                                                                </StackPanel>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>
