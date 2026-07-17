@@ -4,14 +4,14 @@ namespace SyncMaid.Core.IO;
 
 /// <summary>
 /// An <see cref="IFileSystem"/> backed by <see cref="System.IO"/>, operating on the
-/// real disk. Relative paths returned by <see cref="EnumerateFiles"/> use forward
-/// slashes regardless of platform so they compare consistently with the rest of the
-/// engine and the filter rules.
+/// real disk. Relative paths returned by <see cref="ListTree"/> use forward slashes
+/// regardless of platform so they compare consistently with the rest of the engine
+/// and the filter rules.
 /// </summary>
 public sealed class PhysicalFileSystem : IFileSystem
 {
     /// <inheritdoc />
-    public IEnumerable<string> EnumerateFiles(string root)
+    public TreeListing ListTree(string root)
     {
         // A missing root must be distinguishable from an empty one: silently yielding
         // nothing made an unplugged source drive look like an empty source (and Mirror
@@ -22,38 +22,27 @@ public sealed class PhysicalFileSystem : IFileSystem
             throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
         }
 
-        return EnumerateCore(Path.GetFullPath(root));
-    }
-
-    private static IEnumerable<string> EnumerateCore(string fullRoot)
-    {
-        foreach (var file in Directory.EnumerateFiles(fullRoot, "*", SearchOption.AllDirectories))
+        var fullRoot = Path.GetFullPath(root);
+        var files = new List<ListedFile>();
+        var directories = new List<string>();
+        foreach (var entry in new DirectoryInfo(fullRoot)
+                     .EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
         {
-            var relative = Path.GetRelativePath(fullRoot, file);
-            yield return relative.Replace('\\', '/');
-        }
-    }
-
-    /// <inheritdoc />
-    public IEnumerable<string> EnumerateDirectories(string root)
-    {
-        // Same missing-vs-empty distinction as EnumerateFiles: an unavailable root is an
-        // error, not an empty tree.
-        if (!Directory.Exists(root))
-        {
-            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
+            var relative = Path.GetRelativePath(fullRoot, entry.FullName).Replace('\\', '/');
+            if (entry is FileInfo file)
+            {
+                // Length and LastWriteTimeUtc are pre-populated from the enumeration's
+                // find data, so reading them costs no extra filesystem call — the whole
+                // walk is one round trip per directory, not per file.
+                files.Add(new ListedFile(relative, FileStamp.Create(file.Length, file.LastWriteTimeUtc)));
+            }
+            else
+            {
+                directories.Add(relative);
+            }
         }
 
-        return EnumerateDirectoriesCore(Path.GetFullPath(root));
-    }
-
-    private static IEnumerable<string> EnumerateDirectoriesCore(string fullRoot)
-    {
-        foreach (var directory in Directory.EnumerateDirectories(fullRoot, "*", SearchOption.AllDirectories))
-        {
-            var relative = Path.GetRelativePath(fullRoot, directory);
-            yield return relative.Replace('\\', '/');
-        }
+        return new TreeListing(files, directories);
     }
 
     /// <inheritdoc />

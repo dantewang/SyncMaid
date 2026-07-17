@@ -90,19 +90,34 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>All file paths currently present (normalized), for assertions.</summary>
     public IReadOnlyCollection<string> AllPaths => _files.Keys.ToList();
 
-    public IEnumerable<string> EnumerateFiles(string root)
+    /// <summary>The <see cref="IFileSystem"/> walk: files with stamps plus directories, in one call.
+    /// The path-only enumerations below stay as test conveniences for assertions.</summary>
+    public TreeListing ListTree(string root)
+    {
+        var prefix = RequireRoot(root);
+        var files = EnumerateCore(prefix)
+            .Select(relative => new ListedFile(relative, _files[prefix + relative].Stamp))
+            .ToList();
+        return new TreeListing(files, EnumerateDirectoriesCore(prefix).ToList());
+    }
+
+    public IEnumerable<string> EnumerateFiles(string root) => EnumerateCore(RequireRoot(root));
+
+    // Matches PhysicalFileSystem: a missing root is not an empty one. A root exists when
+    // it was registered, anything registered lives beneath it, or a file implies it.
+    private string RequireRoot(string root)
     {
         var normalizedRoot = Normalize(root);
         var prefix = normalizedRoot + "/";
         var exists = _directories.Contains(normalizedRoot)
+            || _directories.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             || _files.Keys.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         if (!exists)
         {
-            // Matches PhysicalFileSystem: a missing root is not an empty one.
             throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
         }
 
-        return EnumerateCore(prefix);
+        return prefix;
     }
 
     private IEnumerable<string> EnumerateCore(string prefix)
@@ -124,22 +139,14 @@ public sealed class InMemoryFileSystem : IFileSystem
         }
     }
 
-    public IEnumerable<string> EnumerateDirectories(string root)
-    {
-        var normalizedRoot = Normalize(root);
-        var prefix = normalizedRoot + "/";
-        var exists = _directories.Contains(normalizedRoot)
-            || _directories.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            || _files.Keys.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-        if (!exists)
-        {
-            // Matches PhysicalFileSystem: a missing root is not an empty one.
-            throw new DirectoryNotFoundException($"Folder not found or unavailable: {root}");
-        }
+    public IEnumerable<string> EnumerateDirectories(string root) =>
+        EnumerateDirectoriesCore(RequireRoot(root));
 
-        // Directories are implied by file paths (every ancestor of a file exists) plus
-        // whatever was registered explicitly via EnsureDirectory — including the
-        // registered directory's own ancestors, as on a real filesystem.
+    // Directories are implied by file paths (every ancestor of a file exists) plus
+    // whatever was registered explicitly via EnsureDirectory — including the
+    // registered directory's own ancestors, as on a real filesystem.
+    private IEnumerable<string> EnumerateDirectoriesCore(string prefix)
+    {
         var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in _files.Keys)
         {

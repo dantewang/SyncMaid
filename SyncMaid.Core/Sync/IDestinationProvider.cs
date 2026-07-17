@@ -26,13 +26,12 @@ public interface IDestinationProvider
     /// <summary>What this destination supports (see <see cref="DestinationCapabilities"/>).</summary>
     DestinationCapabilities Capabilities { get; }
 
-    /// <summary>Enumerates existing files under the destination as relative paths (forward slashes).</summary>
-    IEnumerable<string> Enumerate();
-
-    /// <summary>Enumerates existing directories under the destination as relative paths
-    /// (forward slashes, the root itself excluded). A destination that does not exist yet
-    /// has no directories.</summary>
-    IEnumerable<string> EnumerateDirectories();
+    /// <summary>
+    /// Lists the destination in one walk: every existing file with its stamp and every
+    /// directory, as relative paths (forward slashes, the root excluded). A destination
+    /// that does not exist yet is an empty destination — the first run creates it.
+    /// </summary>
+    TreeListing ListTree();
 
     /// <summary>The change-detection stamp of the destination file at <paramref name="relativePath"/>.
     /// Throws <see cref="FileNotFoundException"/> when the file does not exist.</summary>

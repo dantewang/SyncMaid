@@ -30,6 +30,22 @@ public class InMemoryFileSystemTests
         Assert.Throws<DirectoryNotFoundException>(() => fs.EnumerateFiles(@"S:\missing-directory"));
     }
 
+    [Fact]
+    public void ListTree_returns_files_with_stamps_and_directories_from_one_call()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.AddFile(@"S:\src\sub\b.txt", "b");
+        fs.EnsureDirectory(@"S:\src\empty");
+
+        var listing = fs.ListTree(@"S:\src");
+
+        Assert.Equal(new[] { "a.txt", "sub/b.txt" }, listing.Files.Select(f => f.RelativePath).OrderBy(p => p));
+        Assert.Equal(fs.GetStamp(@"S:\src\a.txt"), listing.Files.Single(f => f.RelativePath == "a.txt").Stamp);
+        Assert.Equal(new[] { "empty", "sub" }, listing.Directories.OrderBy(d => d));
+        Assert.Throws<DirectoryNotFoundException>(() => fs.ListTree(@"S:\missing"));
+    }
+
     // Matching PhysicalFileSystem: an unplugged/missing root is not an empty one.
     [Fact]
     public void A_created_but_empty_root_enumerates_empty_while_a_missing_one_throws()

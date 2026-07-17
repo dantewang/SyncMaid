@@ -23,8 +23,7 @@ public class SyncEngineStatusTests
     // D:\nope/a.txt, so it would never match at all.)
     private sealed class FaultyFileSystem(InMemoryFileSystem inner, string failMarker) : IFileSystem
     {
-        public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
-        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
+        public TreeListing ListTree(string root) => inner.ListTree(root);
         public bool FileExists(string path) => inner.FileExists(path);
         public FileStamp GetStamp(string path) => inner.GetStamp(path);
         public byte[] ReadAllBytes(string path) => inner.ReadAllBytes(path);
@@ -57,16 +56,11 @@ public class SyncEngineStatusTests
 
         public int EnumerationCount(string root) => _enumerations.GetValueOrDefault(root);
 
-        public IEnumerable<string> EnumerateFiles(string root)
+        public TreeListing ListTree(string root)
         {
             _enumerations[root] = EnumerationCount(root) + 1;
-            foreach (var relativePath in inner.EnumerateFiles(root))
-            {
-                yield return relativePath;
-            }
+            return inner.ListTree(root);
         }
-
-        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
 
         public bool FileExists(string path)
         {

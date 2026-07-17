@@ -12,19 +12,13 @@ namespace SyncMaid.Core.IO;
 public interface IFileSystem
 {
     /// <summary>
-    /// Enumerates every file under <paramref name="root"/> (recursively) as paths
-    /// relative to that root, using forward slashes. Returns an empty sequence when
-    /// the root does not exist. Directories themselves are not yielded.
+    /// Walks the tree under <paramref name="root"/> once (recursively), returning every
+    /// file with its <see cref="FileStamp"/> and every directory as a
+    /// <see cref="TreeListing"/>. A root that does not exist throws rather than reading
+    /// as empty: an unplugged source drive must fail the run, not look like an empty
+    /// source.
     /// </summary>
-    IEnumerable<string> EnumerateFiles(string root);
-
-    /// <summary>
-    /// Enumerates every directory under <paramref name="root"/> (recursively, the root
-    /// itself excluded) as paths relative to that root, using forward slashes. Shares
-    /// <see cref="EnumerateFiles"/>'s missing-root behavior: a root that does not exist
-    /// throws rather than reading as empty.
-    /// </summary>
-    IEnumerable<string> EnumerateDirectories(string root);
+    TreeListing ListTree(string root);
 
     /// <summary>True when a file exists at <paramref name="path"/>.</summary>
     bool FileExists(string path);

@@ -210,22 +210,17 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
 
     private TreeSnapshot Snapshot()
     {
-        var files = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
-        foreach (var relative in _fileSystem.EnumerateFiles(_path))
+        // One walk carries files, stamps, and directories — on the network shares this
+        // trigger exists for, that is one round trip per directory instead of per file,
+        // every poll. There is no listing-then-stamping window, so no churn handling.
+        var listing = _fileSystem.ListTree(_path);
+        var files = new Dictionary<string, FileStamp>(listing.Files.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var file in listing.Files)
         {
-            try
-            {
-                files[relative] = _fileSystem.GetStamp(RelativePaths.Join(_path, relative));
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                // A file vanished between listing and stamping, or is momentarily locked;
-                // skip it this round — the next poll will pick up the settled state.
-            }
+            files[file.RelativePath] = file.Stamp;
         }
 
-        var directories = new HashSet<string>(
-            _fileSystem.EnumerateDirectories(_path), StringComparer.OrdinalIgnoreCase);
+        var directories = new HashSet<string>(listing.Directories, StringComparer.OrdinalIgnoreCase);
         return new TreeSnapshot(files, directories);
     }
 

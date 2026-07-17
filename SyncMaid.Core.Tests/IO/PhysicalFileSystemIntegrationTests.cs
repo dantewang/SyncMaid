@@ -26,14 +26,16 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
     // A missing root must be distinguishable from an empty one, or an unplugged source
     // drive reads as an empty source.
     [Fact]
-    public void Enumerating_a_missing_root_throws_while_an_empty_one_yields_nothing()
+    public void Listing_a_missing_root_throws_while_an_empty_one_yields_nothing()
     {
         var missing = Path.Combine(_root, "missing");
         var empty = Path.Combine(_root, "empty");
         Directory.CreateDirectory(empty);
 
-        Assert.Throws<DirectoryNotFoundException>(() => _physical.EnumerateFiles(missing));
-        Assert.Empty(_physical.EnumerateFiles(empty));
+        Assert.Throws<DirectoryNotFoundException>(() => _physical.ListTree(missing));
+        var listing = _physical.ListTree(empty);
+        Assert.Empty(listing.Files);
+        Assert.Empty(listing.Directories);
     }
 
     [Fact]
@@ -106,18 +108,20 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void EnumerateDirectories_yields_nested_relative_paths_and_throws_for_a_missing_root()
+    public void ListTree_yields_nested_directories_and_files_whose_stamps_match_a_fresh_stat()
     {
         var root = Path.Combine(_root, "tree");
         Directory.CreateDirectory(Path.Combine(root, "a", "b"));
         Directory.CreateDirectory(Path.Combine(root, "empty"));
         File.WriteAllText(Path.Combine(root, "a", "file.txt"), "x");
 
-        var directories = _physical.EnumerateDirectories(root).OrderBy(d => d).ToList();
+        var listing = _physical.ListTree(root);
 
-        Assert.Equal(new[] { "a", "a/b", "empty" }, directories);
-        Assert.Throws<DirectoryNotFoundException>(
-            () => _physical.EnumerateDirectories(Path.Combine(_root, "missing")));
+        Assert.Equal(new[] { "a", "a/b", "empty" }, listing.Directories.OrderBy(d => d));
+        var file = Assert.Single(listing.Files);
+        Assert.Equal("a/file.txt", file.RelativePath);
+        // The stamp carried by the walk must agree with an explicit per-file stat.
+        Assert.Equal(_physical.GetStamp(Path.Combine(root, "a", "file.txt")), file.Stamp);
     }
 
     [Fact]
@@ -165,11 +169,14 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(destination, "removed")));
     }
 
-    private IReadOnlyList<string> RelativeTree(string root) =>
-        _physical.EnumerateDirectories(root).Select(directory => "dir:" + directory)
-            .Concat(_physical.EnumerateFiles(root).Select(file => "file:" + file))
+    private IReadOnlyList<string> RelativeTree(string root)
+    {
+        var listing = _physical.ListTree(root);
+        return listing.Directories.Select(directory => "dir:" + directory)
+            .Concat(listing.Files.Select(file => "file:" + file.RelativePath))
             .OrderBy(entry => entry, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
 
     [Fact]
     public void Recycle_path_is_absolute_and_uses_Win32_separators()
@@ -202,8 +209,7 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         public bool CorruptTempReadBack { get; init; }
         public string? FailFileExistsPath { get; init; }
 
-        public IEnumerable<string> EnumerateFiles(string root) => inner.EnumerateFiles(root);
-        public IEnumerable<string> EnumerateDirectories(string root) => inner.EnumerateDirectories(root);
+        public TreeListing ListTree(string root) => inner.ListTree(root);
 
         public bool FileExists(string path)
         {

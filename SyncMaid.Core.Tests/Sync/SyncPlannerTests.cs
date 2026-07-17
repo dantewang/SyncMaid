@@ -17,14 +17,21 @@ public class SyncPlannerTests
     private static IReadOnlyList<SyncOperation> PlanFor(
         InMemoryFileSystem fs, SyncStrategy strategy, params string[] filtered) =>
         SyncPlanner.Plan(
-            fs, SourceRoot, new LocalDestinationProvider(fs, DestRoot), Dest(strategy),
-            filtered, SourceDirectories(fs)).Operations;
+            SourceRoot, new LocalDestinationProvider(fs, DestRoot), Dest(strategy),
+            ListedFiles(fs, filtered), SourceDirectories(fs)).Operations;
+
+    // The engine hands the planner pre-listed files (path + stamp from one walk); tests
+    // rebuild that shape for the chosen filtered subset.
+    private static IReadOnlyList<ListedFile> ListedFiles(InMemoryFileSystem fs, string[] filtered) =>
+        filtered
+            .Select(relative => new ListedFile(relative, fs.GetStamp(RelativePaths.Join(SourceRoot, relative))))
+            .ToList();
 
     private static IReadOnlyList<string> SourceDirectories(InMemoryFileSystem fs)
     {
         try
         {
-            return fs.EnumerateDirectories(SourceRoot).ToList();
+            return fs.ListTree(SourceRoot).Directories;
         }
         catch (DirectoryNotFoundException)
         {
@@ -246,7 +253,7 @@ public class SyncPlannerTests
         };
 
         var plan = SyncPlanner.Plan(
-            fs, SourceRoot, provider, Dest(SyncStrategy.AddOnly), ["same.txt"], []);
+            SourceRoot, provider, Dest(SyncStrategy.AddOnly), ListedFiles(fs, ["same.txt"]), []);
 
         Assert.Empty(plan.Operations);
         Assert.Equal(0, provider.EnumerationCount);
@@ -265,13 +272,13 @@ public class SyncPlannerTests
         };
 
         var plan = SyncPlanner.Plan(
-            fs, SourceRoot, provider, Dest(SyncStrategy.AddOnly), ["new.txt"], []);
+            SourceRoot, provider, Dest(SyncStrategy.AddOnly), ListedFiles(fs, ["new.txt"]), []);
 
         Assert.Single(plan.Operations.OfType<CopyOperation>());
     }
 
     [Fact]
-    public void Mirror_snapshot_ignores_files_that_vanish_while_being_stamped()
+    public void Mirror_plans_from_one_destination_walk_without_per_file_stamp_calls()
     {
         var fs = new InMemoryFileSystem();
         fs.AddFile(@"S:\src\keep.txt", "keep");
@@ -279,30 +286,27 @@ public class SyncPlannerTests
             new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase)
             {
                 ["keep.txt"] = fs.GetStamp(@"S:\src\keep.txt"),
-                ["vanished.txt"] = FileStamp.Create(1, DateTime.UtcNow),
-            })
-        {
-            VanishOnStamp = "vanished.txt",
-        };
+                ["orphan.txt"] = FileStamp.Create(1, DateTime.UtcNow),
+            });
 
         var plan = SyncPlanner.Plan(
-            fs, SourceRoot, provider, Dest(SyncStrategy.Mirror), ["keep.txt"], []);
+            SourceRoot, provider, Dest(SyncStrategy.Mirror), ListedFiles(fs, ["keep.txt"]), []);
 
-        Assert.Empty(plan.Operations);
-        Assert.Equal(1, plan.DestinationFileCount);
+        Assert.Equal("orphan.txt", Assert.Single(plan.Operations.OfType<DeleteOperation>()).RelativePath);
+        Assert.Equal(2, plan.DestinationFileCount);
         Assert.Equal(1, provider.EnumerationCount);
+        Assert.Empty(provider.StampRequests); // stamps ride the listing; no second round trip per file
     }
 
     private sealed class ChurningProvider(Dictionary<string, FileStamp> stamps) : IDestinationProvider
     {
         public bool FailEnumeration { get; init; }
-        public string? VanishOnStamp { get; init; }
         public bool ThrowForMissingStamp { get; init; }
         public int EnumerationCount { get; private set; }
         public List<string> StampRequests { get; } = [];
         public DestinationCapabilities Capabilities => new(IsRemote: false, SupportsRecycle: false);
 
-        public IEnumerable<string> Enumerate()
+        public TreeListing ListTree()
         {
             EnumerationCount++;
             if (FailEnumeration)
@@ -310,20 +314,13 @@ public class SyncPlannerTests
                 throw new IOException("Unrelated destination tree is unavailable.");
             }
 
-            return stamps.Keys.ToList();
+            return new TreeListing(
+                stamps.Select(pair => new ListedFile(pair.Key, pair.Value)).ToList(), []);
         }
-
-        public IEnumerable<string> EnumerateDirectories() => [];
 
         public FileStamp GetStamp(string relativePath)
         {
             StampRequests.Add(relativePath);
-            if (string.Equals(relativePath, VanishOnStamp, StringComparison.OrdinalIgnoreCase))
-            {
-                stamps.Remove(relativePath);
-                throw new FileNotFoundException("Destination file vanished.", relativePath);
-            }
-
             return stamps.TryGetValue(relativePath, out var stamp)
                 ? stamp
                 : ThrowForMissingStamp

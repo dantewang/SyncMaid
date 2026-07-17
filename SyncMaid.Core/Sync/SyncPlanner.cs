@@ -11,9 +11,10 @@ namespace SyncMaid.Core.Sync;
 /// <see cref="SyncApplier"/> runs.
 /// </summary>
 /// <remarks>
-/// The planner only <i>reads</i>: source stamps via the source <see cref="IFileSystem"/>,
-/// and destination existence/stamps/listing via the <see cref="IDestinationProvider"/>. It
-/// never writes, deletes, or moves.
+/// The planner only <i>reads</i>, and only the destination (existence/stamps/listing via
+/// the <see cref="IDestinationProvider"/>); the source arrives pre-listed, stamps
+/// included, from the engine's single <see cref="IFileSystem.ListTree"/> walk. It never
+/// writes, deletes, or moves.
 /// </remarks>
 public static class SyncPlanner
 {
@@ -21,12 +22,11 @@ public static class SyncPlanner
     /// Plans the operations needed to reconcile the destination with the filtered source
     /// set, according to the destination's <see cref="SyncStrategy"/>.
     /// </summary>
-    /// <param name="sourceFileSystem">The source filesystem, used read-only for source stamps.</param>
     /// <param name="sourceRoot">Absolute path of the source root.</param>
     /// <param name="destinationProvider">The destination, read-only, for existence/stamps/listing.</param>
     /// <param name="destination">The destination definition (strategy, delete mode, verify flag).</param>
-    /// <param name="filteredRelativePaths">
-    /// Source files (relative paths, forward slashes) that passed the destination's filters.
+    /// <param name="filteredFiles">
+    /// Source files (relative paths with stamps) that passed the destination's filters.
     /// </param>
     /// <param name="sourceRelativeDirectories">
     /// Every directory under the source root (relative paths, forward slashes). Used only
@@ -34,17 +34,16 @@ public static class SyncPlanner
     /// files, not structure.
     /// </param>
     public static SyncPlan Plan(
-        IFileSystem sourceFileSystem,
         string sourceRoot,
         IDestinationProvider destinationProvider,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths,
+        IReadOnlyCollection<ListedFile> filteredFiles,
         IReadOnlyCollection<string> sourceRelativeDirectories)
     {
         if (destination.Strategy == SyncStrategy.Move)
         {
             return new SyncPlan(
-                PlanMove(sourceRoot, destination, filteredRelativePaths),
+                PlanMove(sourceRoot, destination, filteredFiles),
                 DestinationFileCount: 0);
         }
 
@@ -60,10 +59,9 @@ public static class SyncPlanner
         {
             return new SyncPlan(
                 PlanCopies(
-                    sourceFileSystem,
                     sourceRoot,
                     destination,
-                    filteredRelativePaths,
+                    filteredFiles,
                     relativePath => destinationProvider.TryGetStamp(relativePath, out var stamp)
                         ? stamp
                         : null),
@@ -72,27 +70,24 @@ public static class SyncPlanner
 
         var snapshot = DestinationSnapshot.Create(destinationProvider);
         var operations = PlanMirror(
-            sourceFileSystem, sourceRoot, destination, filteredRelativePaths, sourceRelativeDirectories, snapshot);
+            sourceRoot, destination, filteredFiles, sourceRelativeDirectories, snapshot);
 
         return new SyncPlan(operations, snapshot.FileCount);
     }
 
     // AddOnly: copy new and changed files; never delete from the destination.
     private static List<SyncOperation> PlanCopies(
-        IFileSystem sourceFileSystem,
         string sourceRoot,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths,
+        IReadOnlyCollection<ListedFile> filteredFiles,
         Func<string, FileStamp?> destinationStamp)
     {
         var operations = new List<SyncOperation>();
-        foreach (var relativePath in filteredRelativePaths)
+        foreach (var file in filteredFiles)
         {
-            var sourceFull = RelativePaths.Join(sourceRoot, relativePath);
-
-            if (NeedsCopy(sourceFileSystem, sourceFull, destinationStamp(relativePath)))
+            if (NeedsCopy(file.Stamp, destinationStamp(file.RelativePath)))
             {
-                operations.Add(new CopyOperation(relativePath, sourceFull)
+                operations.Add(new CopyOperation(file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath))
                 {
                     Verify = destination.VerifyContents,
                 });
@@ -107,26 +102,24 @@ public static class SyncPlanner
     // source structure exactly (empty directories included) and a tree compare of the
     // two reports identical.
     private static List<SyncOperation> PlanMirror(
-        IFileSystem sourceFileSystem,
         string sourceRoot,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths,
+        IReadOnlyCollection<ListedFile> filteredFiles,
         IReadOnlyCollection<string> sourceRelativeDirectories,
         DestinationSnapshot destinationSnapshot)
     {
         // Ancestors of the filtered files are source directories by definition; folding
         // them in guards against a directory listing that raced a concurrent change.
         var sourceDirectories = new HashSet<string>(sourceRelativeDirectories, StringComparer.OrdinalIgnoreCase);
-        foreach (var relativePath in filteredRelativePaths)
+        foreach (var file in filteredFiles)
         {
-            sourceDirectories.UnionWith(AncestorDirectories(relativePath));
+            sourceDirectories.UnionWith(AncestorDirectories(file.RelativePath));
         }
 
         var copies = PlanCopies(
-            sourceFileSystem,
             sourceRoot,
             destination,
-            filteredRelativePaths,
+            filteredFiles,
             relativePath => destinationSnapshot.Stamps.TryGetValue(relativePath, out var stamp)
                 ? stamp
                 : null);
@@ -147,7 +140,8 @@ public static class SyncPlanner
             .Select(directory => new CreateDirectoryOperation(directory)));
         operations.AddRange(copies);
 
-        var keep = new HashSet<string>(filteredRelativePaths, StringComparer.OrdinalIgnoreCase);
+        var keep = new HashSet<string>(
+            filteredFiles.Select(file => file.RelativePath), StringComparer.OrdinalIgnoreCase);
         foreach (var destRelative in destinationSnapshot.RelativePaths)
         {
             if (!keep.Contains(destRelative))
@@ -182,12 +176,12 @@ public static class SyncPlanner
     private static List<SyncOperation> PlanMove(
         string sourceRoot,
         Destination destination,
-        IReadOnlyCollection<string> filteredRelativePaths)
+        IReadOnlyCollection<ListedFile> filteredFiles)
     {
         var operations = new List<SyncOperation>();
-        foreach (var relativePath in filteredRelativePaths)
+        foreach (var file in filteredFiles)
         {
-            operations.Add(new MoveOperation(relativePath, RelativePaths.Join(sourceRoot, relativePath))
+            operations.Add(new MoveOperation(file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath))
             {
                 Verify = destination.VerifyContents,
             });
@@ -199,20 +193,11 @@ public static class SyncPlanner
     /// <summary>
     /// A copy is needed when the destination is missing the file or when the source
     /// and destination stamps differ (size or last-write-time). See
-    /// <see cref="FileStamp"/> for why stamps, not hashes.
+    /// <see cref="FileStamp"/> for why stamps, not hashes. Both stamps come from their
+    /// side's tree listing — no per-file stat calls during planning.
     /// </summary>
-    private static bool NeedsCopy(
-        IFileSystem sourceFileSystem,
-        string sourceFull,
-        FileStamp? destinationStamp)
-    {
-        if (destinationStamp is null)
-        {
-            return true;
-        }
-
-        return sourceFileSystem.GetStamp(sourceFull) != destinationStamp.Value;
-    }
+    private static bool NeedsCopy(FileStamp sourceStamp, FileStamp? destinationStamp) =>
+        destinationStamp is null || destinationStamp.Value != sourceStamp;
 
     /// <summary>One stable view of the destination for existence, stamp, delete, and guard decisions.</summary>
     private sealed class DestinationSnapshot
@@ -234,27 +219,23 @@ public static class SyncPlanner
 
         public static DestinationSnapshot Create(IDestinationProvider provider)
         {
-            var relativePaths = new List<string>();
+            // One walk yields files, stamps, and directories together; there is no
+            // per-file stamping phase (and so no churn window between listing and
+            // stamping — a file that vanishes mid-walk simply isn't listed).
+            var listing = provider.ListTree();
+
+            var relativePaths = new List<string>(listing.Files.Count);
             // Phase-1 path providers use Windows-style, case-insensitive relative keys.
             // A future case-sensitive provider must expose its comparer in the provider
             // contract before this snapshot is reused for that backend.
-            var stamps = new Dictionary<string, FileStamp>(StringComparer.OrdinalIgnoreCase);
-            foreach (var relativePath in provider.Enumerate())
+            var stamps = new Dictionary<string, FileStamp>(listing.Files.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var file in listing.Files)
             {
-                try
-                {
-                    stamps[relativePath] = provider.GetStamp(relativePath);
-                    relativePaths.Add(relativePath);
-                }
-                catch (Exception exception) when (
-                    exception is FileNotFoundException or DirectoryNotFoundException)
-                {
-                    // Destination churn: it no longer exists, so exclude it from this snapshot.
-                }
+                stamps[file.RelativePath] = file.Stamp;
+                relativePaths.Add(file.RelativePath);
             }
 
-            var directories = new HashSet<string>(
-                provider.EnumerateDirectories(), StringComparer.OrdinalIgnoreCase);
+            var directories = new HashSet<string>(listing.Directories, StringComparer.OrdinalIgnoreCase);
             return new DestinationSnapshot(relativePaths, stamps, directories);
         }
     }

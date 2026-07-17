@@ -28,27 +28,15 @@ public sealed class LocalDestinationProvider : IDestinationProvider
     // A destination that does not exist yet is an empty destination — the first run
     // creates it. The source side deliberately gets no such tolerance: a missing
     // source must fail the run, not read as empty.
-    public IEnumerable<string> Enumerate()
+    public TreeListing ListTree()
     {
         try
         {
-            return _fileSystem.EnumerateFiles(_root).ToList();
+            return _fileSystem.ListTree(_root);
         }
         catch (DirectoryNotFoundException)
         {
-            return [];
-        }
-    }
-
-    public IEnumerable<string> EnumerateDirectories()
-    {
-        try
-        {
-            return _fileSystem.EnumerateDirectories(_root).ToList();
-        }
-        catch (DirectoryNotFoundException)
-        {
-            return [];
+            return TreeListing.Empty;
         }
     }
 

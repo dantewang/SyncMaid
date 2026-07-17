@@ -51,8 +51,9 @@ public class DestinationProviderSeamTests
         public List<string> Deleted { get; } = [];
 
         public DestinationCapabilities Capabilities => new(IsRemote: true, SupportsRecycle: false);
-        public IEnumerable<string> Enumerate() => _files.Keys;
-        public IEnumerable<string> EnumerateDirectories() => [];
+
+        public TreeListing ListTree() =>
+            new(_files.Select(pair => new ListedFile(pair.Key, pair.Value)).ToList(), []);
         public FileStamp GetStamp(string relativePath) =>
             _files.TryGetValue(relativePath, out var stamp)
                 ? stamp

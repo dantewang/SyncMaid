@@ -73,12 +73,12 @@ public sealed class SyncEngine : ISyncEngine
                 var provider = _destinations.Create(destination.Target);
                 try
                 {
-                    var filtered = _fileSystem.EnumerateFiles(task.SourcePath)
-                        .Where(destination.Includes)
+                    var source = _fileSystem.ListTree(task.SourcePath);
+                    var filtered = source.Files
+                        .Where(file => destination.Includes(file.RelativePath))
                         .ToList();
-                    var sourceDirectories = _fileSystem.EnumerateDirectories(task.SourcePath).ToList();
                     var plan = SyncPlanner.Plan(
-                        _fileSystem, task.SourcePath, provider, destination, filtered, sourceDirectories);
+                        task.SourcePath, provider, destination, filtered, source.Directories);
 
                     var deletions = plan.Operations
                         .OfType<DeleteOperation>()
@@ -120,13 +120,16 @@ public sealed class SyncEngine : ISyncEngine
                 .ToList();
         }
 
-        IReadOnlyList<string> sourceFiles = [];
+        IReadOnlyList<ListedFile> sourceFiles = [];
         IReadOnlyList<string> sourceDirectories = [];
         ExceptionDispatchInfo? sourceEnumerationError = null;
         try
         {
-            sourceFiles = _fileSystem.EnumerateFiles(task.SourcePath).ToList();
-            sourceDirectories = _fileSystem.EnumerateDirectories(task.SourcePath).ToList();
+            // One walk of the source serves every destination: files, stamps, and
+            // directories together, with no per-file stat calls.
+            var source = _fileSystem.ListTree(task.SourcePath);
+            sourceFiles = source.Files;
+            sourceDirectories = source.Directories;
         }
         catch (OperationCanceledException)
         {
@@ -158,7 +161,7 @@ public sealed class SyncEngine : ISyncEngine
     private DestinationSyncStatus ExecuteDestination(
         SyncTask task,
         Destination destination,
-        IReadOnlyList<string> sourceFiles,
+        IReadOnlyList<ListedFile> sourceFiles,
         IReadOnlyList<string> sourceDirectories,
         ExceptionDispatchInfo? sourceEnumerationError,
         CancellationToken cancellationToken,
@@ -196,12 +199,14 @@ public sealed class SyncEngine : ISyncEngine
                 sourceEnumerationError.Throw();
             }
 
-            var filtered = sourceFiles.Where(destination.Includes).ToList();
+            var filtered = sourceFiles
+                .Where(file => destination.Includes(file.RelativePath))
+                .ToList();
 
             var provider = _destinations.Create(destination.Target);
 
             var plan = SyncPlanner.Plan(
-                _fileSystem, task.SourcePath, provider, destination, filtered, sourceDirectories);
+                task.SourcePath, provider, destination, filtered, sourceDirectories);
 
             // Guard Mirror deletions before applying anything: an empty/unavailable source is
             // refused; a mass-delete needs the user's confirmation (unless already given).

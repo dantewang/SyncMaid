@@ -281,15 +281,12 @@ public class PollingWatchTriggerSourceTests
         public ManualResetEventSlim EnumerationStarted { get; } = new();
         public ManualResetEventSlim ReleaseEnumeration { get; } = new();
 
-        public IEnumerable<string> EnumerateFiles(string root)
+        public TreeListing ListTree(string root)
         {
             EnumerationStarted.Set();
             ReleaseEnumeration.Wait();
-            yield break;
+            return TreeListing.Empty;
         }
-
-        // The poll's snapshot also lists directories; only the file walk blocks.
-        public IEnumerable<string> EnumerateDirectories(string root) => [];
 
         public bool FileExists(string path) => throw new NotSupportedException();
         public FileStamp GetStamp(string path) => throw new NotSupportedException();
