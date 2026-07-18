@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SyncMaid.Core.Model;
 
 /// <summary>The outcome of a destination's most recent sync.</summary>
@@ -31,6 +33,14 @@ public sealed record DestinationSyncStatus(
     int FilesCopied = 0,
     string? Error = null)
 {
+    /// <summary>
+    /// The relative paths a successful run actually copied (or moved). Transient run
+    /// detail so the UI can count <b>distinct</b> files across a burst of coalesced
+    /// runs; never persisted — <c>status.json</c> keeps only the count.
+    /// </summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> CopiedRelativePaths { get; init; } = [];
+
     /// <summary>The "not yet run" status for a destination.</summary>
     public static DestinationSyncStatus Never(Guid destinationId) =>
         new(destinationId, SyncOutcome.Never, LastRun: null, FilesCopied: 0, Error: null);

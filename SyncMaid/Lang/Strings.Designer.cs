@@ -473,6 +473,18 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Save task".</summary>
     public static string TaskEditor_Save => Get("TaskEditor.Save");
 
+    /// <summary>Looks up a localized string similar to "Every new change restarts the wait, so one burst of writes becomes one sync r...".</summary>
+    public static string TaskEditor_SettleHint => Get("TaskEditor.SettleHint");
+
+    /// <summary>Looks up a localized string similar to "Quiet period".</summary>
+    public static string TaskEditor_SettleLabel => Get("TaskEditor.SettleLabel");
+
+    /// <summary>Looks up a localized string similar to "Run after".</summary>
+    public static string TaskEditor_SettlePrefix => Get("TaskEditor.SettlePrefix");
+
+    /// <summary>Looks up a localized string similar to "seconds without changes".</summary>
+    public static string TaskEditor_SettleSuffix => Get("TaskEditor.SettleSuffix");
+
     /// <summary>Looks up a localized string similar to "Source folder".</summary>
     public static string TaskEditor_SourceFolderLabel => Get("TaskEditor.SourceFolderLabel");
 

@@ -18,7 +18,7 @@ public sealed class TriggerSourceFactory : ITriggerSourceFactory
     {
         ManualTrigger => new ManualTriggerSource(),
         ScheduledTrigger scheduled => new ScheduledTriggerSource(scheduled.CronExpression),
-        WatchTrigger => CreateWatch(sourcePath),
+        WatchTrigger watch => CreateWatch(sourcePath, watch.SettleWindow),
         _ => throw new ArgumentOutOfRangeException(
             nameof(trigger),
             trigger.GetType().Name,
@@ -27,8 +27,8 @@ public sealed class TriggerSourceFactory : ITriggerSourceFactory
 
     // FileSystemWatcher is unreliable over UNC / mapped network drives, so a network source
     // is watched by polling instead; local sources use the OS watcher.
-    private ITriggerSource CreateWatch(string sourcePath) =>
+    private ITriggerSource CreateWatch(string sourcePath, TimeSpan settleWindow) =>
         NetworkPath.IsNetwork(sourcePath)
-            ? new PollingWatchTriggerSource(_fileSystem, sourcePath)
-            : new WatchTriggerSource(sourcePath);
+            ? new PollingWatchTriggerSource(_fileSystem, sourcePath, settleWindow: settleWindow)
+            : new WatchTriggerSource(sourcePath, settleWindow: settleWindow);
 }

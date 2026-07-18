@@ -7,8 +7,11 @@ namespace SyncMaid.Core.Triggers;
 /// unreliable — mounted network paths (UNC / mapped drives), where events are frequently
 /// missed. Instead of OS change events it periodically snapshots the source tree (relative
 /// path → <see cref="FileStamp"/>, plus the directory set, so an empty directory appearing
-/// or vanishing counts as a change — Mirror replicates structure) and fires when the
-/// snapshot changes.
+/// or vanishing counts as a change — Mirror replicates structure). A changed snapshot
+/// marks the source dirty; the trigger fires once enough consecutive unchanged polls have
+/// covered the settle window (see <see cref="WatchTrigger.SettleSeconds"/>), so a burst
+/// of writes spanning several polls syncs as one run. A zero settle fires on the changed
+/// poll itself.
 /// </summary>
 public sealed class PollingWatchTriggerSource : ITriggerSource
 {
@@ -18,6 +21,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private readonly IFileSystem _fileSystem;
     private readonly string _path;
     private readonly TimeSpan _interval;
+    private readonly int _requiredQuietPolls;
     private readonly Func<Action, IPollingTimer> _timerFactory;
     private readonly Lock _gate = new();
     private readonly TriggerNotifier _notifier = new();
@@ -25,11 +29,17 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private IPollingTimer? _timer;
     private TreeSnapshot _snapshot = TreeSnapshot.Empty;
     private bool _hasBaseline;
+    private bool _pendingChange;
+    private int _quietPolls;
     private bool _failureReported;
     private bool _disposed;
 
-    public PollingWatchTriggerSource(IFileSystem fileSystem, string path, TimeSpan? interval = null)
-        : this(fileSystem, path, interval, callback => new SystemPollingTimer(callback))
+    public PollingWatchTriggerSource(
+        IFileSystem fileSystem,
+        string path,
+        TimeSpan? interval = null,
+        TimeSpan? settleWindow = null)
+        : this(fileSystem, path, interval, callback => new SystemPollingTimer(callback), settleWindow)
     {
     }
 
@@ -37,12 +47,15 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         IFileSystem fileSystem,
         string path,
         TimeSpan? interval,
-        Func<Action, IPollingTimer> timerFactory)
+        Func<Action, IPollingTimer> timerFactory,
+        TimeSpan? settleWindow = null)
     {
         _fileSystem = fileSystem;
         _path = path;
         _interval = interval ?? DefaultInterval;
         _timerFactory = timerFactory;
+        var settle = settleWindow ?? TimeSpan.FromSeconds(WatchTrigger.DefaultSettleSeconds);
+        _requiredQuietPolls = settle <= TimeSpan.Zero ? 0 : (int)Math.Ceiling(settle / _interval);
     }
 
     /// <inheritdoc />
@@ -96,10 +109,13 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     }
 
     /// <summary>
-    /// Takes one snapshot and fires if it differs from the previous one. The first successful
-    /// poll after each <see cref="Start"/> establishes a baseline without firing. Called by the
-    /// timer; exposed so a change can be detected deterministically in tests without waiting on
-    /// the clock. Returns true when a change was detected.
+    /// Takes one snapshot and compares it with the previous one. A difference marks the
+    /// source dirty (and restarts the quiet count); the trigger fires once a dirty source
+    /// has stayed unchanged for the required number of consecutive polls — immediately on
+    /// the changed poll when the settle window is zero. The first successful poll after
+    /// each <see cref="Start"/> establishes a baseline without firing. Called by the
+    /// timer; exposed so a change can be detected deterministically in tests without
+    /// waiting on the clock. Returns true when the trigger fired.
     /// </summary>
     public bool PollOnce()
     {
@@ -142,10 +158,26 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
                 {
                     _snapshot = current!;
                     _hasBaseline = true;
+                    _pendingChange = false;
+                    _quietPolls = 0;
                 }
                 else if (current!.Differs(_snapshot))
                 {
+                    // Still (or newly) changing: remember it and restart the quiet count —
+                    // the settle semantics of the event-based watcher, at poll granularity.
                     _snapshot = current!;
+                    _pendingChange = true;
+                    _quietPolls = 0;
+                    if (_requiredQuietPolls == 0)
+                    {
+                        _pendingChange = false;
+                        changed = true;
+                        _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
+                    }
+                }
+                else if (_pendingChange && ++_quietPolls >= _requiredQuietPolls)
+                {
+                    _pendingChange = false;
                     changed = true;
                     _notifier.Enqueue(() => Fired?.Invoke(this, EventArgs.Empty));
                 }

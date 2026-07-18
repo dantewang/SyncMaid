@@ -32,6 +32,10 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private readonly Func<SyncTask, string?>? _runOverlapConflict;
     private readonly Lock _runGate = new();
 
+    // Distinct files copied per destination across the current coalesced burst — only the
+    // single-flight drain loop touches it. See DrainRunsAsync/AccumulateBurstCopies.
+    private readonly Dictionary<Guid, HashSet<string>> _burstCopied = new();
+
     private ITriggerSource? _triggerSource;
     private CancellationTokenSource? _cts;
     private bool _runActive;
@@ -444,6 +448,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
     private async Task DrainRunsAsync(IReadOnlySet<Guid>? confirmedMassDeletes)
     {
+        // A drain is one user-visible burst; its distinct-copied-files accounting starts fresh.
+        _burstCopied.Clear();
+
         var releasedNormally = false;
         try
         {
@@ -556,6 +563,15 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             var progress = new DispatchedProgress(_dispatcher, OnProgress);
             var statuses = await _engine.ExecuteAsync(Task, cts.Token, progress, confirmedMassDeletes);
 
+            // Coalesced runs are executed independently but reported as one burst: a
+            // successful status shows the distinct files copied so far in this drain, so
+            // a trailing no-op run cannot reset the row (and status.json) to "0 files".
+            statuses = statuses
+                .Select(status => status.Outcome == SyncOutcome.Success
+                    ? status with { FilesCopied = AccumulateBurstCopies(status) }
+                    : status)
+                .ToList();
+
             _dispatcher.Post(() =>
             {
                 foreach (var status in statuses)
@@ -630,6 +646,20 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             Strings.Progress_LineFormat,
             verb, progress.Operation.RelativePath,
             progress.CompletedOperations + 1, progress.TotalOperations));
+    }
+
+    // "N files" must be precise: N counts distinct relative paths, so a file copied twice
+    // across a burst (rewritten between runs) still counts once.
+    private int AccumulateBurstCopies(DestinationSyncStatus status)
+    {
+        if (!_burstCopied.TryGetValue(status.DestinationId, out var copied))
+        {
+            copied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _burstCopied[status.DestinationId] = copied;
+        }
+
+        copied.UnionWith(status.CopiedRelativePaths);
+        return copied.Count;
     }
 
     private DestinationNodeViewModel? ChildById(Guid id) => Children.FirstOrDefault(c => c.Id == id);

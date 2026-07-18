@@ -288,6 +288,18 @@
   <data name="TaskEditor.TriggerWatch" xml:space="preserve">
     <value>Watch</value>
   </data>
+  <data name="TaskEditor.SettleLabel" xml:space="preserve">
+    <value>Quiet period</value>
+  </data>
+  <data name="TaskEditor.SettlePrefix" xml:space="preserve">
+    <value>Run after</value>
+  </data>
+  <data name="TaskEditor.SettleSuffix" xml:space="preserve">
+    <value>seconds without changes</value>
+  </data>
+  <data name="TaskEditor.SettleHint" xml:space="preserve">
+    <value>Every new change restarts the wait, so one burst of writes becomes one sync run. Set it longer than the slowest save your source sees.</value>
+  </data>
   <data name="TaskEditor.CronLabel" xml:space="preserve">
     <value>Cron expression</value>
   </data>

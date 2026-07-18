@@ -219,6 +219,58 @@ public class TaskNodeViewModelTests
         Assert.True(source.Started);
     }
 
+    // "N files" is precise: distinct files across the burst, so the trailing coalesced
+    // run cannot reset the row to 0, and a file copied twice still counts once.
+    [Fact]
+    public async Task A_coalesced_burst_reports_distinct_files_copied_across_its_runs()
+    {
+        var destination = Dest("D");
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine { ExecutionGate = gate.Task };
+        engine.ResultQueue.Enqueue(
+        [
+            new DestinationSyncStatus(destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 3)
+            {
+                CopiedRelativePaths = ["img/photo.png", "img/thumb.png", "img/metadata.json"],
+            },
+        ]);
+        engine.ResultQueue.Enqueue(
+        [
+            // The follow-up re-copies a file rewritten during run 1 — not a new file.
+            new DestinationSyncStatus(destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 1)
+            {
+                CopiedRelativePaths = ["img/metadata.json"],
+            },
+        ]);
+        var triggers = new FakeTriggerSourceFactory();
+        var persisted = new List<IReadOnlyList<DestinationSyncStatus>>();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [destination]),
+            engine: engine,
+            triggers: triggers,
+            onStatuses: statuses => persisted.Add(statuses));
+
+        node.ExecuteCommand.Execute(null);
+        triggers.Created.Single().Raise(); // queue the follow-up while run 1 is in flight
+        gate.SetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Equal(2, engine.Executed.Count);
+        Assert.Equal(3, node.Children[0].Status.FilesCopied); // 3 distinct, not 4 copies, not run 2's 1
+        Assert.Equal(3, persisted[^1].Single().FilesCopied);  // status.json gets the burst total too
+
+        // A later, separate burst starts its accounting fresh.
+        engine.ResultQueue.Enqueue(
+        [
+            new DestinationSyncStatus(destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 1)
+            {
+                CopiedRelativePaths = ["new.txt"],
+            },
+        ]);
+        await node.ExecuteCommand.ExecuteAsync(null);
+        Assert.Equal(1, node.Children[0].Status.FilesCopied);
+    }
+
     [Fact]
     public async Task Cancelling_drops_queued_follow_ups_but_allows_a_later_new_run()
     {

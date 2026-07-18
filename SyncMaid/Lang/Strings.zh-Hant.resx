@@ -281,6 +281,18 @@
   <data name="TaskEditor.TriggerWatch" xml:space="preserve">
     <value>監看</value>
   </data>
+  <data name="TaskEditor.SettleLabel" xml:space="preserve">
+    <value>靜默期</value>
+  </data>
+  <data name="TaskEditor.SettlePrefix" xml:space="preserve">
+    <value>在持續</value>
+  </data>
+  <data name="TaskEditor.SettleSuffix" xml:space="preserve">
+    <value>秒無變更後執行</value>
+  </data>
+  <data name="TaskEditor.SettleHint" xml:space="preserve">
+    <value>新的變更會重新計時，因此一批連續寫入只會觸發一次同步。請將其設定為比來源中最慢的儲存過程更長。</value>
+  </data>
   <data name="TaskEditor.CronLabel" xml:space="preserve">
     <value>Cron 運算式</value>
   </data>

@@ -235,7 +235,7 @@ public sealed class SyncEngine : ISyncEngine
                 }
             }
 
-            var filesCopied = 0;
+            var copied = new List<string>();
             for (var i = 0; i < plan.Operations.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -266,12 +266,15 @@ public sealed class SyncEngine : ISyncEngine
 
                 if (operation is CopyOperation or MoveOperation)
                 {
-                    filesCopied++;
+                    copied.Add(operation.RelativePath);
                 }
             }
 
             return new DestinationSyncStatus(
-                destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, filesCopied, Error: null);
+                destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, copied.Count, Error: null)
+            {
+                CopiedRelativePaths = copied,
+            };
         }
         catch (OperationCanceledException)
         {

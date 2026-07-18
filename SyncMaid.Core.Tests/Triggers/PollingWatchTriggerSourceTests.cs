@@ -10,7 +10,8 @@ public class PollingWatchTriggerSourceTests
 
     private static PollingWatchTriggerSource Source(InMemoryFileSystem fs) =>
         // A fake timer keeps tests deterministic; snapshots are advanced by PollOnce.
-        new(fs, Root, TimeSpan.FromHours(1), _ => new FakeTimer());
+        // Settle zero keeps fire-on-change; the settle window has its own tests below.
+        new(fs, Root, TimeSpan.FromHours(1), _ => new FakeTimer(), TimeSpan.Zero);
 
     [Fact]
     public void Fires_when_a_file_is_added()
@@ -68,6 +69,43 @@ public class PollingWatchTriggerSourceTests
         Assert.True(source.PollOnce());
 
         Assert.False(source.PollOnce());
+    }
+
+    // The settle window at poll granularity: a 10 s settle over a 5 s interval needs two
+    // consecutive unchanged polls before the trigger fires.
+    [Fact]
+    public void With_a_settle_window_fires_only_after_enough_quiet_polls()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        using var source = new PollingWatchTriggerSource(
+            fs, Root, TimeSpan.FromSeconds(5), _ => new FakeTimer(), TimeSpan.FromSeconds(10));
+        source.Start();
+        Assert.False(source.PollOnce()); // baseline
+
+        fs.AddFile($@"{Root}\b.txt", "b");
+        Assert.False(source.PollOnce()); // change seen -> dirty, but still settling
+        Assert.False(source.PollOnce()); // first quiet poll of the two required
+        Assert.True(source.PollOnce());  // second quiet poll covers the settle window
+        Assert.False(source.PollOnce()); // settled — no repeat fire
+    }
+
+    [Fact]
+    public void Ongoing_changes_keep_restarting_the_settle_window()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile($@"{Root}\a.txt", "a");
+        using var source = new PollingWatchTriggerSource(
+            fs, Root, TimeSpan.FromSeconds(5), _ => new FakeTimer(), TimeSpan.FromSeconds(10));
+        source.Start();
+        Assert.False(source.PollOnce()); // baseline
+
+        fs.AddFile($@"{Root}\b.txt", "b");
+        Assert.False(source.PollOnce()); // dirty
+        fs.AddFile($@"{Root}\c.txt", "c"); // the burst continues mid-settle
+        Assert.False(source.PollOnce()); // still changing -> quiet count restarts
+        Assert.False(source.PollOnce()); // quiet 1/2
+        Assert.True(source.PollOnce());  // quiet 2/2 -> one run for the whole burst
     }
 
     [Fact]

@@ -18,7 +18,12 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     [NotifyPropertyChangedFor(nameof(IsScheduledTrigger))]
+    [NotifyPropertyChangedFor(nameof(IsWatchTrigger))]
     private TaskTriggerType _selectedTriggerType = TaskTriggerType.Manual;
+
+    /// <summary>The watch trigger's quiet period (seconds); see <see cref="WatchTrigger.SettleSeconds"/>.</summary>
+    [ObservableProperty]
+    private decimal _settleSeconds = WatchTrigger.DefaultSettleSeconds;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
@@ -48,7 +53,7 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
 
         if (existing != null)
         {
-            (_selectedTriggerType, _cronExpression) = FromTrigger(existing.Trigger);
+            (_selectedTriggerType, _cronExpression, _settleSeconds) = FromTrigger(existing.Trigger);
         }
     }
 
@@ -69,6 +74,14 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
     public TaskTriggerType[] TriggerTypes { get; }
 
     public bool IsScheduledTrigger => SelectedTriggerType == TaskTriggerType.Scheduled;
+
+    public bool IsWatchTrigger => SelectedTriggerType == TaskTriggerType.Watch;
+
+    /// <summary>Editor bounds for the settle field, from the model's clamp range.</summary>
+    public decimal MinSettleSeconds => WatchTrigger.MinSettleSeconds;
+
+    /// <inheritdoc cref="MinSettleSeconds"/>
+    public decimal MaxSettleSeconds => WatchTrigger.MaxSettleSeconds;
 
     /// <summary>Plain-language feedback for the cron field: validity and the next run time.</summary>
     public string CronPreview
@@ -104,14 +117,17 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
     private Trigger ToTrigger() => SelectedTriggerType switch
     {
         TaskTriggerType.Scheduled => new ScheduledTrigger(CronExpression),
-        TaskTriggerType.Watch => new WatchTrigger(),
+        TaskTriggerType.Watch => new WatchTrigger((int)Math.Clamp(
+            SettleSeconds, WatchTrigger.MinSettleSeconds, WatchTrigger.MaxSettleSeconds)),
         _ => new ManualTrigger(),
     };
 
-    private static (TaskTriggerType Type, string Cron) FromTrigger(Trigger trigger) => trigger switch
-    {
-        ScheduledTrigger scheduled => (TaskTriggerType.Scheduled, scheduled.CronExpression),
-        WatchTrigger => (TaskTriggerType.Watch, string.Empty),
-        _ => (TaskTriggerType.Manual, string.Empty),
-    };
+    private static (TaskTriggerType Type, string Cron, decimal SettleSeconds) FromTrigger(Trigger trigger) =>
+        trigger switch
+        {
+            ScheduledTrigger scheduled =>
+                (TaskTriggerType.Scheduled, scheduled.CronExpression, WatchTrigger.DefaultSettleSeconds),
+            WatchTrigger watch => (TaskTriggerType.Watch, string.Empty, watch.SettleSeconds),
+            _ => (TaskTriggerType.Manual, string.Empty, WatchTrigger.DefaultSettleSeconds),
+        };
 }

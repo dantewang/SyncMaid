@@ -22,6 +22,10 @@ public sealed class FakeSyncEngine : ISyncEngine
     /// <summary>When set, returned from the next run instead of the default successes.</summary>
     public IReadOnlyList<DestinationSyncStatus>? Result { get; set; }
 
+    /// <summary>When non-empty, each run dequeues its result — for tests where successive
+    /// coalesced runs must return different statuses. Takes precedence over <see cref="Result"/>.</summary>
+    public Queue<IReadOnlyList<DestinationSyncStatus>> ResultQueue { get; } = new();
+
     /// <summary>Progress updates reported (in order) before the run completes.</summary>
     public IReadOnlyList<SyncProgress>? ProgressToReport { get; set; }
 
@@ -112,6 +116,11 @@ public sealed class FakeSyncEngine : ISyncEngine
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (ResultQueue.Count > 0)
+            {
+                return ResultQueue.Dequeue();
+            }
 
             if (Result is not null)
             {

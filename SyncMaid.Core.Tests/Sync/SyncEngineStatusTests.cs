@@ -97,6 +97,8 @@ public class SyncEngineStatusTests
         Assert.Equal(dest.Id, status.DestinationId);
         Assert.Equal(SyncOutcome.Success, status.Outcome);
         Assert.Equal(2, status.FilesCopied);
+        // The transient run detail behind burst accounting: which files, not just how many.
+        Assert.Equal(["a.txt", "b.txt"], status.CopiedRelativePaths.OrderBy(p => p));
         Assert.NotNull(status.LastRun);
         Assert.Null(status.Error);
     }

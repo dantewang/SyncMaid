@@ -281,6 +281,18 @@
   <data name="TaskEditor.TriggerWatch" xml:space="preserve">
     <value>監視</value>
   </data>
+  <data name="TaskEditor.SettleLabel" xml:space="preserve">
+    <value>静穏期間</value>
+  </data>
+  <data name="TaskEditor.SettlePrefix" xml:space="preserve">
+    <value>変更が</value>
+  </data>
+  <data name="TaskEditor.SettleSuffix" xml:space="preserve">
+    <value>秒間なければ実行</value>
+  </data>
+  <data name="TaskEditor.SettleHint" xml:space="preserve">
+    <value>新しい変更があるたびに待機がリセットされるため、連続した書き込みは 1 回の同期にまとめられます。ソースで最も時間のかかる保存より長く設定してください。</value>
+  </data>
   <data name="TaskEditor.CronLabel" xml:space="preserve">
     <value>cron 式</value>
   </data>

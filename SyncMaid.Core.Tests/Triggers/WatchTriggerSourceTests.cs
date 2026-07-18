@@ -336,6 +336,32 @@ public class WatchTriggerSourceTests
         }
     }
 
+    // The configured settle window is what arms the debounce — the SyncBack-style
+    // "wait for no changes before running" knob, per task.
+    [Fact]
+    public void The_configured_settle_window_arms_the_debounce()
+    {
+        var directory = NewDirectory();
+        var watcher = new TestFileSystemWatcher(directory);
+        FakeDebounceTimer? timer = null;
+        try
+        {
+            using var source = new WatchTriggerSource(
+                directory,
+                _ => watcher,
+                callback => timer = new FakeDebounceTimer(callback),
+                settleWindow: TimeSpan.FromSeconds(42));
+            source.Start();
+            watcher.RaiseChanged();
+
+            Assert.Equal(TimeSpan.FromSeconds(42), timer!.ArmedFor);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Fact]
     public void Dispose_contains_watcher_cleanup_failures_and_still_disposes_the_debounce()
     {
@@ -391,7 +417,9 @@ public class WatchTriggerSourceTests
 
         try
         {
-            using var source = new WatchTriggerSource(directory);
+            // A short real settle keeps this real-timer integration test fast.
+            using var source = new WatchTriggerSource(
+                directory, settleWindow: TimeSpan.FromMilliseconds(250));
             var fired = new TaskCompletionSource();
             source.Fired += (_, _) => fired.TrySetResult();
             source.Start();
@@ -446,7 +474,9 @@ public class WatchTriggerSourceTests
 
         try
         {
-            using var source = new WatchTriggerSource(directory);
+            // A short real settle keeps this real-timer integration test fast.
+            using var source = new WatchTriggerSource(
+                directory, settleWindow: TimeSpan.FromMilliseconds(250));
             var fired = new TaskCompletionSource();
             source.Fired += (_, _) => fired.TrySetResult();
 
@@ -566,7 +596,8 @@ public class WatchTriggerSourceTests
     private sealed class FakeDebounceTimer(Action callback) : WatchTriggerSource.IDebounceTimer
     {
         public bool Disposed { get; private set; }
-        public void Change(TimeSpan dueTime) { }
+        public TimeSpan? ArmedFor { get; private set; }
+        public void Change(TimeSpan dueTime) => ArmedFor = dueTime;
         public void Fire() => callback();
         public void Dispose() => Disposed = true;
     }

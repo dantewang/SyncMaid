@@ -2,13 +2,14 @@ namespace SyncMaid.Core.Triggers;
 
 /// <summary>
 /// Fires when the source directory changes, using a <see cref="FileSystemWatcher"/>.
-/// Filesystem events arrive in bursts (a single save can raise several), so events are
-/// debounced: a fire is scheduled a short delay after the last change and rescheduled
-/// if more changes arrive within the window.
+/// Filesystem events arrive in bursts (a single save can raise several, and one user
+/// action often writes several files over seconds), so events are settled: a fire is
+/// scheduled <see cref="WatchTrigger.SettleSeconds"/> after the last change and
+/// rescheduled if more changes arrive within the window, so one burst syncs as one run.
 /// </summary>
 public sealed class WatchTriggerSource : ITriggerSource
 {
-    private static readonly TimeSpan DebounceWindow = TimeSpan.FromMilliseconds(500);
+    private readonly TimeSpan _settleWindow;
 
     private readonly string _path;
     private readonly Func<string, FileSystemWatcher> _watcherFactory;
@@ -23,19 +24,24 @@ public sealed class WatchTriggerSource : ITriggerSource
     private bool _errorReported;
     private bool _disposed;
 
-    public WatchTriggerSource(string path, Func<string, FileSystemWatcher>? watcherFactory = null)
-        : this(path, watcherFactory, callback => new SystemDebounceTimer(callback))
+    public WatchTriggerSource(
+        string path,
+        Func<string, FileSystemWatcher>? watcherFactory = null,
+        TimeSpan? settleWindow = null)
+        : this(path, watcherFactory, callback => new SystemDebounceTimer(callback), settleWindow)
     {
     }
 
     internal WatchTriggerSource(
         string path,
         Func<string, FileSystemWatcher>? watcherFactory,
-        Func<Action, IDebounceTimer> debounceFactory)
+        Func<Action, IDebounceTimer> debounceFactory,
+        TimeSpan? settleWindow = null)
     {
         _path = path;
         _watcherFactory = watcherFactory ?? (watchPath => new FileSystemWatcher(watchPath));
         _debounceFactory = debounceFactory;
+        _settleWindow = settleWindow ?? TimeSpan.FromSeconds(WatchTrigger.DefaultSettleSeconds);
     }
 
     /// <inheritdoc />
@@ -174,7 +180,7 @@ public sealed class WatchTriggerSource : ITriggerSource
             try
             {
                 created = _debounceFactory(() => OnDebounceElapsed(arm));
-                created.Change(DebounceWindow);
+                created.Change(_settleWindow);
                 _debounce = created;
                 created = null;
             }

@@ -50,6 +50,40 @@ public class TaskEditorViewModelTests
     }
 
     [Fact]
+    public void Watch_settle_seconds_round_trip_through_the_trigger()
+    {
+        var existing = new SyncTask("T", @"C:\s", new WatchTrigger(SettleSeconds: 45), []);
+        var vm = New(existing: existing);
+
+        Assert.True(vm.IsWatchTrigger);
+        Assert.Equal(45m, vm.SettleSeconds);
+
+        vm.SettleSeconds = 20;
+        SyncTask? result = null;
+        vm.CloseRequested += t => result = t;
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(20, Assert.IsType<WatchTrigger>(result!.Trigger).SettleSeconds);
+    }
+
+    [Fact]
+    public void A_new_watch_task_gets_the_default_settle_window()
+    {
+        var vm = New();
+        vm.Name = "T";
+        vm.Path = @"C:\s";
+        vm.SelectedTriggerType = TaskTriggerType.Watch;
+
+        SyncTask? result = null;
+        vm.CloseRequested += t => result = t;
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(
+            WatchTrigger.DefaultSettleSeconds,
+            Assert.IsType<WatchTrigger>(result!.Trigger).SettleSeconds);
+    }
+
+    [Fact]
     public void Editing_preserves_the_task_id()
     {
         var existing = new SyncTask("n", @"C:\s", new ManualTrigger(), []);

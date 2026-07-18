@@ -29,7 +29,7 @@ public class JsonTaskStoreTests
         new SyncTask(
             "Docs",
             @"C:\src\docs",
-            new WatchTrigger(),
+            new WatchTrigger(SettleSeconds: 45),
             [
                 new Destination("Mirror", @"E:\mirror", [new AllFilesFilter()], SyncStrategy.Mirror),
                 new Destination("Archive", @"E:\archive", [new ExtensionFilter("pdf")], SyncStrategy.Move),
@@ -80,7 +80,7 @@ public class JsonTaskStoreTests
 
         // Multiple destinations and the remaining strategies/triggers.
         var docs = loaded[1];
-        Assert.IsType<WatchTrigger>(docs.Trigger);
+        Assert.Equal(45, Assert.IsType<WatchTrigger>(docs.Trigger).SettleSeconds);
         Assert.Equal(2, docs.Destinations.Count);
         Assert.Equal(SyncStrategy.Mirror, docs.Destinations[0].Strategy);
         Assert.IsType<AllFilesFilter>(Assert.Single(docs.Destinations[0].Filters));
@@ -88,6 +88,20 @@ public class JsonTaskStoreTests
 
         Assert.IsType<ManualTrigger>(loaded[2].Trigger);
         Assert.Empty(loaded[2].Destinations);
+    }
+
+    // Config written before the settle window existed carries a bare {"kind":"watch"}.
+    [Fact]
+    public void A_legacy_watch_trigger_without_settle_seconds_loads_with_the_default()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(
+            """
+            [{"Name":"T","SourcePath":"C:\\src","Trigger":{"kind":"watch"},"Destinations":[]}]
+            """));
+
+        var trigger = Assert.IsType<WatchTrigger>(Assert.Single(NewStore(fs).Load()).Trigger);
+        Assert.Equal(WatchTrigger.DefaultSettleSeconds, trigger.SettleSeconds);
     }
 
     [Fact]
