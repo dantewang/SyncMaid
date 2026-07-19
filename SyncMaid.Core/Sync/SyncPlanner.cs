@@ -28,17 +28,17 @@ public static class SyncPlanner
     /// <param name="filteredFiles">
     /// Source files (relative paths with stamps) that passed the destination's filters.
     /// </param>
-    /// <param name="sourceRelativeDirectories">
-    /// Every directory under the source root (relative paths, forward slashes). Used only
-    /// by Mirror, which replicates the source directory tree exactly — file filters select
-    /// files, not structure.
+    /// <param name="sourceDirectories">
+    /// Every directory under the source root (relative paths with modified times). Used
+    /// only by Mirror, which replicates the source directory tree — structure and
+    /// directory times — exactly; file filters select files, not structure.
     /// </param>
     public static SyncPlan Plan(
         string sourceRoot,
         IDestinationProvider destinationProvider,
         Destination destination,
         IReadOnlyCollection<ListedFile> filteredFiles,
-        IReadOnlyCollection<string> sourceRelativeDirectories)
+        IReadOnlyCollection<ListedDirectory> sourceDirectories)
     {
         if (destination.Strategy == SyncStrategy.Move)
         {
@@ -70,7 +70,7 @@ public static class SyncPlanner
 
         var snapshot = DestinationSnapshot.Create(destinationProvider);
         var operations = PlanMirror(
-            sourceRoot, destination, filteredFiles, sourceRelativeDirectories, snapshot);
+            sourceRoot, destination, filteredFiles, sourceDirectories, snapshot);
 
         return new SyncPlan(operations, snapshot.FileCount);
     }
@@ -105,15 +105,23 @@ public static class SyncPlanner
         string sourceRoot,
         Destination destination,
         IReadOnlyCollection<ListedFile> filteredFiles,
-        IReadOnlyCollection<string> sourceRelativeDirectories,
+        IReadOnlyCollection<ListedDirectory> sourceDirectories,
         DestinationSnapshot destinationSnapshot)
     {
+        var sourceDirectoryTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        foreach (var directory in sourceDirectories)
+        {
+            sourceDirectoryTimes[directory.RelativePath] = directory.LastWriteTimeUtc;
+        }
+
         // Ancestors of the filtered files are source directories by definition; folding
         // them in guards against a directory listing that raced a concurrent change.
-        var sourceDirectories = new HashSet<string>(sourceRelativeDirectories, StringComparer.OrdinalIgnoreCase);
+        // (They carry no listed time, so they get no timestamp operation this run.)
+        var sourceDirectoryNames = new HashSet<string>(
+            sourceDirectoryTimes.Keys, StringComparer.OrdinalIgnoreCase);
         foreach (var file in filteredFiles)
         {
-            sourceDirectories.UnionWith(AncestorDirectories(file.RelativePath));
+            sourceDirectoryNames.UnionWith(AncestorDirectories(file.RelativePath));
         }
 
         var copies = PlanCopies(
@@ -133,7 +141,7 @@ public static class SyncPlanner
         }
 
         var operations = new List<SyncOperation>();
-        operations.AddRange(sourceDirectories
+        operations.AddRange(sourceDirectoryNames
             .Where(directory => !destinationSnapshot.Directories.Contains(directory)
                                 && !createdByCopies.Contains(directory))
             .OrderBy(directory => directory, StringComparer.OrdinalIgnoreCase) // parents first
@@ -150,16 +158,62 @@ public static class SyncPlanner
             }
         }
 
-        // Destination directories that no longer exist in the source go last, after the
-        // file deletions that empty them. A child is its parent plus "/…", so it sorts
-        // after the parent ordinally; descending order deletes children before parents.
-        // The enumerations exclude the roots themselves, so the root is never planned.
+        // Destination directories that no longer exist in the source go after the file
+        // deletions that empty them. A child is its parent plus "/…", so it sorts after
+        // the parent ordinally; descending order deletes children before parents. The
+        // enumerations exclude the roots themselves, so the root is never planned.
         operations.AddRange(destinationSnapshot.Directories
-            .Where(directory => !sourceDirectories.Contains(directory))
+            .Where(directory => !sourceDirectoryNames.Contains(directory))
             .OrderByDescending(directory => directory, StringComparer.OrdinalIgnoreCase)
             .Select(directory => new DeleteDirectoryOperation(directory)));
 
+        // Directory times go last of all: the operations above bump the times of the
+        // directories they touch, and NTFS does not bump a parent when a child's own
+        // timestamps change, so one trailing pass converges within the run.
+        operations.AddRange(PlanDirectoryTimestamps(operations, sourceDirectoryTimes, destinationSnapshot));
+
         return operations;
+    }
+
+    // A destination directory needs its time (re)set when it is about to be created
+    // (its time will read "now"), its current time differs from the source's, or one of
+    // this plan's operations changes an entry inside it (which bumps it).
+    private static List<SetDirectoryTimestampOperation> PlanDirectoryTimestamps(
+        IReadOnlyList<SyncOperation> plannedOperations,
+        Dictionary<string, DateTime> sourceDirectoryTimes,
+        DestinationSnapshot destinationSnapshot)
+    {
+        var bumped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var operation in plannedOperations)
+        {
+            if (ParentDirectory(operation.RelativePath) is { } parent)
+            {
+                bumped.Add(parent);
+            }
+        }
+
+        var timestamps = new List<SetDirectoryTimestampOperation>();
+        foreach (var (directory, time) in sourceDirectoryTimes
+                     .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var missing = !destinationSnapshot.Directories.Contains(directory);
+            var mismatched = destinationSnapshot.DirectoryTimes.TryGetValue(directory, out var destinationTime)
+                             && destinationTime != time;
+            if (missing || mismatched || bumped.Contains(directory))
+            {
+                timestamps.Add(new SetDirectoryTimestampOperation(directory, time));
+            }
+        }
+
+        return timestamps;
+    }
+
+    // "a/b/c" -> "a/b"; a path directly under the root has no parent to bump (the
+    // destination root itself never gets operations).
+    private static string? ParentDirectory(string relativePath)
+    {
+        var separator = relativePath.LastIndexOf('/');
+        return separator < 0 ? null : relativePath[..separator];
     }
 
     // "a/b/c.txt" yields "a" then "a/b" — every directory between the root (exclusive)
@@ -205,16 +259,19 @@ public static class SyncPlanner
         private DestinationSnapshot(
             IReadOnlyList<string> relativePaths,
             IReadOnlyDictionary<string, FileStamp> stamps,
-            IReadOnlySet<string> directories)
+            IReadOnlySet<string> directories,
+            IReadOnlyDictionary<string, DateTime> directoryTimes)
         {
             RelativePaths = relativePaths;
             Stamps = stamps;
             Directories = directories;
+            DirectoryTimes = directoryTimes;
         }
 
         public IReadOnlyList<string> RelativePaths { get; }
         public IReadOnlyDictionary<string, FileStamp> Stamps { get; }
         public IReadOnlySet<string> Directories { get; }
+        public IReadOnlyDictionary<string, DateTime> DirectoryTimes { get; }
         public int FileCount => RelativePaths.Count;
 
         public static DestinationSnapshot Create(IDestinationProvider provider)
@@ -235,8 +292,16 @@ public static class SyncPlanner
                 relativePaths.Add(file.RelativePath);
             }
 
-            var directories = new HashSet<string>(listing.Directories, StringComparer.OrdinalIgnoreCase);
-            return new DestinationSnapshot(relativePaths, stamps, directories);
+            var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var directoryTimes = new Dictionary<string, DateTime>(
+                listing.Directories.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var directory in listing.Directories)
+            {
+                directories.Add(directory.RelativePath);
+                directoryTimes[directory.RelativePath] = directory.LastWriteTimeUtc;
+            }
+
+            return new DestinationSnapshot(relativePaths, stamps, directories, directoryTimes);
         }
     }
 }

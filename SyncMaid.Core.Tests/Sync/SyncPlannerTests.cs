@@ -27,7 +27,7 @@ public class SyncPlannerTests
             .Select(relative => new ListedFile(relative, fs.GetStamp(RelativePaths.Join(SourceRoot, relative))))
             .ToList();
 
-    private static IReadOnlyList<string> SourceDirectories(InMemoryFileSystem fs)
+    private static IReadOnlyList<ListedDirectory> SourceDirectories(InMemoryFileSystem fs)
     {
         try
         {
@@ -150,6 +150,65 @@ public class SyncPlannerTests
         Assert.Equal("a/orphan.txt", Assert.Single(ops.OfType<DeleteOperation>()).RelativePath);
         Assert.Empty(ops.OfType<DeleteDirectoryOperation>());
         Assert.Empty(ops.OfType<CreateDirectoryOperation>());
+    }
+
+    [Fact]
+    public void Mirror_repairs_drifted_directory_times_and_resets_those_its_operations_bump()
+    {
+        var fs = new InMemoryFileSystem();
+        var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var sourceTime = new DateTime(2026, 3, 5, 10, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\drifted\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\drifted\keep.txt", "keep", t);
+        fs.SetDirectoryLastWriteTimeUtc(@"S:\src\drifted", sourceTime); // dest still has DefaultTime
+
+        fs.AddFile(@"S:\src\bumped\new.txt", "new", t);   // this copy will bump bumped\ at the dest
+        fs.AddFile(@"D:\dst\bumped\old.txt", "old", t);   // and this orphan's deletion bumps it too
+
+        fs.AddFile(@"S:\src\calm\same.txt", "same", t);
+        fs.AddFile(@"D:\dst\calm\same.txt", "same", t);   // identical, untouched, matching time
+
+        var ops = PlanFor(
+            fs, SyncStrategy.Mirror, "drifted/keep.txt", "bumped/new.txt", "calm/same.txt").ToList();
+
+        var stamps = ops.OfType<SetDirectoryTimestampOperation>().ToList();
+        Assert.Contains(stamps, s => s.RelativePath == "drifted" && s.LastWriteTimeUtc == sourceTime);
+        Assert.Contains(stamps, s => s.RelativePath == "bumped"); // matching time, but about to be bumped
+        Assert.DoesNotContain(stamps, s => s.RelativePath == "calm");
+        Assert.True(
+            ops.FindIndex(o => o is SetDirectoryTimestampOperation)
+            > ops.FindLastIndex(o => o is not SetDirectoryTimestampOperation),
+            "directory time resets must come after every other operation");
+    }
+
+    [Fact]
+    public void Mirror_stamps_a_newly_created_directory_with_the_source_time()
+    {
+        var fs = new InMemoryFileSystem();
+        var sourceTime = new DateTime(2026, 3, 5, 10, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\keep.txt", "keep");
+        fs.AddFile(@"D:\dst\keep.txt", "keep");
+        fs.EnsureDirectory(@"S:\src\empty");
+        fs.SetDirectoryLastWriteTimeUtc(@"S:\src\empty", sourceTime);
+
+        var ops = PlanFor(fs, SyncStrategy.Mirror, "keep.txt");
+
+        Assert.Single(ops.OfType<CreateDirectoryOperation>());
+        var stamp = Assert.Single(ops.OfType<SetDirectoryTimestampOperation>());
+        Assert.Equal("empty", stamp.RelativePath);
+        Assert.Equal(sourceTime, stamp.LastWriteTimeUtc);
+    }
+
+    [Fact]
+    public void AddOnly_never_sets_directory_times()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a\keep.txt", "keep");
+        fs.SetDirectoryLastWriteTimeUtc(@"S:\src\a", new DateTime(2026, 3, 5, 10, 0, 0, DateTimeKind.Utc));
+
+        var ops = PlanFor(fs, SyncStrategy.AddOnly, "a/keep.txt");
+
+        Assert.Empty(ops.OfType<SetDirectoryTimestampOperation>());
     }
 
     [Fact]
@@ -342,5 +401,8 @@ public class SyncPlannerTests
         public void EnsureDirectory(string relativePath) => throw new NotSupportedException();
 
         public void DeleteEmptyDirectory(string relativePath) => throw new NotSupportedException();
+
+        public void SetDirectoryLastWriteTimeUtc(string relativePath, DateTime lastWriteTimeUtc) =>
+            throw new NotSupportedException();
     }
 }

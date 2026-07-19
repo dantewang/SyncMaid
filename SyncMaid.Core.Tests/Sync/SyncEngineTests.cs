@@ -71,6 +71,27 @@ public class SyncEngineTests
         Assert.Contains("empty", fs.EnumerateDirectories(@"D:\dst"));
     }
 
+    // Tree identity extends to directory metadata: a destination folder carries the
+    // source folder's modified time, not the time the sync happened to create/touch it.
+    [Fact]
+    public async Task End_to_end_mirror_run_repairs_drifted_directory_times()
+    {
+        var fs = new InMemoryFileSystem();
+        var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var sourceTime = new DateTime(2026, 3, 5, 10, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\a\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\a\keep.txt", "keep", t);
+        fs.SetDirectoryLastWriteTimeUtc(@"S:\src\a", sourceTime);
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        Assert.Equal(
+            sourceTime,
+            fs.ListTree(@"D:\dst").Directories.Single(d => d.RelativePath == "a").LastWriteTimeUtc);
+    }
+
     [Fact]
     public async Task End_to_end_mirror_run_keeps_a_directory_the_source_still_has_after_deleting_its_files()
     {

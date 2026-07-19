@@ -334,6 +334,7 @@ public class PollingWatchTriggerSourceTests
         public void Recycle(string path) => throw new NotSupportedException();
         public void EnsureDirectory(string path) => throw new NotSupportedException();
         public void DeleteEmptyDirectory(string path) => throw new NotSupportedException();
+        public void SetDirectoryLastWriteTimeUtc(string path, DateTime utc) => throw new NotSupportedException();
         public Stream OpenRead(string path) => throw new NotSupportedException();
         public Stream CreateWriteThrough(string path) => throw new NotSupportedException();
         public void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc) => throw new NotSupportedException();

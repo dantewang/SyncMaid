@@ -14,11 +14,17 @@ public readonly record struct FileStamp(long Length, DateTime LastWriteTimeUtc)
     /// Builds a stamp, normalizing the timestamp to UTC whole seconds so that
     /// filesystems with differing sub-second precision still compare equal.
     /// </summary>
-    public static FileStamp Create(long length, DateTime lastWriteTimeUtc)
+    public static FileStamp Create(long length, DateTime lastWriteTimeUtc) =>
+        new(length, NormalizeUtc(lastWriteTimeUtc));
+
+    /// <summary>
+    /// The stamp normalization on its own — UTC, truncated to whole seconds — for
+    /// timestamps compared outside a full stamp (directory modified times).
+    /// </summary>
+    public static DateTime NormalizeUtc(DateTime lastWriteTimeUtc)
     {
         var utc = lastWriteTimeUtc.ToUniversalTime();
-        var truncated = new DateTime(
+        return new DateTime(
             utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, DateTimeKind.Utc);
-        return new FileStamp(length, truncated);
     }
 }

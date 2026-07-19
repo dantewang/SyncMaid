@@ -14,7 +14,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     private sealed record Entry(byte[] Contents, FileStamp Stamp);
 
     private readonly Dictionary<string, Entry> _files = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _directories = new(StringComparer.OrdinalIgnoreCase);
+    // Registered directories with their modified times; directories implied by file
+    // paths (or ancestor chains) report DefaultTime until a time is set explicitly.
+    private readonly Dictionary<string, DateTime> _directories = new(StringComparer.OrdinalIgnoreCase);
     private static readonly DateTime DefaultTime = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>Free space reported by <see cref="GetAvailableFreeSpace"/>; tune for preflight tests.</summary>
@@ -90,15 +92,19 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>All file paths currently present (normalized), for assertions.</summary>
     public IReadOnlyCollection<string> AllPaths => _files.Keys.ToList();
 
-    /// <summary>The <see cref="IFileSystem"/> walk: files with stamps plus directories, in one call.
-    /// The path-only enumerations below stay as test conveniences for assertions.</summary>
+    /// <summary>The <see cref="IFileSystem"/> walk: files with stamps plus directories with
+    /// times, in one call. The path-only enumerations below stay as test conveniences.</summary>
     public TreeListing ListTree(string root)
     {
         var prefix = RequireRoot(root);
         var files = EnumerateCore(prefix)
             .Select(relative => new ListedFile(relative, _files[prefix + relative].Stamp))
             .ToList();
-        return new TreeListing(files, EnumerateDirectoriesCore(prefix).ToList());
+        var directories = EnumerateDirectoriesCore(prefix)
+            .Select(relative => new ListedDirectory(
+                relative, FileStamp.NormalizeUtc(_directories.GetValueOrDefault(prefix + relative, DefaultTime))))
+            .ToList();
+        return new TreeListing(files, directories);
     }
 
     public IEnumerable<string> EnumerateFiles(string root) => EnumerateCore(RequireRoot(root));
@@ -109,8 +115,8 @@ public sealed class InMemoryFileSystem : IFileSystem
     {
         var normalizedRoot = Normalize(root);
         var prefix = normalizedRoot + "/";
-        var exists = _directories.Contains(normalizedRoot)
-            || _directories.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        var exists = _directories.ContainsKey(normalizedRoot)
+            || _directories.Keys.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             || _files.Keys.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         if (!exists)
         {
@@ -156,7 +162,7 @@ public sealed class InMemoryFileSystem : IFileSystem
             }
         }
 
-        foreach (var directory in _directories)
+        foreach (var directory in _directories.Keys)
         {
             if (directory.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -263,8 +269,16 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void EnsureDirectory(string path)
     {
         // Tracked so EnumerateFiles can tell a created-but-empty root from a missing
-        // one. Tests seed an existing empty folder with this too.
-        _directories.Add(Normalize(path));
+        // one. Tests seed an existing empty folder with this too. TryAdd: re-ensuring
+        // an existing directory must not reset a time a test (or the applier) set.
+        _directories.TryAdd(Normalize(path), DefaultTime);
+    }
+
+    /// <summary>Sets a directory's modified time; registers an implied directory as a
+    /// side effect, as the real filesystem's set-time succeeds on any existing folder.</summary>
+    public void SetDirectoryLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc)
+    {
+        _directories[Normalize(path)] = lastWriteTimeUtc;
     }
 
     /// <summary>Paths removed by <see cref="DeleteEmptyDirectory"/>, for assertions.

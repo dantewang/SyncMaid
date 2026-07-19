@@ -61,4 +61,9 @@ public interface IDestinationProvider
     /// longer exists is left alone without error, so unknown content is never deleted.
     /// </summary>
     void DeleteEmptyDirectory(string relativePath);
+
+    /// <summary>Sets the destination directory's last-write time (UTC), so Mirror can
+    /// preserve directory modified times. Best-effort: a directory that no longer exists
+    /// is left alone without error.</summary>
+    void SetDirectoryLastWriteTimeUtc(string relativePath, DateTime lastWriteTimeUtc);
 }

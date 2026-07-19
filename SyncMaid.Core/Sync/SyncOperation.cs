@@ -55,6 +55,16 @@ public sealed record DeleteDirectoryOperation(string RelativePath)
     : SyncOperation(RelativePath);
 
 /// <summary>
+/// Set a destination directory's last-write time to the source directory's, so tree
+/// identity extends to directory metadata. Emitted only by Mirror, and last in the
+/// plan: entry creates/deletes bump the parent directory's time, and NTFS does not
+/// bump a parent when a child's own timestamps change, so one trailing pass converges.
+/// Applied best-effort: a directory that vanished since planning is skipped.
+/// </summary>
+public sealed record SetDirectoryTimestampOperation(string RelativePath, DateTime LastWriteTimeUtc)
+    : SyncOperation(RelativePath);
+
+/// <summary>
 /// Move a file from the source into the destination: copy it across, then remove the
 /// source. Emitted only by the Move strategy. <c>SourceFullPath</c> is the absolute local
 /// source path.

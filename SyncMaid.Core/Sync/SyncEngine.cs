@@ -121,7 +121,7 @@ public sealed class SyncEngine : ISyncEngine
         }
 
         IReadOnlyList<ListedFile> sourceFiles = [];
-        IReadOnlyList<string> sourceDirectories = [];
+        IReadOnlyList<ListedDirectory> sourceDirectories = [];
         ExceptionDispatchInfo? sourceEnumerationError = null;
         try
         {
@@ -162,7 +162,7 @@ public sealed class SyncEngine : ISyncEngine
         SyncTask task,
         Destination destination,
         IReadOnlyList<ListedFile> sourceFiles,
-        IReadOnlyList<string> sourceDirectories,
+        IReadOnlyList<ListedDirectory> sourceDirectories,
         ExceptionDispatchInfo? sourceEnumerationError,
         CancellationToken cancellationToken,
         IProgress<SyncProgress>? progress,

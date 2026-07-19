@@ -58,6 +58,13 @@ public interface IFileSystem
     void DeleteEmptyDirectory(string path);
 
     /// <summary>
+    /// Sets the last-write time (UTC) of the directory at <paramref name="path"/>, so a
+    /// mirrored directory can share its source's modified time. A directory that does
+    /// not exist is left alone without error (the next run replans).
+    /// </summary>
+    void SetDirectoryLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc);
+
+    /// <summary>
     /// Opens the file at <paramref name="path"/> for reading. The caller disposes the
     /// stream. Throws if the file does not exist.
     /// </summary>

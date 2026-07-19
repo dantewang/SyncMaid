@@ -252,7 +252,12 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             files[file.RelativePath] = file.Stamp;
         }
 
-        var directories = new HashSet<string>(listing.Directories, StringComparer.OrdinalIgnoreCase);
+        // Directory names only: a directory's mtime moves exactly when an entry inside it
+        // changes, which the file/directory sets and file stamps already detect — folding
+        // times in would only double-fire the trigger.
+        var directories = new HashSet<string>(
+            listing.Directories.Select(directory => directory.RelativePath),
+            StringComparer.OrdinalIgnoreCase);
         return new TreeSnapshot(files, directories);
     }
 

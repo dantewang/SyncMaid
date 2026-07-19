@@ -42,7 +42,7 @@ public class InMemoryFileSystemTests
 
         Assert.Equal(new[] { "a.txt", "sub/b.txt" }, listing.Files.Select(f => f.RelativePath).OrderBy(p => p));
         Assert.Equal(fs.GetStamp(@"S:\src\a.txt"), listing.Files.Single(f => f.RelativePath == "a.txt").Stamp);
-        Assert.Equal(new[] { "empty", "sub" }, listing.Directories.OrderBy(d => d));
+        Assert.Equal(new[] { "empty", "sub" }, listing.Directories.Select(d => d.RelativePath).OrderBy(d => d));
         Assert.Throws<DirectoryNotFoundException>(() => fs.ListTree(@"S:\missing"));
     }
 

@@ -89,5 +89,8 @@ public sealed class LocalDestinationProvider : IDestinationProvider
     public void DeleteEmptyDirectory(string relativePath) =>
         _fileSystem.DeleteEmptyDirectory(Full(relativePath));
 
+    public void SetDirectoryLastWriteTimeUtc(string relativePath, DateTime lastWriteTimeUtc) =>
+        _fileSystem.SetDirectoryLastWriteTimeUtc(Full(relativePath), lastWriteTimeUtc);
+
     private string Full(string relativePath) => RelativePaths.Join(_root, relativePath);
 }

@@ -117,7 +117,9 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
 
         var listing = _physical.ListTree(root);
 
-        Assert.Equal(new[] { "a", "a/b", "empty" }, listing.Directories.OrderBy(d => d));
+        Assert.Equal(
+            new[] { "a", "a/b", "empty" },
+            listing.Directories.Select(d => d.RelativePath).OrderBy(d => d));
         var file = Assert.Single(listing.Files);
         Assert.Equal("a/file.txt", file.RelativePath);
         // The stamp carried by the walk must agree with an explicit per-file stat.
@@ -142,7 +144,7 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
     }
 
     // Mirror's whole contract on real disk: after a run, a tree compare of source and
-    // destination reports identical — files, folders, and empty folders alike.
+    // destination reports identical — files, folders, empty folders, and folder times.
     [Fact]
     public async Task Mirror_run_makes_source_and_destination_trees_identical_on_disk()
     {
@@ -154,6 +156,13 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         // Stale destination content: an orphaned tree that must disappear entirely.
         Directory.CreateDirectory(Path.Combine(destination, "removed", "nested"));
         File.WriteAllText(Path.Combine(destination, "removed", "nested", "old.txt"), "stale");
+
+        // Set the source folder times last (writing photo.png bumped item1). The copy
+        // into destination item1 bumps it there too — the trailing timestamp pass must
+        // still land both folders on the source's time.
+        var directoryTime = new DateTime(2026, 6, 1, 8, 30, 0, DateTimeKind.Utc);
+        Directory.SetLastWriteTimeUtc(Path.Combine(source, "item1"), directoryTime);
+        Directory.SetLastWriteTimeUtc(Path.Combine(source, "kept-empty"), directoryTime);
 
         var dest = new Destination("d", destination, [new AllFilesFilter()], SyncStrategy.Mirror)
         {
@@ -167,12 +176,24 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         Assert.Equal(RelativeTree(source), RelativeTree(destination));
         Assert.True(Directory.Exists(Path.Combine(destination, "kept-empty")));
         Assert.False(Directory.Exists(Path.Combine(destination, "removed")));
+        Assert.Equal(directoryTime, Directory.GetLastWriteTimeUtc(Path.Combine(destination, "item1")));
+        Assert.Equal(directoryTime, Directory.GetLastWriteTimeUtc(Path.Combine(destination, "kept-empty")));
+    }
+
+    [Fact]
+    public void SetDirectoryLastWriteTimeUtc_tolerates_a_missing_directory()
+    {
+        var missing = Path.Combine(_root, "missing");
+
+        _physical.SetDirectoryLastWriteTimeUtc(missing, DateTime.UtcNow); // must not throw
+
+        Assert.False(Directory.Exists(missing));
     }
 
     private IReadOnlyList<string> RelativeTree(string root)
     {
         var listing = _physical.ListTree(root);
-        return listing.Directories.Select(directory => "dir:" + directory)
+        return listing.Directories.Select(directory => "dir:" + directory.RelativePath)
             .Concat(listing.Files.Select(file => "file:" + file.RelativePath))
             .OrderBy(entry => entry, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -228,6 +249,7 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
         public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
+        public void SetDirectoryLastWriteTimeUtc(string path, DateTime utc) => inner.SetDirectoryLastWriteTimeUtc(path, utc);
 
         public Stream OpenRead(string path)
         {

@@ -24,7 +24,7 @@ public sealed class PhysicalFileSystem : IFileSystem
 
         var fullRoot = Path.GetFullPath(root);
         var files = new List<ListedFile>();
-        var directories = new List<string>();
+        var directories = new List<ListedDirectory>();
         foreach (var entry in new DirectoryInfo(fullRoot)
                      .EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
         {
@@ -38,7 +38,8 @@ public sealed class PhysicalFileSystem : IFileSystem
             }
             else
             {
-                directories.Add(relative);
+                directories.Add(new ListedDirectory(
+                    relative, FileStamp.NormalizeUtc(entry.LastWriteTimeUtc)));
             }
         }
 
@@ -153,6 +154,21 @@ public sealed class PhysicalFileSystem : IFileSystem
     /// <inheritdoc />
     public void SetLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc) =>
         File.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+
+    /// <inheritdoc />
+    public void SetDirectoryLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc)
+    {
+        try
+        {
+            Directory.SetLastWriteTimeUtc(path, lastWriteTimeUtc);
+        }
+        catch (Exception exception) when (
+            exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // The directory vanished since planning; timestamps are metadata, so skip —
+            // the next run replans against reality.
+        }
+    }
 
     /// <inheritdoc />
     public void Replace(string sourcePath, string destinationPath)

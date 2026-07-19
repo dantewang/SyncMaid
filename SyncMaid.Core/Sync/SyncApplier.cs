@@ -37,6 +37,10 @@ public static class SyncApplier
                 destination.DeleteEmptyDirectory(deleteDirectory.RelativePath);
                 break;
 
+            case SetDirectoryTimestampOperation setTimestamp:
+                destination.SetDirectoryLastWriteTimeUtc(setTimestamp.RelativePath, setTimestamp.LastWriteTimeUtc);
+                break;
+
             case MoveOperation move:
                 // Verified move: write (and verify) to the destination, confirm it matches
                 // the source, then delete the source — a failed copy never loses the source.

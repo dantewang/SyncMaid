@@ -101,6 +101,20 @@ public class SyncApplierTests
     }
 
     [Fact]
+    public void SetDirectoryTimestamp_sets_the_destination_directory_time()
+    {
+        var (fs, dest) = Setup();
+        fs.EnsureDirectory(@"D:\dst\a");
+        var time = new DateTime(2026, 3, 5, 10, 0, 0, DateTimeKind.Utc);
+
+        SyncApplier.Apply(fs, dest, new SetDirectoryTimestampOperation("a", time));
+
+        Assert.Equal(
+            time,
+            fs.ListTree(DestRoot).Directories.Single(d => d.RelativePath == "a").LastWriteTimeUtc);
+    }
+
+    [Fact]
     public void DeleteDirectory_removes_an_empty_destination_directory()
     {
         var (fs, dest) = Setup();

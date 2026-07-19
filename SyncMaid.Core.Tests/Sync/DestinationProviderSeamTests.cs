@@ -83,6 +83,11 @@ public class DestinationProviderSeamTests
         {
             // Nothing to do: this in-memory backend has no directories.
         }
+
+        public void SetDirectoryLastWriteTimeUtc(string relativePath, DateTime lastWriteTimeUtc)
+        {
+            // Nothing to do: this in-memory backend has no directories.
+        }
     }
 
     private sealed class StubFactory(IDestinationProvider provider) : IDestinationProviderFactory
