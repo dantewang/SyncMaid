@@ -77,6 +77,11 @@ public partial class DestinationNodeViewModel : ViewModelBase
             Strings.Status_SyncedFormat,
             Relative(Status.LastRun),
             Localizer.Plural("Common.FilesCount", Status.FilesCopied)),
+        SyncOutcome.Incomplete => Localizer.Format(
+            Strings.Status_IncompleteFormat,
+            Relative(Status.LastRun),
+            Localizer.Plural("Common.FilesCount", Status.FilesCopied),
+            Localizer.Plural("Common.FilesCount", Status.FilesDeferred)),
         SyncOutcome.Failed => string.IsNullOrEmpty(Status.Error)
             ? Strings.Status_Failed
             : Localizer.Format(Strings.Status_FailedFormat, Status.Error),

@@ -1,3 +1,5 @@
+using SyncMaid.Core.IO;
+
 namespace SyncMaid.Core.Sync;
 
 /// <summary>
@@ -16,9 +18,11 @@ public abstract record SyncOperation(string RelativePath);
 /// <summary>
 /// Copy a file from the source into the destination, overwriting any existing copy.
 /// Used by Mirror and AddOnly for new and changed files. <c>SourceFullPath</c> is the
-/// absolute local source path.
+/// absolute local source path; <c>ExpectedStamp</c> is the source stamp the planner
+/// saw, re-checked at apply time so a file still being written is deferred rather than
+/// captured half-written.
 /// </summary>
-public sealed record CopyOperation(string RelativePath, string SourceFullPath)
+public sealed record CopyOperation(string RelativePath, string SourceFullPath, FileStamp ExpectedStamp)
     : SyncOperation(RelativePath)
 {
     /// <summary>When true, the copy is read back and content-verified before commit (§ Destination.VerifyContents).</summary>
@@ -67,9 +71,10 @@ public sealed record SetDirectoryTimestampOperation(string RelativePath, DateTim
 /// <summary>
 /// Move a file from the source into the destination: copy it across, then remove the
 /// source. Emitted only by the Move strategy. <c>SourceFullPath</c> is the absolute local
-/// source path.
+/// source path; <c>ExpectedStamp</c> is the source stamp the planner saw, re-checked at
+/// apply time so a file still being written is never moved half-written.
 /// </summary>
-public sealed record MoveOperation(string RelativePath, string SourceFullPath)
+public sealed record MoveOperation(string RelativePath, string SourceFullPath, FileStamp ExpectedStamp)
     : SyncOperation(RelativePath)
 {
     /// <summary>When true, the copy is read back and content-verified before the source is deleted.</summary>

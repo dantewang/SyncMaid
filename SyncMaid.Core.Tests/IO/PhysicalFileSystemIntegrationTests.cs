@@ -180,6 +180,53 @@ public sealed class PhysicalFileSystemIntegrationTests : IDisposable
         Assert.Equal(directoryTime, Directory.GetLastWriteTimeUtc(Path.Combine(destination, "kept-empty")));
     }
 
+    // The whole defer-instead-of-fail path hinges on recognizing what Windows actually
+    // raises for a file another process holds open — assert it against a real lock, not
+    // against the in-memory fake's idea of one.
+    [Fact]
+    public void A_really_locked_file_raises_the_failure_FileBusy_recognizes()
+    {
+        var path = Path.Combine(_root, "held-open.dat");
+        File.WriteAllText(path, "content");
+
+        using var holder = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
+
+        var exception = Assert.ThrowsAny<IOException>(() => _physical.OpenRead(path));
+        Assert.True(FileBusy.IsBusy(exception), $"unrecognized lock failure: 0x{exception.HResult:X8}");
+    }
+
+    // End to end on real disk: a locked source defers instead of failing the destination,
+    // and everything else in the same run still lands.
+    [Fact]
+    public async Task A_locked_source_file_defers_without_blocking_the_rest_of_the_run()
+    {
+        var source = Path.Combine(_root, "src");
+        var destination = Path.Combine(_root, "dst");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "locked.dat"), "being written");
+        File.WriteAllText(Path.Combine(source, "calm.txt"), "settled");
+
+        var dest = new Destination("d", destination, [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var task = new SyncTask("t", source, new ManualTrigger(), [dest]);
+
+        using (new FileStream(
+                   Path.Combine(source, "locked.dat"), FileMode.Open, FileAccess.Write, FileShare.None))
+        {
+            var status = Assert.Single(
+                await new SyncEngine(_physical, RetryOptions.None).ExecuteAsync(task));
+
+            Assert.Equal(SyncOutcome.Incomplete, status.Outcome);
+            Assert.Equal(["locked.dat"], status.DeferredRelativePaths);
+            Assert.False(File.Exists(Path.Combine(destination, "locked.dat")));
+            Assert.True(File.Exists(Path.Combine(destination, "calm.txt")));
+        }
+
+        // Released: the next run completes the job with no special handling.
+        var second = Assert.Single(await new SyncEngine(_physical, RetryOptions.None).ExecuteAsync(task));
+        Assert.Equal(SyncOutcome.Success, second.Outcome);
+        Assert.True(File.Exists(Path.Combine(destination, "locked.dat")));
+    }
+
     [Fact]
     public void SetDirectoryLastWriteTimeUtc_tolerates_a_missing_directory()
     {

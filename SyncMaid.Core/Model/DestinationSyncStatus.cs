@@ -14,6 +14,14 @@ public enum SyncOutcome
     /// <summary>The last sync completed successfully.</summary>
     Success,
 
+    /// <summary>
+    /// The last sync applied everything it could, but left one or more files for the next
+    /// run because they were in use — still being written, or held open by another
+    /// process. Nothing is wrong; the destination is simply not caught up yet. See
+    /// <see cref="DestinationSyncStatus.FilesDeferred"/>.
+    /// </summary>
+    Incomplete,
+
     /// <summary>The last sync failed; see <see cref="DestinationSyncStatus.Error"/>.</summary>
     Failed,
 
@@ -40,6 +48,15 @@ public sealed record DestinationSyncStatus(
     /// </summary>
     [JsonIgnore]
     public IReadOnlyList<string> CopiedRelativePaths { get; init; } = [];
+
+    /// <summary>How many files this run left for the next one because they were in use
+    /// (still being written, or held open by another process).</summary>
+    public int FilesDeferred { get; init; }
+
+    /// <summary>The relative paths that were deferred. Transient run detail — logged so
+    /// the culprit is identifiable; <c>status.json</c> keeps only the count.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> DeferredRelativePaths { get; init; } = [];
 
     /// <summary>The "not yet run" status for a destination.</summary>
     public static DestinationSyncStatus Never(Guid destinationId) =>

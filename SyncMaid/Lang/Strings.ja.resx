@@ -119,6 +119,9 @@
   <data name="Task.HealthPartlySynced" xml:space="preserve">
     <value>一部同期済み</value>
   </data>
+  <data name="Task.HealthFilesInUseFormat" xml:space="preserve">
+    <value>{0}が使用中</value>
+  </data>
   <data name="Task.RunNowTip" xml:space="preserve">
     <value>今すぐ実行</value>
   </data>
@@ -162,6 +165,9 @@
   </data>
   <data name="Status.SyncedFormat" xml:space="preserve">
     <value>同期: {0} · {1}</value>
+  </data>
+  <data name="Status.IncompleteFormat" xml:space="preserve">
+    <value>{0}に {1} を同期、{2}が使用中</value>
   </data>
   <data name="Status.Failed" xml:space="preserve">
     <value>失敗</value>

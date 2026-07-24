@@ -20,6 +20,7 @@ public static class SyncApplier
         switch (operation)
         {
             case CopyOperation copy:
+                EnsureSourceSettled(sourceFileSystem, copy.SourceFullPath, copy.ExpectedStamp);
                 // The provider commits atomically and verifies before replacing the
                 // destination (its own strategy — for local, temp → verify → atomic rename).
                 destination.Write(copy.RelativePath, SourceFile(sourceFileSystem, copy.RelativePath, copy.SourceFullPath), copy.Verify);
@@ -42,6 +43,7 @@ public static class SyncApplier
                 break;
 
             case MoveOperation move:
+                EnsureSourceSettled(sourceFileSystem, move.SourceFullPath, move.ExpectedStamp);
                 // Verified move: write (and verify) to the destination, confirm it matches
                 // the source, then delete the source — a failed copy never loses the source.
                 destination.Write(move.RelativePath, SourceFile(sourceFileSystem, move.RelativePath, move.SourceFullPath), move.Verify);
@@ -68,6 +70,22 @@ public static class SyncApplier
         foreach (var operation in operations)
         {
             Apply(sourceFileSystem, destination, operation);
+        }
+    }
+
+    /// <summary>
+    /// Refuses to read a source file that has changed since the plan was made: a moving
+    /// stamp means the file is still being written (the "big save in progress" case), and
+    /// copying it now would capture a half-written state. Raising
+    /// <see cref="SourceBusyException"/> leaves the destination untouched — the engine
+    /// defers the file and the next run copies it once it settles.
+    /// </summary>
+    private static void EnsureSourceSettled(
+        IFileSystem sourceFileSystem, string sourceFullPath, FileStamp expectedStamp)
+    {
+        if (sourceFileSystem.GetStamp(sourceFullPath) != expectedStamp)
+        {
+            throw new SourceBusyException(sourceFullPath);
         }
     }
 

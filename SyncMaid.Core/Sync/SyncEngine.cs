@@ -99,6 +99,28 @@ public sealed class SyncEngine : ISyncEngine
 
     private const int PreviewSampleSize = 25;
 
+    /// <summary>
+    /// How many operations may fail back-to-back before the destination is abandoned for
+    /// this run. Scattered failures (one locked-out file here, one permission problem
+    /// there) are isolated and the run continues; an unbroken run of them means the
+    /// destination is unreachable, and every further attempt just burns retry backoff.
+    /// </summary>
+    private const int MaxConsecutiveFailures = 10;
+
+    // The status line shows one sentence: name the first culprit, count the rest, and say
+    // so when the run gave up early.
+    private static string DescribeFailures(
+        SyncOperationException first, int failureCount, bool abandoned)
+    {
+        var message = failureCount == 1
+            ? first.Message
+            : $"{first.Message} (and {failureCount - 1} more)";
+
+        return abandoned
+            ? $"{message}; stopped after {MaxConsecutiveFailures} consecutive failures."
+            : message;
+    }
+
 
     private IReadOnlyList<DestinationSyncStatus> Execute(
         SyncTask task,
@@ -236,6 +258,12 @@ public sealed class SyncEngine : ISyncEngine
             }
 
             var copied = new List<string>();
+            var deferred = new List<string>();
+            SyncOperationException? firstFailure = null;
+            var failureCount = 0;
+            var consecutiveFailures = 0;
+            var abandoned = false;
+
             for (var i = 0; i < plan.Operations.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -243,9 +271,9 @@ public sealed class SyncEngine : ISyncEngine
                 var operation = plan.Operations[i];
                 progress?.Report(new SyncProgress(destination, operation, i, plan.Operations.Count));
 
-                // Retry transient I/O (a locked file, a brief sharing violation) before
-                // failing the whole destination on one momentarily-unavailable file. Annotate
-                // any surviving failure with the file/operation so the status names the culprit.
+                // Retry genuinely transient I/O (an antivirus scan, a momentary sharing
+                // violation) before judging the operation. Annotate any surviving failure
+                // with the file/operation so the status names the culprit.
                 try
                 {
                     TransientRetry.Execute(
@@ -261,19 +289,58 @@ public sealed class SyncEngine : ISyncEngine
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
-                    throw new SyncOperationException(operation, exception);
+                    // A file still being written, or one another process is holding open,
+                    // is not a failure — and nothing was written to the destination, so
+                    // the tree is left consistent. Defer it; the next run picks it up once
+                    // the writer is done.
+                    if (exception is SourceBusyException || FileBusy.IsBusy(exception))
+                    {
+                        deferred.Add(operation.RelativePath);
+                        consecutiveFailures = 0;
+                        continue;
+                    }
+
+                    // One bad file must not cost every operation queued behind it, so the
+                    // run carries on — but a wall of consecutive failures means the
+                    // destination itself is gone (unplugged drive, dropped share), and
+                    // grinding through thousands of doomed operations helps nobody.
+                    failureCount++;
+                    firstFailure ??= new SyncOperationException(operation, exception);
+                    if (++consecutiveFailures >= MaxConsecutiveFailures)
+                    {
+                        abandoned = true;
+                        break;
+                    }
+
+                    continue;
                 }
 
+                consecutiveFailures = 0;
                 if (operation is CopyOperation or MoveOperation)
                 {
                     copied.Add(operation.RelativePath);
                 }
             }
 
+            // Severity ladder: a real failure outranks a merely deferred file, which in
+            // turn outranks a clean run. FilesCopied stays honest in every case — the
+            // files that did make it across are reported even when something else failed.
+            var outcome = firstFailure is not null
+                ? SyncOutcome.Failed
+                : deferred.Count > 0
+                    ? SyncOutcome.Incomplete
+                    : SyncOutcome.Success;
+
             return new DestinationSyncStatus(
-                destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, copied.Count, Error: null)
+                destination.Id,
+                outcome,
+                DateTimeOffset.UtcNow,
+                copied.Count,
+                firstFailure is null ? null : DescribeFailures(firstFailure, failureCount, abandoned))
             {
                 CopiedRelativePaths = copied,
+                FilesDeferred = deferred.Count,
+                DeferredRelativePaths = deferred,
             };
         }
         catch (OperationCanceledException)

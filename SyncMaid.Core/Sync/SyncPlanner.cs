@@ -87,7 +87,8 @@ public static class SyncPlanner
         {
             if (NeedsCopy(file.Stamp, destinationStamp(file.RelativePath)))
             {
-                operations.Add(new CopyOperation(file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath))
+                operations.Add(new CopyOperation(
+                    file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath), file.Stamp)
                 {
                     Verify = destination.VerifyContents,
                 });
@@ -235,7 +236,8 @@ public static class SyncPlanner
         var operations = new List<SyncOperation>();
         foreach (var file in filteredFiles)
         {
-            operations.Add(new MoveOperation(file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath))
+            operations.Add(new MoveOperation(
+                file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath), file.Stamp)
             {
                 Verify = destination.VerifyContents,
             });

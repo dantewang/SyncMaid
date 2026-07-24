@@ -271,6 +271,37 @@ public class TaskNodeViewModelTests
         Assert.Equal(1, node.Children[0].Status.FilesCopied);
     }
 
+    // An incomplete run still did work, so its files count toward the burst total — and
+    // the card explains why the task is not fully caught up.
+    [Fact]
+    public async Task An_incomplete_run_counts_its_files_and_surfaces_on_the_card()
+    {
+        var destination = Dest("D");
+        var engine = new FakeSyncEngine();
+        engine.ResultQueue.Enqueue(
+        [
+            new DestinationSyncStatus(destination.Id, SyncOutcome.Incomplete, DateTimeOffset.UtcNow, 2)
+            {
+                CopiedRelativePaths = ["a.txt", "b.txt"],
+                FilesDeferred = 1,
+                DeferredRelativePaths = ["big.psd"],
+            },
+        ]);
+        var logger = new RecordingLogger();
+        var node = New(
+            new SyncTask("A", @"C:\a", new WatchTrigger(), [destination]),
+            engine: engine,
+            logger: logger);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        Assert.Equal(SyncOutcome.Incomplete, node.HealthOutcome);
+        Assert.Contains("in use", node.HealthText);
+        Assert.Equal(2, node.Children[0].Status.FilesCopied);
+        // The row only has room for a count, so the culprit's name goes to the log.
+        Assert.Contains(logger.Entries, e => e.Message.Contains("big.psd"));
+    }
+
     [Fact]
     public async Task Cancelling_drops_queued_follow_ups_but_allows_a_later_new_run()
     {
@@ -570,7 +601,14 @@ public class TaskNodeViewModelTests
         var engine = new FakeSyncEngine
         {
             HangUntilCancelled = true,
-            ProgressToReport = [new SyncProgress(dest, new CopyOperation("photos/img.jpg", @"C:\a\photos\img.jpg"), 2, 10)],
+            ProgressToReport =
+            [
+                new SyncProgress(
+                    dest,
+                    new CopyOperation("photos/img.jpg", @"C:\a\photos\img.jpg", default),
+                    2,
+                    10),
+            ],
         };
         var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [dest]), engine: engine);
 

@@ -13,13 +13,21 @@ public class SyncApplierTests
         return (fs, new LocalDestinationProvider(fs, DestRoot));
     }
 
+    // Operations carry the stamp the planner saw; unless a test is exercising the
+    // still-being-written check, that is simply the source's current stamp.
+    private static CopyOperation Copy(InMemoryFileSystem fs, string relativePath, string sourceFullPath) =>
+        new(relativePath, sourceFullPath, fs.GetStamp(sourceFullPath));
+
+    private static MoveOperation Move(InMemoryFileSystem fs, string relativePath, string sourceFullPath) =>
+        new(relativePath, sourceFullPath, fs.GetStamp(sourceFullPath));
+
     [Fact]
     public void Move_copies_then_deletes_source()
     {
         var (fs, dest) = Setup();
         fs.AddFile(@"S:\src\a.txt", "a");
 
-        SyncApplier.Apply(fs, dest, new MoveOperation("a.txt", @"S:\src\a.txt"));
+        SyncApplier.Apply(fs, dest, Move(fs, "a.txt", @"S:\src\a.txt"));
 
         Assert.True(fs.FileExists(@"D:\dst\a.txt"));
         Assert.False(fs.FileExists(@"S:\src\a.txt"));
@@ -33,7 +41,7 @@ public class SyncApplierTests
         fs.FailWrites = true;
 
         Assert.ThrowsAny<IOException>(() =>
-            SyncApplier.Apply(fs, dest, new MoveOperation("a.txt", @"S:\src\a.txt")));
+            SyncApplier.Apply(fs, dest, Move(fs, "a.txt", @"S:\src\a.txt")));
 
         Assert.True(fs.FileExists(@"S:\src\a.txt"));
         Assert.False(fs.FileExists(@"D:\dst\a.txt"));
@@ -47,11 +55,40 @@ public class SyncApplierTests
         fs.SetLastWriteTimeOffset = TimeSpan.FromSeconds(1);
 
         var exception = Assert.Throws<SyncVerificationException>(() =>
-            SyncApplier.Apply(fs, dest, new MoveOperation("a.txt", @"S:\src\a.txt")));
+            SyncApplier.Apply(fs, dest, Move(fs, "a.txt", @"S:\src\a.txt")));
 
         Assert.Contains("Refusing to delete source", exception.Message);
         Assert.True(fs.FileExists(@"S:\src\a.txt"));
         Assert.True(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
+    // The still-being-written check: the stamp the planner saw is re-verified before the
+    // source is read, so a long save in progress is refused rather than half-copied.
+    [Fact]
+    public void Copy_of_a_source_that_changed_since_planning_is_refused_without_touching_the_destination()
+    {
+        var (fs, dest) = Setup();
+        fs.AddFile(@"S:\src\a.txt", "the first bytes");
+        var operation = Copy(fs, "a.txt", @"S:\src\a.txt");
+        fs.AddFile(@"S:\src\a.txt", "the first bytes, and more"); // the writer is still going
+
+        Assert.Throws<SourceBusyException>(() => SyncApplier.Apply(fs, dest, operation));
+
+        Assert.False(fs.FileExists(@"D:\dst\a.txt"));
+    }
+
+    [Fact]
+    public void Move_of_a_source_that_changed_since_planning_is_refused_and_keeps_the_source()
+    {
+        var (fs, dest) = Setup();
+        fs.AddFile(@"S:\src\a.txt", "the first bytes");
+        var operation = Move(fs, "a.txt", @"S:\src\a.txt");
+        fs.AddFile(@"S:\src\a.txt", "the first bytes, and more");
+
+        Assert.Throws<SourceBusyException>(() => SyncApplier.Apply(fs, dest, operation));
+
+        Assert.True(fs.FileExists(@"S:\src\a.txt"));
+        Assert.False(fs.FileExists(@"D:\dst\a.txt"));
     }
 
     [Fact]
@@ -60,7 +97,7 @@ public class SyncApplierTests
         var (fs, dest) = Setup();
         fs.AddFile(@"S:\src\a.txt", "a");
 
-        SyncApplier.Apply(fs, dest, new CopyOperation("a.txt", @"S:\src\a.txt"));
+        SyncApplier.Apply(fs, dest, Copy(fs, "a.txt", @"S:\src\a.txt"));
 
         Assert.True(fs.FileExists(@"D:\dst\a.txt"));
         Assert.True(fs.FileExists(@"S:\src\a.txt"));

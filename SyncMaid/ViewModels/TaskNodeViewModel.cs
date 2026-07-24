@@ -187,6 +187,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             if (Children.Any(c => c.Outcome == SyncOutcome.Running)) return SyncOutcome.Running;
             if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return SyncOutcome.NeedsConfirmation;
             if (Children.Any(c => c.Outcome == SyncOutcome.Failed)) return SyncOutcome.Failed;
+            if (Children.Any(c => c.Outcome == SyncOutcome.Incomplete)) return SyncOutcome.Incomplete;
             if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return SyncOutcome.Success;
             return SyncOutcome.Never;
         }
@@ -201,6 +202,13 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             if (Children.Any(c => c.Outcome == SyncOutcome.NeedsConfirmation)) return Strings.Status_NeedsConfirmation;
             var failed = Children.Count(c => c.Outcome == SyncOutcome.Failed);
             if (failed > 0) return Localizer.Format(Strings.Task_HealthFailedFormat, failed, Children.Count);
+            var deferred = Children.Sum(c => c.Status.FilesDeferred);
+            if (deferred > 0)
+            {
+                return Localizer.Format(
+                    Strings.Task_HealthFilesInUseFormat, Localizer.Plural("Common.FilesCount", deferred));
+            }
+
             if (Children.All(c => c.Outcome == SyncOutcome.Success)) return Strings.Task_HealthAllSynced;
             if (Children.Any(c => c.Outcome == SyncOutcome.Success)) return Strings.Task_HealthPartlySynced;
             return Strings.Status_NeverRun;
@@ -564,13 +572,15 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             var statuses = await _engine.ExecuteAsync(Task, cts.Token, progress, confirmedMassDeletes);
 
             // Coalesced runs are executed independently but reported as one burst: a
-            // successful status shows the distinct files copied so far in this drain, so
-            // a trailing no-op run cannot reset the row (and status.json) to "0 files".
+            // status that got work done shows the distinct files copied so far in this
+            // drain, so a trailing no-op run cannot reset the row (and status.json) to
+            // "0 files".
             statuses = statuses
-                .Select(status => status.Outcome == SyncOutcome.Success
+                .Select(status => status.Outcome is SyncOutcome.Success or SyncOutcome.Incomplete
                     ? status with { FilesCopied = AccumulateBurstCopies(status) }
                     : status)
                 .ToList();
+            LogDeferredFiles(statuses);
 
             _dispatcher.Post(() =>
             {
@@ -646,6 +656,23 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             Strings.Progress_LineFormat,
             verb, progress.Operation.RelativePath,
             progress.CompletedOperations + 1, progress.TotalOperations));
+    }
+
+    // The row only has space for a count, so the names of files left in use go to the log —
+    // otherwise there is no way to find out which file is holding the sync back.
+    private void LogDeferredFiles(IReadOnlyList<DestinationSyncStatus> statuses)
+    {
+        foreach (var status in statuses)
+        {
+            if (status.DeferredRelativePaths.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Task '{Task}' left {Count} file(s) in use for the next run: {Files}.",
+                    Task.Name,
+                    status.DeferredRelativePaths.Count,
+                    string.Join(", ", status.DeferredRelativePaths));
+            }
+        }
     }
 
     // "N files" must be precise: N counts distinct relative paths, so a file copied twice

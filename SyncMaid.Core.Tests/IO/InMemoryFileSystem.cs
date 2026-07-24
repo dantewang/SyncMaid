@@ -43,6 +43,23 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="ReadAllBytes"/> throws for that path.</summary>
     public string? FailReadAllBytesPath { get; set; }
 
+    private readonly HashSet<string> _lockedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Marks a path as held open by another process: <see cref="OpenRead"/> then
+    /// reports a Win32 sharing violation for it, the shape <see cref="FileBusy"/> recognizes.</summary>
+    public void LockPath(string path) => _lockedPaths.Add(Normalize(path));
+
+    /// <summary>When contained in a path, <see cref="CreateWriteThrough"/> throws for that
+    /// path — a destination-side failure that is <b>not</b> a lock (so it is a real failure,
+    /// not a deferral).</summary>
+    public string? FailWritePathFragment { get; set; }
+
+    /// <summary>The exception Windows raises when a file is held open by another process.</summary>
+    public static IOException SharingViolation(string path) =>
+        new(
+            $"The process cannot access the file '{path}' because it is being used by another process.",
+            unchecked((int)0x80070020));
+
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
@@ -302,6 +319,11 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public Stream OpenRead(string path)
     {
+        if (_lockedPaths.Contains(Normalize(path)))
+        {
+            throw SharingViolation(path);
+        }
+
         if (_files.TryGetValue(Normalize(path), out var entry))
         {
             return new MemoryStream(entry.Contents, writable: false);
@@ -312,6 +334,12 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public Stream CreateWriteThrough(string path)
     {
+        if (FailWritePathFragment is not null
+            && path.Contains(FailWritePathFragment, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated destination write failure.");
+        }
+
         if (FailWrites)
         {
             return new FailingStream();

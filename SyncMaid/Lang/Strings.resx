@@ -125,6 +125,9 @@
   <data name="Task.HealthPartlySynced" xml:space="preserve">
     <value>Partly synced</value>
   </data>
+  <data name="Task.HealthFilesInUseFormat" xml:space="preserve">
+    <value>{0} in use</value>
+  </data>
   <data name="Task.RunNowTip" xml:space="preserve">
     <value>Run now</value>
   </data>
@@ -168,6 +171,9 @@
   </data>
   <data name="Status.SyncedFormat" xml:space="preserve">
     <value>Synced {0} · {1}</value>
+  </data>
+  <data name="Status.IncompleteFormat" xml:space="preserve">
+    <value>Synced {0} · {1}, {2} in use</value>
   </data>
   <data name="Status.Failed" xml:space="preserve">
     <value>Failed</value>

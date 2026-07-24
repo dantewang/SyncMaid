@@ -37,4 +37,22 @@ public class DestinationNodeViewModelTests
         Assert.DoesNotContain("Copying", vm.DisplayStatus);
         Assert.Contains("Synced", vm.DisplayStatus);
     }
+
+    // A file left in use is not an error, so the row reports what synced alongside what
+    // is still busy rather than a bare failure.
+    [Fact]
+    public void An_incomplete_run_reports_both_what_synced_and_what_is_in_use()
+    {
+        var vm = New();
+
+        vm.SetStatus(new DestinationSyncStatus(vm.Id, SyncOutcome.Incomplete, DateTimeOffset.UtcNow, 3, null)
+        {
+            FilesDeferred = 1,
+        });
+
+        Assert.Contains("3 files", vm.DisplayStatus);
+        Assert.Contains("1 file", vm.DisplayStatus);
+        Assert.Contains("in use", vm.DisplayStatus);
+        Assert.Equal(SyncOutcome.Incomplete, vm.Outcome);
+    }
 }

@@ -119,6 +119,9 @@
   <data name="Task.HealthPartlySynced" xml:space="preserve">
     <value>部分已同步</value>
   </data>
+  <data name="Task.HealthFilesInUseFormat" xml:space="preserve">
+    <value>{0}正在使用中</value>
+  </data>
   <data name="Task.RunNowTip" xml:space="preserve">
     <value>立即运行</value>
   </data>
@@ -162,6 +165,9 @@
   </data>
   <data name="Status.SyncedFormat" xml:space="preserve">
     <value>{0}同步 · {1}</value>
+  </data>
+  <data name="Status.IncompleteFormat" xml:space="preserve">
+    <value>已于 {0} 同步 {1}，{2}正在使用中</value>
   </data>
   <data name="Status.Failed" xml:space="preserve">
     <value>失败</value>

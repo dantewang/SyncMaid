@@ -19,7 +19,7 @@ public sealed class SyncOutcomeToBrushConverter : IValueConverter
             {
                 SyncOutcome.Success or SyncOutcome.Running => "SuccessBrush",
                 SyncOutcome.Failed => "DangerBrush",
-                SyncOutcome.NeedsConfirmation => "WarningBrush",
+                SyncOutcome.NeedsConfirmation or SyncOutcome.Incomplete => "WarningBrush",
                 _ => "TextMutedBrush",
             }
             : "TextMutedBrush";

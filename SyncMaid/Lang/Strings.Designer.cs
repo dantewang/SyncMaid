@@ -386,6 +386,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Failed · {0}".</summary>
     public static string Status_FailedFormat => Get("Status.FailedFormat");
 
+    /// <summary>Looks up a localized string similar to "Synced {0} · {1}, {2} in use".</summary>
+    public static string Status_IncompleteFormat => Get("Status.IncompleteFormat");
+
     /// <summary>Looks up a localized string similar to "Needs confirmation".</summary>
     public static string Status_NeedsConfirmation => Get("Status.NeedsConfirmation");
 
@@ -418,6 +421,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "{0} of {1} failed".</summary>
     public static string Task_HealthFailedFormat => Get("Task.HealthFailedFormat");
+
+    /// <summary>Looks up a localized string similar to "{0} in use".</summary>
+    public static string Task_HealthFilesInUseFormat => Get("Task.HealthFilesInUseFormat");
 
     /// <summary>Looks up a localized string similar to "No destinations".</summary>
     public static string Task_HealthNoDestinations => Get("Task.HealthNoDestinations");
