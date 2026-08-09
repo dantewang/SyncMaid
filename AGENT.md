@@ -13,6 +13,13 @@ Guidance for AI agents working in this repository.
 - Example: Avalonia's `TrayIcon` is a control — declare it via the `TrayIcon.Icons`
   attached property in `App.axaml` (see https://docs.avaloniaui.net/controls/navigation/trayicon),
   not with `new TrayIcon(...)` + `TrayIcon.SetIcons(...)` in `App.axaml.cs`.
+- **Pick the right dialog host.** In-window `DialogHost` modals are for flows the user
+  starts from the visible main window (editors, delete confirms). Anything that can appear
+  while the app is hidden in the tray — the mirror-delete confirmation — must be an
+  independent, owner-less top-level window, or nobody sees it.
+- The title bar is drawn by us: `ExtendClientAreaChromeHints` is gone in Avalonia 12
+  (AVLN2000). Native drag / snap layouts / system menu survive only through
+  `WindowDecorationProperties.ElementRole`.
 
 ## Localization
 
@@ -72,6 +79,50 @@ run fails without touching files), so hand-edited config is covered too.
   overlapping destinations race on the same files (one task's Mirror deletes what
   another just wrote as "orphans") and overlapping sources double-process the same
   input (fatal once one of them is a Move). Enforced in the editors and at run start.
+
+## Sync safety
+
+Stated priority: **avoid file loss at all costs.** These are invariants, not defaults —
+never add a faster path that skips them.
+
+- **Every write is temp → verify → atomic rename** (`SafeFileTransfer`). Nothing overwrites
+  a destination file in place, and Move deletes the source only once the destination
+  verifies. Byte-moving code goes through it, not `IFileSystem` directly.
+- **Mirror deletions pass `MirrorGuard` first.** An empty or unavailable source emits zero
+  deletes and is *not* overridable; a mass delete needs one-shot user confirmation. Deletes
+  go to the Recycle Bin by default (`DeleteMode.Recycle`).
+- **Safety logic lives in UI-free Core** so the in-memory filesystem can fault-inject it —
+  new safety behaviour ships with a fault-injection test.
+- **A run never re-triggers itself.** Runs of a task are serialized, and the task's trigger
+  source is stopped for the duration of its own run (polling re-baselines on resume).
+  Notifications deliver outside the owner's state gate (`TriggerNotifier`) — a subscriber
+  must never block a watcher callback.
+
+## Persistence & AOT
+
+- **Native AOT is a hard constraint** (`IsAotCompatible` + warnings-as-errors in Core,
+  `PublishAot` in the app). No reflection-based serialization: persisted types are
+  registered in the source-generated `TaskStoreJsonContext`, and polymorphic models are
+  closed hierarchies with string `[JsonDerivedType]` discriminators (`FilterRule`,
+  `Trigger`, `DestinationLocation`).
+- **Config writes go through `AtomicFile` / `JsonConfigFile`** — temp → rename, previous
+  version kept as `.bak` and loaded as a fallback. Never write over `tasks.json` in place.
+- **Old config keeps loading.** Normalize legacy shapes on save; never silently discard
+  what the current editor can't represent.
+
+## Platform-specific services
+
+- Mark the implementation `[SupportedOSPlatform("windows")]` rather than guarding inside it,
+  select it in the composition root via `OperatingSystem.IsWindows() ? … : …`, and provide a
+  no-op fallback so callers never branch. That ternary is the shape the CA1416 analyzer
+  recognizes, which is what keeps the AOT build warning-free.
+
+## Errors
+
+- **Never swallow an exception.** No empty `catch`; log through `ILogger` and surface the
+  failure where the user is — trigger failures as the card's trigger-error badge, per-file
+  failures as `SyncOperationException` (prefixed with path + verb). Cancellation propagates
+  untouched.
 
 ## Commits
 
