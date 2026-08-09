@@ -302,6 +302,85 @@ public class TaskNodeViewModelTests
         Assert.Contains(logger.Entries, e => e.Message.Contains("big.psd"));
     }
 
+    // status.json keeps only the latest outcome, so the log is the only record that a run
+    // happened — a successful one used to leave no trace at all.
+    [Fact]
+    public async Task A_completed_run_logs_one_compact_line_per_destination()
+    {
+        var nas = Dest("NAS");
+        var usb = Dest("USB");
+        var engine = new FakeSyncEngine();
+        engine.ResultQueue.Enqueue(
+        [
+            new DestinationSyncStatus(nas.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 2)
+            {
+                CopiedRelativePaths = ["a.txt", "b.txt"],
+            },
+            new DestinationSyncStatus(usb.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 0),
+        ]);
+        var logger = new RecordingLogger();
+        var node = New(
+            new SyncTask("Photos", @"C:\a", new ManualTrigger(), [nas, usb]),
+            engine: engine,
+            logger: logger);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        var summaries = logger.Entries.Where(e => e.Message.StartsWith("Sync 'Photos' → ")).ToList();
+        Assert.Equal(2, summaries.Count);
+        Assert.All(summaries, entry => Assert.Equal(LogLevel.Information, entry.Level));
+        // The count is the distinct files the burst actually copied, matching the row.
+        Assert.Contains(summaries, e => e.Message.Contains("'NAS': Success · 2 copied"));
+        Assert.Contains(summaries, e => e.Message.Contains("'USB': Success · 0 copied"));
+    }
+
+    [Fact]
+    public async Task A_failed_destination_logs_its_reason_as_a_warning()
+    {
+        var destination = Dest("NAS");
+        var engine = new FakeSyncEngine
+        {
+            Result =
+            [
+                new DestinationSyncStatus(
+                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
+                    "Failed to copy 'a.jpg': access denied."),
+            ],
+        };
+        var logger = new RecordingLogger();
+        var node = New(
+            new SyncTask("Photos", @"C:\a", new ManualTrigger(), [destination]),
+            engine: engine,
+            logger: logger);
+
+        await node.ExecuteCommand.ExecuteAsync(null);
+
+        var summary = Assert.Single(logger.Entries, e => e.Message.StartsWith("Sync 'Photos' → "));
+        Assert.Equal(LogLevel.Warning, summary.Level);
+        Assert.Contains("Failed · Failed to copy 'a.jpg': access denied.", summary.Message);
+    }
+
+    [Fact]
+    public async Task A_stopped_run_is_logged_as_stopped_not_as_a_failure()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeSyncEngine { ExecutionGate = gate.Task, HangUntilCancelled = true };
+        var logger = new RecordingLogger();
+        var node = New(
+            new SyncTask("Photos", @"C:\a", new ManualTrigger(), [Dest("NAS")]),
+            engine: engine,
+            logger: logger);
+
+        node.ExecuteCommand.Execute(null);
+        node.CancelCommand.Execute(null);
+        gate.TrySetResult();
+        await node.ExecuteCommand.ExecutionTask!;
+
+        Assert.Contains(logger.Entries, e =>
+            e.Level == LogLevel.Information && e.Message.StartsWith("Sync 'Photos': stopped after"));
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
     [Fact]
     public async Task Cancelling_drops_queued_follow_ups_but_allows_a_later_new_run()
     {

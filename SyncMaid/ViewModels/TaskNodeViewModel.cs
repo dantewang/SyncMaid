@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -514,6 +515,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         IReadOnlyList<DestinationNodeViewModel> runChildren = [];
         IReadOnlyDictionary<Guid, DestinationSyncStatus> priorStatuses =
             new Dictionary<Guid, DestinationSyncStatus>();
+        var elapsed = Stopwatch.StartNew();
         try
         {
             cts = new CancellationTokenSource();
@@ -553,6 +555,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
 
                     RefreshHealth();
                 });
+                LogRunSummary(refused, elapsed.Elapsed);
                 _onStatusesUpdated(refused);
                 return;
             }
@@ -580,6 +583,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
                     ? status with { FilesCopied = AccumulateBurstCopies(status) }
                     : status)
                 .ToList();
+            LogRunSummary(statuses, elapsed.Elapsed);
             LogDeferredFiles(statuses);
 
             _dispatcher.Post(() =>
@@ -596,6 +600,9 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
+            _logger.LogInformation(
+                "Sync '{Task}': stopped after {Elapsed:0.0}s.", Task.Name, elapsed.Elapsed.TotalSeconds);
+
             // Revert to the pre-run status; the user stopped it, so it's not a failure.
             _dispatcher.Post(() =>
             {
@@ -656,6 +663,34 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             Strings.Progress_LineFormat,
             verb, progress.Operation.RelativePath,
             progress.CompletedOperations + 1, progress.TotalOperations));
+    }
+
+    // One compact line per destination per run. status.json keeps only the latest outcome,
+    // so the log is the only record that a run happened at all — a success used to leave no
+    // trace whatsoever. Failures log at Warning so they are greppable on their own.
+    private void LogRunSummary(IReadOnlyList<DestinationSyncStatus> statuses, TimeSpan elapsed)
+    {
+        foreach (var status in statuses)
+        {
+            var name = Task.Destinations.FirstOrDefault(destination => destination.Id == status.DestinationId)?.Name
+                ?? status.DestinationId.ToString();
+
+            // Zero counts are noise on every line; the error text is the whole story when
+            // there is one, so each outcome contributes only what it actually says.
+            var detail = status.Outcome switch
+            {
+                SyncOutcome.Success => $"{status.FilesCopied} copied",
+                SyncOutcome.Incomplete => $"{status.FilesCopied} copied, {status.FilesDeferred} in use",
+                _ => status.Error ?? string.Empty,
+            };
+
+            _logger.Log(
+                status.Outcome is SyncOutcome.Failed or SyncOutcome.NeedsConfirmation
+                    ? LogLevel.Warning
+                    : LogLevel.Information,
+                "Sync '{Task}' → '{Destination}': {Outcome} · {Detail} ({Elapsed:0.0}s)",
+                Task.Name, name, status.Outcome, detail, elapsed.TotalSeconds);
+        }
     }
 
     // The row only has space for a count, so the names of files left in use go to the log —

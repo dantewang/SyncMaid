@@ -89,9 +89,21 @@ destination to **Add-only** if it should never lose anything.
 ## The log
 
 `logs\syncmaid.log`, inside your [configuration folder](settings.md#where-things-are-on-disk)
-— by default `%APPDATA%\SyncMaid\logs\syncmaid.log`. It records runs, failures, and trigger
-problems, and is the place to look when a status message isn't specific enough. It rolls over
-at about 5 MB, keeping one previous file.
+— by default `%APPDATA%\SyncMaid\logs\syncmaid.log`. It is the place to look when a status
+message isn't specific enough, and it rolls over at about 5 MB, keeping one previous file.
+
+Every run writes one line per destination, so the log is also the history the window doesn't
+show — the row only ever displays the *latest* result:
+
+```
+2026-08-09 02:00:12.418 [INF] TaskNodeViewModel: Sync 'Photos' → 'NAS backup': Success · 128 copied (12.4s)
+2026-08-09 02:00:12.702 [INF] TaskNodeViewModel: Sync 'Photos' → 'USB': Incomplete · 126 copied, 2 in use (9.1s)
+2026-08-09 03:00:01.233 [WRN] TaskNodeViewModel: Sync 'Photos' → 'NAS backup': Failed · Failed to copy 'raw/img.dng': access denied. (0.8s)
+```
+
+Failures and runs awaiting confirmation are logged as warnings, so searching for `[WRN]`
+finds the runs that need you. The log also names the files a run left in use — which the
+status row has no room for — and records trigger problems and stopped runs.
 
 ## Starting over
 
