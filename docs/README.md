@@ -1,20 +1,32 @@
 # SyncMaid user guide
 
-How to use SyncMaid. This folder holds **usage documentation only** — design records,
-rationale, and project history live in the
-[wiki](https://github.com/dantewang/SyncMaid/wiki), and the rules for working on the code
-are in [AGENT.md](../AGENT.md).
+How to use SyncMaid — one-way file sync for Windows: a source folder, one or more
+destinations, each with its own filters and strategy, run manually, on a schedule, or
+whenever the source changes.
 
-## Contents
+New here? Start with [Getting started](getting-started.md); it takes about five minutes to
+have a working task.
 
-_The guides are still to be written. Planned set:_
+## Guides
 
-- **Getting started** — install, pick a source, add your first destination, run it.
-- **Tasks and destinations** — the sync strategies: Mirror, Add-only, Move, and when each
-  is the right one.
-- **Filters** — choosing which files reach a destination, including AND/OR/NOT groups.
-- **Triggers** — running manually, on a schedule (cron), or by watching for changes.
-- **Settings** — start with Windows, close/start minimized to the tray, and portable mode.
-- **Safety** — what SyncMaid does to never lose a file, and what the mirror-delete
-  confirmation is asking you.
-- **Troubleshooting** — reading the log, what the status and trigger-error badges mean.
+- **[Getting started](getting-started.md)** — install, create your first task, add a
+  destination, run it.
+- **[Tasks and destinations](tasks-and-destinations.md)** — the Mirror, Add-only and Move
+  strategies, several destinations per task, and the folder layouts SyncMaid enforces.
+- **[Filters](filters.md)** — choosing which files reach a destination, from a single
+  extension to `(docs or photos) and jpg`.
+- **[Triggers](triggers.md)** — running manually, on a cron schedule, or by watching the
+  source for changes.
+- **[Settings](settings.md)** — language, starting with Windows, the system tray, portable
+  mode, and where your data is kept.
+- **[Safety](safety.md)** — what protects your files during a sync, what the mirror-delete
+  confirmation is asking, and what SyncMaid deliberately won't do.
+- **[Troubleshooting](troubleshooting.md)** — what each status means, why a task might not
+  be running, and where the log is.
+
+## Elsewhere
+
+Design records and the reasoning behind SyncMaid's behaviour live in the
+[wiki](https://github.com/dantewang/SyncMaid/wiki). Rules for working on the code are in
+[AGENT.md](../AGENT.md). Bugs and requests go to
+[issues](https://github.com/dantewang/SyncMaid/issues).
