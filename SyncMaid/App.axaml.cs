@@ -186,7 +186,7 @@ public partial class App : Application
         // a no-op fallback elsewhere. The OperatingSystem.IsWindows() guard is what lets the
         // analyzer accept constructing the [SupportedOSPlatform("windows")] service here.
         // macOS/Linux implementations would slot in as extra branches — see
-        // docs/guide-os-specific-services.md.
+        // https://github.com/dantewang/SyncMaid/wiki/Platform-specific-services.
         services.AddSingleton<IAutoStartService>(_ =>
             OperatingSystem.IsWindows() ? new WindowsAutoStartService() : new NoOpAutoStartService());
         services.AddSingleton<IMirrorDeleteConfirmer>(_ => new MirrorDeleteConfirmer());

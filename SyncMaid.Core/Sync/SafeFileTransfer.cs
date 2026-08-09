@@ -17,7 +17,8 @@ namespace SyncMaid.Core.Sync;
 /// (interrupted write, silent corruption) and prove the safety properties hold.
 /// </para>
 /// <para>
-/// Verification has two tiers (see the location-and-verification design doc):
+/// Verification has two tiers (see
+/// <see href="https://github.com/dantewang/SyncMaid/wiki/Sync-core-design"/>):
 /// <list type="bullet">
 ///   <item><b>Basic</b> (always): a length check after the write — catches truncation
 ///   / partial writes, the dominant corruption mode — plus the atomic rename, so a

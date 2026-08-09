@@ -25,7 +25,7 @@ public abstract record FilterRule
     public abstract bool Matches(string relativePath);
 }
 
-/// <summary>Selects every file under the source (the design doc's "all files, no rule").</summary>
+/// <summary>Selects every file under the source (the original requirements' "all files, no rule").</summary>
 public sealed record AllFilesFilter : FilterRule
 {
     public override bool Matches(string relativePath) => true;

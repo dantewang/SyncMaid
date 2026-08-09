@@ -9,7 +9,8 @@ namespace SyncMaid.Services;
 /// (<c>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</c>) — the standard,
 /// least-AV-suspicious mechanism for an unpackaged Win32 app: per-user (no elevation) and
 /// fully visible/controllable in Task Manager → Startup. The Run value is the single source
-/// of truth; no settings file is involved. See docs/guide-settings-autostart.md.
+/// of truth; no settings file is involved. Rationale:
+/// <see href="https://github.com/dantewang/SyncMaid/wiki/Settings-and-autostart"/>.
 /// </summary>
 /// <remarks>
 /// Marked <see cref="SupportedOSPlatformAttribute"/> "windows" rather than guarding each method
@@ -17,7 +18,7 @@ namespace SyncMaid.Services;
 /// inside an <c>OperatingSystem.IsWindows()</c> branch (falling back to
 /// <see cref="NoOpAutoStartService"/> elsewhere), which the platform-compatibility analyzer
 /// recognizes — so the registry calls need no internal guards. See
-/// docs/guide-os-specific-services.md.
+/// <see href="https://github.com/dantewang/SyncMaid/wiki/Platform-specific-services"/>.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class WindowsAutoStartService : IAutoStartService

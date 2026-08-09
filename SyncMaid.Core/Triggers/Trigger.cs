@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace SyncMaid.Core.Triggers;
 
 /// <summary>
-/// How a sync task is initiated. Closed hierarchy mirroring the design doc's
+/// How a sync task is initiated. Closed hierarchy of the original requirements'
 /// trigger types; the matching runner for each lives in the engine layer. The
 /// JSON discriminators let the source-generated serializer persist the concrete
 /// type without reflection.

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/syncmaid.png" alt="SyncMaid" width="128" />
+<img src="assets/syncmaid.png" alt="SyncMaid" width="128" />
 
 # SyncMaid
 
@@ -12,6 +12,12 @@ on a schedule, or by watching for changes. It lives in the system tray and keeps
 you don't.
 
 </div>
+
+## Documentation
+
+- **Using SyncMaid** — the guides in [`docs/`](docs).
+- **Design records and rationale** — the [wiki](https://github.com/dantewang/SyncMaid/wiki).
+- **Contributing / working with agents** — [AGENT.md](AGENT.md) holds the standing rules.
 
 ## Requirements
 

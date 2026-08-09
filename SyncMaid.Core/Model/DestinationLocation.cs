@@ -8,7 +8,7 @@ namespace SyncMaid.Core.Model;
 /// the serializer needs no reflection and the engine stays AOT/trim-safe. Today the only
 /// kind is <see cref="LocalDestination"/> (a local or mounted path); cloud and SFTP
 /// locations slot in as new derived types plus a matching provider, without touching the
-/// engine (see docs/location-and-verification-design.md).
+/// engine (see <see href="https://github.com/dantewang/SyncMaid/wiki/Sync-core-design"/>).
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(LocalDestination), "local")]
