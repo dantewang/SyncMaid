@@ -1,3 +1,4 @@
+using System.Text;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
@@ -231,6 +232,52 @@ public class SyncEngineTests
         Assert.Equal(SyncOutcome.Failed, status.Outcome);
         Assert.Contains("Refusing to delete source", status.Error);
         Assert.True(fs.FileExists(@"S:\src\a.txt"));
+    }
+
+    // Sync-core-design §8: "Content-verify toggle: off -> no read-back; on -> read-back
+    // happens." The toggle is a per-destination opt-in that costs a full re-read, and it is
+    // the only guard against silent same-length corruption (§5.3). Nothing joined the
+    // Destination flag to SafeFileTransfer's verify parameter, so both
+    // "Verify = destination.VerifyContents" initializers in SyncPlanner could be deleted
+    // with the whole suite still green.
+    [Fact]
+    public async Task Verify_contents_on_rejects_a_silently_corrupted_copy()
+    {
+        var fs = new InMemoryFileSystem { CorruptWrites = true }; // same length, wrong bytes
+        fs.AddFile(@"S:\src\a.txt", "the real bytes");
+        fs.AddFile(@"D:\dst\a.txt", "PREVIOUS GOOD COPY");
+
+        var dest = new Destination("d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.AddOnly)
+        {
+            VerifyContents = true,
+        };
+
+        var status = Assert.Single(await new SyncEngine(fs, RetryOptions.None).ExecuteAsync(Task(dest)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Equal("PREVIOUS GOOD COPY", Encoding.UTF8.GetString(fs.ReadAllBytes(@"D:\dst\a.txt")));
+    }
+
+    // The other half of the same design item, and the tier boundary from
+    // SafeFileTransferTests seen end-to-end: with the toggle off, a same-length corruption
+    // is invisible to the length check and commits. Asserting this keeps the flag honest —
+    // if the engine verified unconditionally, the opt-in would be meaningless.
+    [Fact]
+    public async Task Verify_contents_off_does_not_read_back_so_same_length_corruption_commits()
+    {
+        var fs = new InMemoryFileSystem { CorruptWrites = true };
+        fs.AddFile(@"S:\src\a.txt", "abcdef");
+
+        var dest = new Destination("d", @"D:\dst", [new AllFilesFilter()], SyncStrategy.AddOnly)
+        {
+            VerifyContents = false,
+        };
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Task(dest)));
+
+        Assert.Equal(SyncOutcome.Success, status.Outcome);
+        Assert.NotEqual("abcdef", Encoding.UTF8.GetString(fs.ReadAllBytes(@"D:\dst\a.txt")));
+        Assert.Equal(6, fs.GetStamp(@"D:\dst\a.txt").Length); // only the bytes differ
     }
 
     [Fact]

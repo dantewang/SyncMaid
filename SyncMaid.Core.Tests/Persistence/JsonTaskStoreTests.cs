@@ -20,11 +20,19 @@ public class JsonTaskStoreTests
             @"C:\src\photos",
             new ScheduledTrigger("*/5 * * * *"),
             [
+                // Non-default per-destination knobs on purpose: left at their defaults,
+                // WhenWritingNull re-serializes them identically, so both the round-trip
+                // and the byte-stability test would pass even if they were dropped on load.
                 new Destination(
                     "Backup",
                     @"D:\backup",
                     [new PathFilter("2024"), new ExtensionFilter("jpg")],
-                    SyncStrategy.AddOnly),
+                    SyncStrategy.AddOnly)
+                {
+                    VerifyContents = true,
+                    DeleteMode = DeleteMode.Permanent,
+                    MassDeleteThreshold = 0.25,
+                },
             ]),
         new SyncTask(
             "Docs",
@@ -58,7 +66,8 @@ public class JsonTaskStoreTests
         var fs = new InMemoryFileSystem();
         var store = NewStore(fs);
 
-        store.Save(SampleTasks());
+        var saved = SampleTasks();
+        store.Save(saved);
         var loaded = store.Load();
 
         Assert.Equal(3, loaded.Count);
@@ -77,6 +86,22 @@ public class JsonTaskStoreTests
             backup.Filters,
             f => Assert.Equal("2024", Assert.IsType<PathFilter>(f).Prefix),
             f => Assert.Equal("jpg", Assert.IsType<ExtensionFilter>(f).Extension));
+
+        // Where the files actually go, and the safety knobs guarding them. A dropped
+        // destination path or a silently reset VerifyContents is invisible in the
+        // filter/strategy assertions above.
+        Assert.Equal(@"D:\backup", backup.LocalPath);
+        Assert.Equal(@"D:\backup", Assert.IsType<LocalDestination>(backup.Target).Path);
+        Assert.True(backup.VerifyContents);
+        Assert.Equal(DeleteMode.Permanent, backup.DeleteMode);
+        Assert.Equal(0.25, backup.MassDeleteThreshold);
+
+        // Ids key the persisted per-destination status. They default to Guid.NewGuid(), so
+        // a binding failure mints a fresh one instead of erroring — which orphans every
+        // last-run result silently. Comparing against what was saved is the only way to
+        // catch that; asserting "not empty" would pass on a freshly minted Guid.
+        Assert.Equal(saved[0].Id, photos.Id);
+        Assert.Equal(saved[0].Destinations[0].Id, backup.Id);
 
         // Multiple destinations and the remaining strategies/triggers.
         var docs = loaded[1];

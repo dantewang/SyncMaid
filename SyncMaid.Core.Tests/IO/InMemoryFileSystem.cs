@@ -255,8 +255,14 @@ public sealed class InMemoryFileSystem : IFileSystem
         }
     }
 
-    /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.</summary>
+    /// <summary>Paths sent to the Recycle Bin (rather than permanently deleted), for assertions.
+    /// A network path never lands here: shares have no Recycle Bin, so PhysicalFileSystem
+    /// falls back to a permanent delete and so does this fake.</summary>
     public List<string> Recycled { get; } = [];
+
+    /// <summary>Paths a <see cref="Recycle"/> call had to delete permanently because the
+    /// destination was a network location, for assertions.</summary>
+    public List<string> RecycleFellBackToPermanent { get; } = [];
 
     public void DeleteFile(string path)
     {
@@ -280,10 +286,21 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void Recycle(string path)
     {
         var key = Normalize(path);
-        if (_files.Remove(key))
+        if (!_files.Remove(key))
         {
-            Recycled.Add(key);
+            return;
         }
+
+        // A share has no Recycle Bin, so the real implementation hard-deletes there.
+        // Recording that separately keeps "deletions are recoverable" from silently
+        // covering the one case where they are not.
+        if (NetworkPath.IsNetwork(path))
+        {
+            RecycleFellBackToPermanent.Add(key);
+            return;
+        }
+
+        Recycled.Add(key);
     }
 
     public void EnsureDirectory(string path)

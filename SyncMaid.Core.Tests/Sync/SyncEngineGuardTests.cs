@@ -206,6 +206,28 @@ public class SyncEngineGuardTests
         Assert.Equal(pathsBefore.OrderBy(p => p), fs.AllPaths.OrderBy(p => p));
     }
 
+    // Sync-core-design §4.C/§7.6: a share has no Recycle Bin, so a Mirror destination on
+    // one degrades to a permanent delete. The default DeleteMode is Recycle, so a user
+    // backing up to a NAS gets unrecoverable deletions — the capability table says so, but
+    // nothing pinned it, and the fake used to record every delete as "recycled".
+    [Fact]
+    public async Task Mirror_deletes_on_a_network_destination_fall_back_to_a_permanent_delete()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\keep.txt", "k");
+        fs.AddFile(@"\\nas\backup\keep.txt", "k");
+        fs.AddFile(@"\\nas\backup\orphan.txt", "stale");
+
+        var destination = new Destination(
+            "nas", @"\\nas\backup", [new AllFilesFilter()], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Success, status.Outcome);
+        Assert.Contains(fs.RecycleFellBackToPermanent, p => p.Contains("orphan.txt"));
+        Assert.DoesNotContain(fs.Recycled, p => p.Contains("orphan.txt"));
+    }
+
     private static InMemoryFileSystem MassDeleteScenario(out Destination dest)
     {
         var fs = new InMemoryFileSystem();
