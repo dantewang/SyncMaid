@@ -217,6 +217,12 @@ public class TaskNodeViewModelTests
 
         Assert.Equal(2, engine.Executed.Count);
         Assert.True(source.Started);
+
+        // Counting runs shows they coalesced; it does not show they never overlapped, and
+        // overlap is the half that matters — two runs of one task write the same
+        // destination files. Sync-core-design §8 calls for "concurrent runs of one task
+        // are serialized (no interleaved writes)".
+        Assert.Equal(1, engine.MaxConcurrentExecutions);
     }
 
     // "N files" is precise: distinct files across the burst, so the trailing coalesced
