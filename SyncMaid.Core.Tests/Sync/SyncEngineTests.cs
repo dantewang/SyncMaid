@@ -55,6 +55,27 @@ public class SyncEngineTests
         Assert.Contains(@"D:/dst/image1", fs.DeletedDirectories);
     }
 
+    // Nested orphan directories must come out whole. A non-recursive delete refuses a
+    // directory that still holds a subdirectory, so the plan has to remove children before
+    // parents; if that ordering reverses, the outer directory survives the run.
+    [Fact]
+    public async Task End_to_end_mirror_run_removes_nested_orphan_directories_deepest_first()
+    {
+        var fs = new InMemoryFileSystem();
+        var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        fs.AddFile(@"S:\src\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\keep.txt", "keep", t);
+        fs.AddFile(@"D:\dst\stale\inner\deep.txt", "stale", t);
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.Mirror);
+        var statuses = await new SyncEngine(fs).ExecuteAsync(Task(dest));
+
+        Assert.Equal(SyncOutcome.Success, Assert.Single(statuses).Outcome);
+        var remaining = fs.EnumerateDirectories(@"D:\dst").ToList();
+        Assert.DoesNotContain("stale/inner", remaining);
+        Assert.DoesNotContain("stale", remaining); // the parent, not just the child
+    }
+
     // The tree-identity contract: a tree compare of source and destination must report
     // identical after a run — empty directories included, in both directions.
     [Fact]

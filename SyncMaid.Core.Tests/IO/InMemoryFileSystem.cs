@@ -95,7 +95,9 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>Seeds a file with explicit contents and stamp; used to set up test state.</summary>
     public void AddFile(string path, byte[] contents, FileStamp stamp)
     {
-        _files[Normalize(path)] = new Entry(contents, stamp);
+        var key = Normalize(path);
+        _files[key] = new Entry(contents, stamp);
+        RegisterParents(key);
     }
 
     /// <summary>Convenience overload: stamp derived from length and a fixed default time.</summary>
@@ -243,6 +245,7 @@ public sealed class InMemoryFileSystem : IFileSystem
 
         var stamp = FileStamp.Create(contents.Length, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         _files[Normalize(path)] = new Entry(contents, stamp);
+        RegisterParents(Normalize(path));
         if (string.Equals(
                 Normalize(path),
                 Normalize(FailWriteAllBytesAfterMutationPath ?? ""),
@@ -291,11 +294,18 @@ public sealed class InMemoryFileSystem : IFileSystem
         _directories.TryAdd(Normalize(path), DefaultTime);
     }
 
-    /// <summary>Sets a directory's modified time; registers an implied directory as a
-    /// side effect, as the real filesystem's set-time succeeds on any existing folder.</summary>
+    /// <summary>Sets a directory's modified time. A directory that does not exist is
+    /// skipped, matching PhysicalFileSystem, which swallows FileNotFound/DirectoryNotFound
+    /// so a vanished directory is left alone rather than conjured into existence. Setting
+    /// a time must never be what creates a directory, or a missing one can satisfy a
+    /// "the trees are identical" assertion that real disk would fail.</summary>
     public void SetDirectoryLastWriteTimeUtc(string path, DateTime lastWriteTimeUtc)
     {
-        _directories[Normalize(path)] = lastWriteTimeUtc;
+        var key = Normalize(path);
+        if (DirectoryExists(key))
+        {
+            _directories[key] = lastWriteTimeUtc;
+        }
     }
 
     /// <summary>Paths removed by <see cref="DeleteEmptyDirectory"/>, for assertions.
@@ -306,15 +316,55 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void DeleteEmptyDirectory(string path)
     {
         var key = Normalize(path);
-        var prefix = key + "/";
-        if (_files.Keys.Any(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+        if (!DirectoryExists(key))
         {
-            // Not empty — matches PhysicalFileSystem's non-recursive, best-effort skip.
+            // Already gone; PhysicalFileSystem swallows DirectoryNotFoundException. Not
+            // recorded — DeletedDirectories must only name directories that existed.
+            return;
+        }
+
+        // Non-recursive, like Directory.Delete(path, recursive: false): a child of *any*
+        // kind makes it non-empty. Checking only files would let the planner's
+        // children-before-parents ordering regress without any test noticing, since a
+        // parent holding just an empty subdirectory would still appear deletable.
+        var prefix = key + "/";
+        var hasChild =
+            _files.Keys.Any(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            || _directories.Keys.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        if (hasChild)
+        {
+            // Not empty — PhysicalFileSystem's IOException is swallowed and the directory kept.
             return;
         }
 
         _directories.Remove(key);
         DeletedDirectories.Add(key);
+    }
+
+    // A directory exists when it was registered explicitly or something lives beneath it.
+    private bool DirectoryExists(string normalizedPath)
+    {
+        if (_directories.ContainsKey(normalizedPath))
+        {
+            return true;
+        }
+
+        var prefix = normalizedPath + "/";
+        return _files.Keys.Any(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            || _directories.Keys.Any(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Every path that gains a file registers that file's ancestor directories, so a
+    // directory outlives the files in it exactly as it does on disk. Without this,
+    // directories are merely implied by the files beneath them, so deleting the last file
+    // silently deletes the directory too — and DeleteEmptyDirectory would then have
+    // nothing left to remove, hiding whether the applier ever asked it to.
+    private void RegisterParents(string normalizedFilePath)
+    {
+        for (var i = normalizedFilePath.LastIndexOf('/'); i > 0; i = normalizedFilePath.LastIndexOf('/', i - 1))
+        {
+            _directories.TryAdd(normalizedFilePath[..i], DefaultTime);
+        }
     }
 
     public Stream OpenRead(string path)
@@ -374,8 +424,10 @@ public sealed class InMemoryFileSystem : IFileSystem
             throw new FileNotFoundException("No such file in the in-memory filesystem.", sourcePath);
         }
 
-        _files[Normalize(destinationPath)] = source;
+        var destinationKey = Normalize(destinationPath);
+        _files[destinationKey] = source;
         _files.Remove(sourceKey);
+        RegisterParents(destinationKey);
     }
 
     public long GetAvailableFreeSpace(string path) => AvailableFreeSpace;
@@ -408,6 +460,7 @@ public sealed class InMemoryFileSystem : IFileSystem
                 }
 
                 _owner._files[_key] = new Entry(bytes, FileStamp.Create(bytes.Length, DefaultTime));
+                _owner.RegisterParents(_key);
             }
 
             base.Dispose(disposing);

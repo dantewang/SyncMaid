@@ -18,6 +18,61 @@ public class InMemoryFileSystemTests
         Assert.Equal(new[] { "a.txt", "sub/b.txt" }, files);
     }
 
+    // The fake is only useful as evidence where it behaves like the real filesystem. These
+    // pin the directory semantics that Core's Mirror assertions lean on: a directory is a
+    // thing in its own right, not something implied by the files inside it.
+    [Fact]
+    public void A_directory_outlives_the_files_it_held()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"D:\dst\sub\a.txt", "a");
+
+        fs.DeleteFile(@"D:\dst\sub\a.txt");
+
+        // Real disk keeps the now-empty directory; only DeleteEmptyDirectory removes it.
+        Assert.Contains("sub", fs.EnumerateDirectories(@"D:\dst"));
+    }
+
+    [Fact]
+    public void DeleteEmptyDirectory_keeps_a_directory_holding_only_an_empty_subdirectory()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.EnsureDirectory(@"D:\dst\parent\child");
+
+        fs.DeleteEmptyDirectory(@"D:\dst\parent");
+
+        // Directory.Delete(path, recursive: false) throws for a child of any kind, and
+        // PhysicalFileSystem swallows that and keeps the directory. Checking only files
+        // here would let the planner's children-before-parents ordering regress unnoticed.
+        Assert.Contains("parent", fs.EnumerateDirectories(@"D:\dst"));
+        Assert.Empty(fs.DeletedDirectories);
+    }
+
+    [Fact]
+    public void DeleteEmptyDirectory_does_not_record_a_directory_that_never_existed()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"D:\dst\a.txt", "a");
+
+        fs.DeleteEmptyDirectory(@"D:\dst\never-here");
+
+        // Otherwise Assert.Contains(fs.DeletedDirectories, ...) proves nothing.
+        Assert.Empty(fs.DeletedDirectories);
+    }
+
+    [Fact]
+    public void Setting_a_directory_time_does_not_create_the_directory()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"D:\dst\a.txt", "a");
+
+        fs.SetDirectoryLastWriteTimeUtc(@"D:\dst\ghost", new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc));
+
+        // PhysicalFileSystem swallows FileNotFound/DirectoryNotFound here, so a missing
+        // directory stays missing — it must not be conjured into a tree comparison.
+        Assert.DoesNotContain("ghost", fs.EnumerateDirectories(@"D:\dst"));
+    }
+
     [Fact]
     public void Missing_files_raise_physical_filesystem_exception_types()
     {
