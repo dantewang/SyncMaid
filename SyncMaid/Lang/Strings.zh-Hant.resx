@@ -78,6 +78,12 @@
   <data name="Main.ExpandAll" xml:space="preserve">
     <value>全部展開</value>
   </data>
+  <data name="Main.ConfigUnreadableTitle" xml:space="preserve">
+    <value>無法載入您的工作</value>
+  </data>
+  <data name="Main.ConfigUnreadableDetail" xml:space="preserve">
+    <value>設定檔存在但無法讀取，因此未顯示任何工作。這些工作並未被刪除。在 SyncMaid 重新啟動並成功讀取該檔案之前，所做的變更不會被儲存。</value>
+  </data>
   <data name="Main.DeleteTaskTitle" xml:space="preserve">
     <value>刪除任務？</value>
   </data>

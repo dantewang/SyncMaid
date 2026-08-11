@@ -61,6 +61,7 @@
         <SolidColorBrush x:Key="DangerHoverBrush" Color="#B00613" />
         <SolidColorBrush x:Key="SuccessBrush" Color="#1AA0B5" />
         <SolidColorBrush x:Key="WarningBrush" Color="#C7810B" />
+        <SolidColorBrush x:Key="WarningSubtleBrush" Color="#FBEFD6" />
     </Application.Resources>
 
     <Application.Styles>

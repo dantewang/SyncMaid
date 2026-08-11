@@ -270,6 +270,65 @@ public class JsonTaskStoreTests
         Assert.Equal(3, store.Load().Count);
     }
 
+    // "No tasks" and "your tasks are on disk but unreachable" produce the same empty list,
+    // and the caller that acts on it goes on to Save. Without a way to tell them apart, a
+    // transient lock (antivirus, a sync client, a roaming profile) turns into a config wipe
+    // two saves later. Both files unreadable is the case no test covered.
+    [Theory]
+    [InlineData("{ not valid json")]
+    [InlineData("")]
+    public void Load_reports_unreadable_when_neither_the_main_file_nor_the_backup_parses(string corrupt)
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        store.Save([SampleTasks()[0]]); // backup now exists
+
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(corrupt));
+        fs.WriteAllBytes(ConfigPath + AtomicFile.BackupSuffix, Encoding.UTF8.GetBytes(corrupt));
+
+        Assert.Empty(store.Load(out var unreadable));
+        Assert.True(unreadable);
+    }
+
+    [Fact]
+    public void Load_reports_unreadable_when_reading_both_files_throws()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        store.Save([SampleTasks()[0]]);
+
+        // A held file, not a corrupt one: the config is perfectly intact on disk.
+        fs.FailReadAllBytesPath = ConfigPath;
+        fs.FailReadAllBytesPathFragment = AtomicFile.BackupSuffix;
+
+        Assert.Empty(store.Load(out var unreadable));
+        Assert.True(unreadable);
+    }
+
+    [Fact]
+    public void A_first_run_with_no_config_at_all_is_not_unreadable()
+    {
+        // The genuinely-empty case must stay distinguishable, or a first run would refuse
+        // to save anything.
+        Assert.Empty(new JsonTaskStore(new InMemoryFileSystem(), ConfigPath).Load(out var unreadable));
+        Assert.False(unreadable);
+    }
+
+    [Fact]
+    public void A_corrupt_main_file_recovered_from_the_backup_is_not_unreadable()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        store.Save([SampleTasks()[0]]);
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes("{ not valid json"));
+
+        Assert.Equal(3, store.Load(out var unreadable).Count);
+        Assert.False(unreadable); // recovery succeeded, so saving is safe
+    }
+
     // Cleanup runs on the failure path, so a failing cleanup must not become the reported
     // cause — the caller needs the write failure that actually stopped the save.
     [Fact]

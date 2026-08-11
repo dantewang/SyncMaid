@@ -224,6 +224,12 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Collapse all".</summary>
     public static string Main_CollapseAll => Get("Main.CollapseAll");
 
+    /// <summary>Looks up a localized string similar to "The configuration file exists but could not be read, so no tasks are shown. T...".</summary>
+    public static string Main_ConfigUnreadableDetail => Get("Main.ConfigUnreadableDetail");
+
+    /// <summary>Looks up a localized string similar to "Your tasks could not be loaded".</summary>
+    public static string Main_ConfigUnreadableTitle => Get("Main.ConfigUnreadableTitle");
+
     /// <summary>Looks up a localized string similar to "Delete the task &quot;{0}&quot; and {1}? This can&apos;t be undone.".</summary>
     public static string Main_DeleteTaskMessageFormat => Get("Main.DeleteTaskMessageFormat");
 

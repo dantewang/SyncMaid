@@ -84,6 +84,12 @@
   <data name="Main.ExpandAll" xml:space="preserve">
     <value>Expand all</value>
   </data>
+  <data name="Main.ConfigUnreadableTitle" xml:space="preserve">
+    <value>Your tasks could not be loaded</value>
+  </data>
+  <data name="Main.ConfigUnreadableDetail" xml:space="preserve">
+    <value>The configuration file exists but could not be read, so no tasks are shown. They have not been deleted. Changes will not be saved until SyncMaid restarts and reads the file successfully.</value>
+  </data>
   <data name="Main.DeleteTaskTitle" xml:space="preserve">
     <value>Delete task?</value>
   </data>

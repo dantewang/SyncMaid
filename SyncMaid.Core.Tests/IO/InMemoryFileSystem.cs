@@ -43,6 +43,11 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// <summary>When equal to a path, <see cref="ReadAllBytes"/> throws for that path.</summary>
     public string? FailReadAllBytesPath { get; set; }
 
+    /// <summary>When contained in a path, <see cref="ReadAllBytes"/> throws for that path.
+    /// Lets one switch cover a config file and its .bak together — the shape a lock taken
+    /// by antivirus or a sync client produces.</summary>
+    public string? FailReadAllBytesPathFragment { get; set; }
+
     private readonly HashSet<string> _lockedPaths = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Marks a path as held open by another process: <see cref="OpenRead"/> then
@@ -229,7 +234,9 @@ public sealed class InMemoryFileSystem : IFileSystem
 
     public byte[] ReadAllBytes(string path)
     {
-        if (string.Equals(Normalize(path), Normalize(FailReadAllBytesPath ?? ""), StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(Normalize(path), Normalize(FailReadAllBytesPath ?? ""), StringComparison.OrdinalIgnoreCase)
+            || (FailReadAllBytesPathFragment is not null
+                && path.Contains(FailReadAllBytesPathFragment, StringComparison.OrdinalIgnoreCase)))
         {
             throw new IOException("Simulated read failure.");
         }

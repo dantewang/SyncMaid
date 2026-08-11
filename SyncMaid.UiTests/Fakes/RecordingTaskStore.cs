@@ -15,7 +15,16 @@ public sealed class RecordingTaskStore : ITaskStore
 
     public IReadOnlyList<SyncTask> Saved { get; private set; } = [];
 
-    public IReadOnlyList<SyncTask> Load() => _tasks;
+    /// <summary>Set to simulate a config file that is present but unreadable.</summary>
+    public bool Unreadable { get; init; }
+
+    public IReadOnlyList<SyncTask> Load() => Load(out _);
+
+    public IReadOnlyList<SyncTask> Load(out bool unreadable)
+    {
+        unreadable = Unreadable;
+        return Unreadable ? [] : _tasks;
+    }
 
     public void Save(IReadOnlyList<SyncTask> tasks)
     {

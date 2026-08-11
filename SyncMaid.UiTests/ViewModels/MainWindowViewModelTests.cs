@@ -55,6 +55,30 @@ public class MainWindowViewModelTests
             n => Assert.Equal("B", n.Name));
     }
 
+    // An unreadable config yields the same empty list as a first run, so the user sees no
+    // tasks and starts re-adding them — and each edit would persist that empty list over a
+    // config still sitting intact on disk. Two saves and the .bak is gone too.
+    [Fact]
+    public async Task An_unreadable_config_refuses_to_persist_and_raises_the_banner()
+    {
+        var store = new RecordingTaskStore([Task("A")]) { Unreadable = true };
+        var dialogs = new FakeDialogService { OnEditTask = _ => Task("New") };
+
+        var vm = New(dialogs, store);
+
+        Assert.True(vm.ConfigUnreadable);
+        Assert.Empty(vm.Nodes);
+
+        await vm.AddTaskCommand.ExecuteAsync(null);
+
+        Assert.Single(vm.Nodes);      // the session still works
+        Assert.Equal(0, store.SaveCount); // but nothing is written over the real config
+    }
+
+    [Fact]
+    public void A_readable_config_does_not_raise_the_banner() =>
+        Assert.False(New(store: new RecordingTaskStore([Task("A")])).ConfigUnreadable);
+
     [Fact]
     public async Task AddTask_adds_a_node_and_persists()
     {

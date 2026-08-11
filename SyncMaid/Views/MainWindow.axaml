@@ -156,6 +156,25 @@
                     </Button>
                 </Grid>
 
+                <!-- The config existed but could not be read, so the list below is empty
+                     for a reason that looks exactly like "no tasks yet". Saving is
+                     suppressed while this shows, so the user is told before they start
+                     re-adding tasks over a config that is still intact on disk. -->
+                <Border DockPanel.Dock="Top" IsVisible="{Binding ConfigUnreadable}"
+                        Background="{StaticResource WarningSubtleBrush}"
+                        BorderBrush="{StaticResource WarningBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <mi:MaterialIcon Kind="AlertOutline" Width="18" Height="18"
+                                         Foreground="{StaticResource WarningBrush}"
+                                         VerticalAlignment="Top" />
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{l:Loc Main.ConfigUnreadableTitle}" FontWeight="SemiBold" />
+                            <TextBlock Text="{l:Loc Main.ConfigUnreadableDetail}" TextWrapping="Wrap" MaxWidth="620" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <ScrollViewer>
                     <ItemsControl x:Name="TasksItemsControl" ItemsSource="{Binding Nodes}">
                         <ItemsControl.ItemTemplate>

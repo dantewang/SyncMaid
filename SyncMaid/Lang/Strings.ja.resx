@@ -78,6 +78,12 @@
   <data name="Main.ExpandAll" xml:space="preserve">
     <value>すべて展開</value>
   </data>
+  <data name="Main.ConfigUnreadableTitle" xml:space="preserve">
+    <value>タスクを読み込めませんでした</value>
+  </data>
+  <data name="Main.ConfigUnreadableDetail" xml:space="preserve">
+    <value>設定ファイルは存在しますが読み取れなかったため、タスクは表示されていません。タスクが削除されたわけではありません。SyncMaid を再起動してファイルを正常に読み取るまで、変更は保存されません。</value>
+  </data>
   <data name="Main.DeleteTaskTitle" xml:space="preserve">
     <value>タスクを削除しますか？</value>
   </data>

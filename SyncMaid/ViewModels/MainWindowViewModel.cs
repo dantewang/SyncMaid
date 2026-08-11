@@ -77,7 +77,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _statuses = new Dictionary<Guid, DestinationSyncStatus>(statusStore.Load());
 
         Nodes = new ObservableCollection<TaskNodeViewModel>();
-        foreach (var task in _store.Load())
+        var tasks = _store.Load(out var configUnreadable);
+        ConfigUnreadable = configUnreadable;
+        if (configUnreadable)
+        {
+            // The tasks are not gone — the file just could not be read this time (a lock,
+            // a permission hiccup, a corrupt write). Saving now is what would lose them,
+            // so persistence is refused until a restart reads the config successfully.
+            _logger.LogError(
+                "The task configuration could not be read; showing no tasks and refusing to save over it.");
+        }
+
+        foreach (var task in tasks)
         {
             Nodes.Add(CreateNode(task));
         }
@@ -86,6 +97,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public ObservableCollection<TaskNodeViewModel> Nodes { get; }
+
+    /// <summary>
+    /// True when the task config existed at startup but could not be read. The task list is
+    /// empty as a result, which looks identical to having no tasks — so the view shows a
+    /// warning banner and <see cref="Persist"/> refuses to write, because saving the empty
+    /// list is what would actually destroy the user's tasks. Fixed by restarting once the
+    /// file is readable, so it never changes during a session.
+    /// </summary>
+    public bool ConfigUnreadable { get; }
 
     /// <summary>The in-window modal host; the view binds an overlay to its CurrentDialog.</summary>
     public IDialogHost DialogHost => _dialogHost;
@@ -235,6 +255,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void Persist()
     {
+        if (ConfigUnreadable)
+        {
+            // Writing here would rotate the last good copy into .bak and then out of
+            // existence on the following save. The banner tells the user why nothing is
+            // being saved; a restart that reads the config clears it.
+            _logger.LogWarning("Not saving tasks: the existing configuration could not be read.");
+            return;
+        }
+
         var tasks = Nodes.Select(node => node.Task).ToList();
         PruneOrphanedStatuses(tasks);
 

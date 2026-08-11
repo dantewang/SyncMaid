@@ -22,9 +22,12 @@ public sealed class JsonTaskStore : ITaskStore
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<SyncTask> Load() =>
+    public IReadOnlyList<SyncTask> Load() => Load(out _);
+
+    /// <inheritdoc />
+    public IReadOnlyList<SyncTask> Load(out bool unreadable) =>
         JsonConfigFile.TryLoadWithBackup(
-            _fileSystem, _path, TaskStoreJsonContext.Default.ListSyncTask) ?? [];
+            _fileSystem, _path, TaskStoreJsonContext.Default.ListSyncTask, out unreadable) ?? [];
 
     /// <inheritdoc />
     public void Save(IReadOnlyList<SyncTask> tasks)
