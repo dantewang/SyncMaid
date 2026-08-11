@@ -4,6 +4,79 @@ namespace SyncMaid.Core.Tests.Triggers;
 
 public class ScheduledTriggerSourceTests
 {
+    // The timer fires because the clock reached the occurrence, not because the test said
+    // so — the property every other test in this class takes on faith.
+    [Fact]
+    public void A_daily_schedule_fires_once_per_day_at_the_scheduled_time()
+    {
+        var clock = new VirtualClock(new DateTime(2026, 3, 1, 3, 0, 0, DateTimeKind.Utc));
+        var firedAt = new List<DateTime>();
+        using var source = new ScheduledTriggerSource(
+            "0 2 * * *", () => clock.UtcNow, clock.CreateTimer, TimeZoneInfo.Utc);
+        source.Fired += (_, _) => firedAt.Add(clock.UtcNow);
+
+        source.Start();
+        clock.AdvanceTo(new DateTime(2026, 3, 4, 3, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(
+            [
+                new DateTime(2026, 3, 2, 2, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 3, 2, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 4, 2, 0, 0, DateTimeKind.Utc),
+            ],
+            firedAt);
+    }
+
+    // A laptop asleep 22:00-08:00 misses its 02:00 backup every night. The timer does not
+    // advance across sleep, so on resume it is simply overdue: the run must happen once as
+    // a catch-up and re-arm to the next *future* occurrence — not fire once per night
+    // missed, and not re-arm into the past and spin.
+    [Fact]
+    public void A_schedule_missed_while_the_machine_slept_fires_once_and_rearms_ahead()
+    {
+        var clock = new VirtualClock(new DateTime(2026, 3, 1, 3, 0, 0, DateTimeKind.Utc));
+        var firedAt = new List<DateTime>();
+        using var source = new ScheduledTriggerSource(
+            "0 2 * * *", () => clock.UtcNow, clock.CreateTimer, TimeZoneInfo.Utc);
+        source.Fired += (_, _) => firedAt.Add(clock.UtcNow);
+
+        source.Start();
+
+        // Three nights pass with the machine asleep; it wakes mid-morning on the fourth.
+        clock.SleepThrough(new DateTime(2026, 3, 4, 9, 0, 0, DateTimeKind.Utc));
+
+        var wake = Assert.Single(firedAt);
+        Assert.Equal(new DateTime(2026, 3, 4, 9, 0, 0, DateTimeKind.Utc), wake);
+
+        // And the schedule is still live: the next occurrence runs on time.
+        clock.AdvanceTo(new DateTime(2026, 3, 5, 3, 0, 0, DateTimeKind.Utc));
+        Assert.Equal(new DateTime(2026, 3, 5, 2, 0, 0, DateTimeKind.Utc), firedAt.Last());
+        Assert.Equal(2, firedAt.Count);
+    }
+
+    // The night the clock goes back, 01:30 local happens twice. A backup product must run
+    // it once, not twice — a duplicated Mirror run is wasted work, and the symmetric
+    // spring-forward case (a time that does not exist) is already pinned in
+    // CronScheduleTests. Every other test here uses UTC, which never transitions.
+    [Fact]
+    public void An_ambiguous_local_time_on_the_dst_fall_back_night_fires_once()
+    {
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+
+        // 2026-11-01: US clocks go back 02:00 -> 01:00, so 01:30 EDT and 01:30 EST both
+        // exist. Start the evening before, in UTC.
+        var clock = new VirtualClock(new DateTime(2026, 11, 1, 3, 0, 0, DateTimeKind.Utc));
+        var fires = 0;
+        using var source = new ScheduledTriggerSource(
+            "30 1 * * *", () => clock.UtcNow, clock.CreateTimer, eastern);
+        source.Fired += (_, _) => fires++;
+
+        source.Start();
+        clock.AdvanceTo(new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(1, fires);
+    }
+
     [Fact]
     public void Long_cron_delay_is_chained_without_firing_early()
     {
@@ -204,6 +277,76 @@ public class ScheduledTriggerSourceTests
                 return timer;
             },
             TimeZoneInfo.Utc);
+    }
+
+    /// <summary>
+    /// A clock plus the one-shot timer armed against it. <see cref="FakeTimer"/> only
+    /// records the due time and leaves firing to the test, so the suite verifies "given a
+    /// callback at moment X the right thing happens" and never "the callback happens at
+    /// moment X". Here the timer fires because the clock reached its due time, which is
+    /// what makes missed occurrences and DST transitions observable.
+    /// </summary>
+    private sealed class VirtualClock(DateTime startUtc)
+    {
+        private VirtualTimer? _timer;
+
+        public DateTime UtcNow { get; private set; } = startUtc;
+
+        public ScheduledTriggerSource.IOneShotTimer CreateTimer(Action callback) =>
+            _timer = new VirtualTimer(this, callback);
+
+        /// <summary>Runs time forward, firing the armed timer whenever the clock reaches
+        /// its due time — an ordinary machine that stays awake.</summary>
+        public void AdvanceTo(DateTime targetUtc)
+        {
+            // Bounded so a schedule that re-arms at zero delay fails the test instead of
+            // spinning forever.
+            for (var step = 0; step < 1000; step++)
+            {
+                if (_timer?.DueAtUtc is not { } dueAt || dueAt > targetUtc)
+                {
+                    break;
+                }
+
+                UtcNow = dueAt;
+                _timer.FireDue();
+            }
+
+            if (UtcNow < targetUtc)
+            {
+                UtcNow = targetUtc;
+            }
+        }
+
+        /// <summary>Jumps time forward <b>without</b> firing anything, then delivers a
+        /// single late callback if the timer is overdue — a machine that slept through the
+        /// occurrence. A System.Threading.Timer does not advance across S3/S4, so on resume
+        /// an overdue timer fires once, not once per occurrence missed.</summary>
+        public void SleepThrough(DateTime wakeUtc)
+        {
+            UtcNow = wakeUtc;
+            if (_timer?.DueAtUtc is { } dueAt && dueAt <= wakeUtc)
+            {
+                _timer.FireDue();
+            }
+        }
+
+        private sealed class VirtualTimer(VirtualClock clock, Action callback)
+            : ScheduledTriggerSource.IOneShotTimer
+        {
+            public DateTime? DueAtUtc { get; private set; }
+
+            public void Change(TimeSpan dueTime) =>
+                DueAtUtc = dueTime == Timeout.InfiniteTimeSpan ? null : clock.UtcNow + dueTime;
+
+            public void FireDue()
+            {
+                DueAtUtc = null;
+                callback();
+            }
+
+            public void Dispose() => DueAtUtc = null;
+        }
     }
 
     private sealed class FakeTimer(Action callback) : ScheduledTriggerSource.IOneShotTimer

@@ -33,6 +33,8 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
     private int _quietPolls;
     private bool _failureReported;
     private bool _disposed;
+    private bool _polling;
+    private long _generation;
 
     public PollingWatchTriggerSource(
         IFileSystem fileSystem,
@@ -100,6 +102,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             _timer?.Dispose();
             _timer = null;
             _hasBaseline = false;
+            _generation++; // discard any walk still in flight
             _notifier.Invalidate();
         }
 
@@ -123,28 +126,64 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
         // delivers them outside it, in decided order, and drops them if Stop/Dispose
         // lands first. A throwing Fired subscriber is contained by the drain and folded
         // into the same once-until-recovered error reporting as a failed snapshot.
-        var changed = false;
+        long generation;
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _polling)
             {
+                // A walk is already in flight (a slow share outlasting the poll interval);
+                // stacking a second one would race to commit snapshots out of order.
                 return false;
             }
 
-            TreeSnapshot? current = null;
-            Exception? failure = null;
-            try
+            _polling = true;
+            generation = _generation;
+        }
+
+        try
+        {
+            return PollCore(generation);
+        }
+        finally
+        {
+            lock (_gate)
             {
-                current = Snapshot();
+                _polling = false;
             }
-            catch (Exception exception)
+        }
+    }
+
+    private bool PollCore(long generation)
+    {
+        // The walk runs *outside* the state gate. On an unresponsive share it blocks for
+        // the full network timeout, and Stop/Dispose take the same gate — holding it here
+        // would hang the caller disposing this source, which the view model does
+        // synchronously when a task is deleted or the app shuts down.
+        TreeSnapshot? current = null;
+        Exception? failure = null;
+        try
+        {
+            current = Snapshot();
+        }
+        catch (Exception exception)
+        {
+            // This is a timer-callback boundary: anything escaping here (a malformed
+            // configured path throwing ArgumentException, not just I/O faults) would be
+            // an unhandled thread-pool exception and kill the process. Deferring the
+            // baseline off Start() also moved the first walk out of the consumer's
+            // start-failure handling, so this catch is the only net.
+            failure = exception;
+        }
+
+        var changed = false;
+        lock (_gate)
+        {
+            // Stop or Dispose landed while we were walking: the result describes a source
+            // this instance is no longer watching, and delivering from it would break the
+            // "nothing fires after Stop returns" guarantee.
+            if (_disposed || generation != _generation)
             {
-                // This is a timer-callback boundary: anything escaping here (a malformed
-                // configured path throwing ArgumentException, not just I/O faults) would be
-                // an unhandled thread-pool exception and kill the process. Deferring the
-                // baseline off Start() also moved the first walk out of the consumer's
-                // start-failure handling, so this catch is the only net.
-                failure = exception;
+                return false;
             }
 
             if (failure is not null)
@@ -304,6 +343,7 @@ public sealed class PollingWatchTriggerSource : ITriggerSource
             _timer?.Dispose();
             _timer = null;
             _hasBaseline = false;
+            _generation++; // discard any walk still in flight
             _notifier.Invalidate();
         }
 

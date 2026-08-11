@@ -145,6 +145,88 @@ public class PollingWatchTriggerSourceTests
         }
     }
 
+    // The walk can take the full network timeout on a share that has gone away — tens of
+    // seconds. Dispose is called synchronously from the view model when a task is deleted
+    // or the app shuts down, so if the walk held the state gate the UI would freeze for
+    // that whole time. The walk therefore runs outside the gate.
+    [Fact]
+    public async Task Dispose_does_not_wait_for_a_poll_stuck_walking_an_unresponsive_share()
+    {
+        var fileSystem = new BlockingFileSystem();
+        var source = new PollingWatchTriggerSource(
+            fileSystem, Root, TimeSpan.FromSeconds(5), callback => new FakeTimer(callback));
+
+        var poll = Task.Run(() => source.PollOnce());
+        Assert.True(fileSystem.EnumerationStarted.Wait(TimeSpan.FromSeconds(2)), "The poll never started walking.");
+
+        try
+        {
+            var dispose = Task.Run(source.Dispose);
+
+            // A regression here does not fail an assertion, it hangs until the timeout.
+            await dispose.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            fileSystem.ReleaseEnumeration.Set();
+            await poll.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+    }
+
+    // Same gate, same reason: deleting a task stops the source before disposing it.
+    [Fact]
+    public async Task Stop_does_not_wait_for_a_poll_stuck_walking_an_unresponsive_share()
+    {
+        var fileSystem = new BlockingFileSystem();
+        using var source = new PollingWatchTriggerSource(
+            fileSystem, Root, TimeSpan.FromSeconds(5), callback => new FakeTimer(callback));
+
+        var poll = Task.Run(() => source.PollOnce());
+        Assert.True(fileSystem.EnumerationStarted.Wait(TimeSpan.FromSeconds(2)), "The poll never started walking.");
+
+        try
+        {
+            var stop = Task.Run(source.Stop);
+            await stop.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            fileSystem.ReleaseEnumeration.Set();
+            await poll.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+    }
+
+    // A walk that outlived the Stop describes a source we are no longer watching, so its
+    // result must be discarded rather than delivered after Stop returned.
+    [Fact]
+    public async Task A_poll_that_finishes_after_stop_delivers_nothing()
+    {
+        var fileSystem = new BlockingFileSystem();
+        using var source = new PollingWatchTriggerSource(
+            fileSystem, Root, TimeSpan.FromSeconds(5), callback => new FakeTimer(callback));
+        var fires = 0;
+        source.Fired += (_, _) => Interlocked.Increment(ref fires);
+
+        var poll = Task.Run(() => source.PollOnce());
+        Assert.True(fileSystem.EnumerationStarted.Wait(TimeSpan.FromSeconds(2)), "The poll never started walking.");
+
+        try
+        {
+            // Via Task.Run with a timeout: if the walk ever holds the gate again this must
+            // fail, not deadlock the whole test class.
+            await Task.Run(source.Stop).WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            // Always release, even on failure — a stranded walk holds the gate and would
+            // deadlock this class's teardown instead of reporting the regression.
+            fileSystem.ReleaseEnumeration.Set();
+        }
+
+        Assert.False(await poll.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(0, fires);
+    }
+
     [Fact]
     public void Changes_made_while_stopped_are_absorbed_on_resume()
     {

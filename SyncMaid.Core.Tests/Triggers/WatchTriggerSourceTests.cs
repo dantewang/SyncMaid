@@ -446,7 +446,11 @@ public class WatchTriggerSourceTests
 
         try
         {
-            using var source = new WatchTriggerSource(directory);
+            // A short real settle, as in the sibling real-timer tests. With the default
+            // 10s window this test could not fail: the earliest possible fire was well
+            // past the assertion, so deleting the body of Stop() left it green.
+            var settle = TimeSpan.FromMilliseconds(250);
+            using var source = new WatchTriggerSource(directory, settleWindow: settle);
             var fireCount = 0;
             source.Fired += (_, _) => Interlocked.Increment(ref fireCount);
             source.Start();
@@ -454,7 +458,10 @@ public class WatchTriggerSourceTests
 
             await Task.Delay(100);
             await File.WriteAllTextAsync(Path.Combine(directory, "new.txt"), "hi");
-            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            // Comfortably longer than the settle window, so a source that kept watching
+            // has had every chance to fire.
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
             Assert.Equal(0, fireCount);
         }
