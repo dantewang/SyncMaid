@@ -60,6 +60,12 @@ public sealed class InMemoryFileSystem : IFileSystem
             $"The process cannot access the file '{path}' because it is being used by another process.",
             unchecked((int)0x80070020));
 
+    /// <summary>When equal to a <see cref="Replace"/> destination, that rename throws.
+    /// Renames are the commit step of every atomic write, and they fail in the wild —
+    /// a reader holding the destination open, an antivirus hold, a sharing violation —
+    /// so the states either side of a commit need to be reachable from a test.</summary>
+    public string? FailReplaceDestinationPath { get; set; }
+
     /// <summary>When equal to a path, <see cref="DeleteFile"/> throws for that path.</summary>
     public string? FailDeletePath { get; set; }
 
@@ -439,6 +445,14 @@ public sealed class InMemoryFileSystem : IFileSystem
         if (!_files.TryGetValue(sourceKey, out var source))
         {
             throw new FileNotFoundException("No such file in the in-memory filesystem.", sourcePath);
+        }
+
+        if (string.Equals(
+                Normalize(destinationPath),
+                Normalize(FailReplaceDestinationPath ?? ""),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException($"Simulated rename failure committing '{destinationPath}'.");
         }
 
         var destinationKey = Normalize(destinationPath);

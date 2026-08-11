@@ -213,6 +213,80 @@ public class JsonTaskStoreTests
         Assert.Equal(3, store.Load().Count);                          // all tasks still load
     }
 
+    // FailWrites above trips the very first write, before either rename. These cover the
+    // two later failure points: a save is three steps (write temp, snapshot .bak, commit),
+    // and a crash or a held file at *any* of them must leave the previous config loadable.
+    [Fact]
+    public void A_failure_committing_the_new_version_leaves_the_previous_one_in_place()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        var before = fs.ReadAllBytes(ConfigPath);
+
+        // The commit rename is the last step; a reader or AV hold on the live file can
+        // fail it. The primary must never have been moved aside to make room.
+        fs.FailReplaceDestinationPath = ConfigPath;
+        Assert.ThrowsAny<IOException>(() => store.Save([]));
+        fs.FailReplaceDestinationPath = null;
+
+        Assert.True(fs.FileExists(ConfigPath)); // never stopped existing
+        Assert.Equal(before, fs.ReadAllBytes(ConfigPath));
+        Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-"));
+        Assert.Equal(3, store.Load().Count);
+    }
+
+    [Fact]
+    public void A_failure_snapshotting_the_backup_leaves_the_previous_version_in_place()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+        var before = fs.ReadAllBytes(ConfigPath);
+
+        fs.FailReplaceDestinationPath = ConfigPath + AtomicFile.BackupSuffix;
+        Assert.ThrowsAny<IOException>(() => store.Save([]));
+        fs.FailReplaceDestinationPath = null;
+
+        Assert.Equal(before, fs.ReadAllBytes(ConfigPath));
+        Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-"));
+        Assert.Equal(3, store.Load().Count);
+    }
+
+    // The state a power cut used to be able to produce, back when the backup step moved
+    // the live file aside instead of copying it. Recovery has always worked; nothing
+    // pinned it, so the fallback could have regressed unnoticed.
+    [Fact]
+    public void Load_recovers_when_the_main_file_is_missing_entirely_and_a_backup_exists()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());      // v1 (3 tasks)
+        store.Save([SampleTasks()[0]]); // v2 (1 task); backup now holds v1
+
+        fs.DeleteFile(ConfigPath);
+
+        Assert.False(fs.FileExists(ConfigPath));
+        Assert.Equal(3, store.Load().Count);
+    }
+
+    // Cleanup runs on the failure path, so a failing cleanup must not become the reported
+    // cause — the caller needs the write failure that actually stopped the save.
+    [Fact]
+    public void A_cleanup_failure_does_not_replace_the_original_save_failure()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(SampleTasks());
+
+        fs.FailReplaceDestinationPath = ConfigPath;
+        fs.FailDeletePathFragment = ".tmp-";
+
+        var exception = Assert.ThrowsAny<IOException>(() => store.Save([]));
+
+        Assert.Contains("Simulated rename failure", exception.Message);
+    }
+
     [Fact]
     public void A_successful_save_leaves_no_temp_file()
     {
