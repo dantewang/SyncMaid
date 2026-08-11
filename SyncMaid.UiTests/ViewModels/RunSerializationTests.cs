@@ -57,11 +57,15 @@ public sealed class RunSerializationTests : IDisposable
         // first mid-copy rather than slipping between whole operations.
         for (var i = 0; i < 40; i++)
         {
-            await File.WriteAllTextAsync(Path.Combine(Source, $"file{i:00}.txt"), $"contents {i}");
+            await File.WriteAllTextAsync(
+                Path.Combine(Source, $"file{i:00}.txt"),
+                $"contents {i}",
+                TestContext.Current.CancellationToken);
         }
 
         Directory.CreateDirectory(Path.Combine(Source, "nested"));
-        await File.WriteAllTextAsync(Path.Combine(Source, "nested", "deep.txt"), "nested");
+        await File.WriteAllTextAsync(
+            Path.Combine(Source, "nested", "deep.txt"), "nested", TestContext.Current.CancellationToken);
 
         var destination = new Destination(
             "D", Destination, [new AllFilesFilter()], SyncStrategy.Mirror);
@@ -94,7 +98,10 @@ public sealed class RunSerializationTests : IDisposable
     {
         for (var i = 0; i < 40; i++)
         {
-            await File.WriteAllTextAsync(Path.Combine(Source, $"file{i:00}.txt"), $"contents {i}");
+            await File.WriteAllTextAsync(
+                Path.Combine(Source, $"file{i:00}.txt"),
+                $"contents {i}",
+                TestContext.Current.CancellationToken);
         }
 
         var destination = new Destination(

@@ -93,10 +93,17 @@ never add a faster path that skips them.
   go to the Recycle Bin by default (`DeleteMode.Recycle`).
 - **Safety logic lives in UI-free Core** so the in-memory filesystem can fault-inject it —
   new safety behaviour ships with a fault-injection test.
-- **A run never re-triggers itself.** Runs of a task are serialized, and the task's trigger
-  source is stopped for the duration of its own run (polling re-baselines on resume).
+- **A run never re-triggers itself into a loop.** Runs of a task are serialized by
+  `TaskNodeViewModel`'s run gate: while one is active, further requests coalesce into a
+  single follow-up rather than starting a second writer. The trigger source stays **live**
+  across a run — nothing calls `ITriggerSource.Stop()` — so a run that mutates its own
+  source (only Move does) fires the trigger once afterwards. That follow-up is a no-op:
+  planning is idempotent, so it changes nothing and the trigger goes quiet again. Do not
+  "fix" it by suppressing the trigger around runs without re-reading
+  `SelfTriggeringRunTests`, which pins the cost at exactly one extra run and no cascade.
   Notifications deliver outside the owner's state gate (`TriggerNotifier`) — a subscriber
-  must never block a watcher callback.
+  must never block a watcher callback, and a source's own I/O (the polling walk) must not
+  hold that gate either, or `Stop`/`Dispose` block behind a dead network share.
 
 ## Persistence & AOT
 

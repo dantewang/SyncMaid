@@ -230,8 +230,10 @@ public class PollingWatchTriggerSourceTests
     [Fact]
     public void Changes_made_while_stopped_are_absorbed_on_resume()
     {
-        // A Move run deletes from the watched source with the trigger suppressed; resuming
-        // must re-baseline so the run's own deletions don't fire a pointless follow-up run.
+        // Stop/resume is an ITriggerSource contract, not something a run does: nothing in
+        // the app suppresses a source around its own run (see SelfTriggeringRunTests and
+        // AGENT.md → Sync safety). What is pinned here is that resuming re-baselines, so
+        // whatever changed while stopped is absorbed instead of firing on the next poll.
         var fs = new InMemoryFileSystem();
         fs.AddFile($@"{Root}\a.txt", "a");
         fs.AddFile($@"{Root}\b.txt", "b");

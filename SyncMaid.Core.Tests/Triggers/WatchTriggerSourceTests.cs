@@ -474,8 +474,9 @@ public class WatchTriggerSourceTests
     [Fact]
     public async Task Fires_again_after_stop_then_start()
     {
-        // Resume-after-suppression (used around a sync run): Start() after Stop() must
-        // re-enable the existing watcher, not silently no-op.
+        // Start() after Stop() must re-enable the existing watcher, not silently no-op.
+        // (Stop/Start is an ITriggerSource contract with no caller in the app today — runs
+        // leave the source live — so this pins the interface, not a production flow.)
         var directory = Path.Combine(Path.GetTempPath(), "syncmaid-watch-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
 

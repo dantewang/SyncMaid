@@ -9,15 +9,14 @@ namespace SyncMaid.Core.Tests.Triggers;
 /// <summary>
 /// What a run that mutates its own watched source actually costs today.
 ///
-/// AGENT.md and the archived improvement backlog both state that a task's trigger source is
-/// stopped for the duration of its own run and resumed afterwards, with the polling source
-/// re-baselining on resume so the run's own changes are absorbed. No production code calls
-/// <see cref="ITriggerSource.Stop"/> — the watcher stays live throughout a run, and
-/// view-model coalescing plus idempotent planning absorb the feedback instead.
+/// The trigger source stays live across a run — nothing calls
+/// <see cref="ITriggerSource.Stop"/> — so a run that mutates its own source feeds its own
+/// changes back to the watcher. View-model coalescing and idempotent planning absorb that
+/// instead of suppression.
 ///
-/// These tests pin the observable consequence of that, so the choice between implementing
-/// the documented suppression and correcting the documents rests on a measured cost rather
-/// than on either description.
+/// These pin the cost of that choice, so it stays a measured decision: exactly one extra
+/// no-op run after a Move, no cascade, and nothing at all for the other strategies. AGENT.md
+/// points here before anyone "fixes" it by suppressing the trigger around runs.
 /// </summary>
 public sealed class SelfTriggeringRunTests : IDisposable
 {
@@ -112,10 +111,10 @@ public sealed class SelfTriggeringRunTests : IDisposable
         Assert.Equal(0, fires);
     }
 
-    // What the documented suppression would buy: stopping the source across the run makes
-    // its resume re-baseline, absorbing the run's own deletions so no follow-up fires.
-    // This is the behaviour AGENT.md describes; it passes only because the test calls
-    // Stop/Start itself, which no production code does.
+    // What suppression would buy, if it were ever wired up: stopping the source across the
+    // run makes its resume re-baseline, absorbing the run's own deletions so no follow-up
+    // fires. Kept as the measured alternative to the test above — it passes only because
+    // this test calls Stop/Start itself, which no production code does.
     [Fact]
     public async Task Stopping_the_trigger_across_the_run_would_absorb_the_extra_run()
     {
