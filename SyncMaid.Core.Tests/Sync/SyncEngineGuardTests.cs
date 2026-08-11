@@ -142,6 +142,70 @@ public class SyncEngineGuardTests
         Assert.Equal(pathsBefore.OrderBy(p => p), fs.AllPaths.OrderBy(p => p));
     }
 
+    // The case above uses a filter that matches nothing, so the empty-source guard would
+    // catch it even with the Mirror-filter guard removed. This one is the data-loss path
+    // the convention actually exists to close: the filter matches *some* files, so the
+    // source is not empty and MirrorGuard never arms — every file the filter excludes
+    // then looks like destination-only content to the orphan scan and is deleted.
+    [Fact]
+    public async Task A_partially_matching_mirror_filter_is_refused_before_it_can_delete_excluded_files()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.jpg", "photo");
+        fs.AddFile(@"S:\src\b.txt", "notes");
+        fs.AddFile(@"D:\dst\a.jpg", "photo");
+        fs.AddFile(@"D:\dst\b.txt", "notes");
+
+        var destination = new Destination(
+            "filtered mirror", @"D:\dst", [new ExtensionFilter("jpg")], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        // Asserted first so a regression reports the harm (the excluded file was deleted)
+        // rather than merely the outcome enum.
+        Assert.True(fs.FileExists(@"D:\dst\b.txt")); // excluded by the filter, not an orphan
+        Assert.True(fs.FileExists(@"D:\dst\a.jpg"));
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("file filters", status.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // A lone all-files rule is the only shape a Mirror destination may carry; a repeated
+    // one is still not that shape, and the engine must not treat it as equivalent.
+    [Fact]
+    public async Task A_mirror_destination_with_a_duplicated_all_files_filter_is_refused()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.AddFile(@"D:\dst\orphan.txt", "keep");
+        var pathsBefore = fs.AllPaths;
+
+        var destination = new Destination(
+            "d", @"D:\dst", [new AllFilesFilter(), new AllFilesFilter()], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Equal(pathsBefore.OrderBy(p => p), fs.AllPaths.OrderBy(p => p));
+    }
+
+    // An empty filter list selects nothing (Destination.Includes: "with no rules, nothing
+    // is selected"), which for Mirror would mean deleting the entire destination.
+    [Fact]
+    public async Task A_mirror_destination_with_no_filters_is_refused()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.AddFile(@"D:\dst\orphan.txt", "keep");
+        var pathsBefore = fs.AllPaths;
+
+        var destination = new Destination("d", @"D:\dst", [], SyncStrategy.Mirror);
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(Mirror(fs, destination)));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Equal(pathsBefore.OrderBy(p => p), fs.AllPaths.OrderBy(p => p));
+    }
+
     private static InMemoryFileSystem MassDeleteScenario(out Destination dest)
     {
         var fs = new InMemoryFileSystem();

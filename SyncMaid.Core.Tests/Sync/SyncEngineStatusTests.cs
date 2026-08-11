@@ -114,7 +114,9 @@ public class SyncEngineStatusTests
 
         var good = new Destination("good", @"D:\good", [new AllFilesFilter()], SyncStrategy.Mirror);
         var bad = new Destination("bad", @"D:\nope", [new AllFilesFilter()], SyncStrategy.Mirror);
-        var task = new SyncTask("T", @"C:\src", new ManualTrigger(), [good, bad]);
+        // The failing destination runs first, so the good one is genuinely queued behind
+        // it — otherwise the run order alone would satisfy the assertions.
+        var task = new SyncTask("T", @"C:\src", new ManualTrigger(), [bad, good]);
 
         var statuses = await new SyncEngine(fs, RetryOptions.None).ExecuteAsync(task);
 

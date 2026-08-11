@@ -233,7 +233,7 @@ public class SyncEngineTests
     }
 
     [Fact]
-    public async Task Cancellation_is_observed()
+    public async Task Cancellation_before_the_run_starts_copies_nothing()
     {
         var fs = new InMemoryFileSystem();
         for (var i = 0; i < 5; i++)
@@ -250,6 +250,75 @@ public class SyncEngineTests
             () => engine.ExecuteAsync(Task(dest), cts.Token));
 
         Assert.DoesNotContain(fs.AllPaths, path => path.StartsWith(@"D:/dst")); // nothing copied
+    }
+
+    // Cancelling *during* a run is the case the Stop button produces, and the one the
+    // pre-cancelled token above cannot reach: ExecuteAsync is Task.Run(..., token), so an
+    // already-cancelled token means the engine body never executes at all. Progress is
+    // reported immediately before each operation is applied, so cancelling on the first
+    // report lands the engine between operation 0 and operation 1.
+    [Fact]
+    public async Task Cancellation_mid_run_stops_between_operations_and_keeps_what_landed()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.AddFile(@"S:\src\b.txt", "b");
+        fs.AddFile(@"S:\src\c.txt", "c");
+
+        var dest = new Destination("d", @"D:\dst", new FilterRule[] { new AllFilesFilter() }, SyncStrategy.AddOnly);
+        var engine = new SyncEngine(fs);
+        using var cts = new CancellationTokenSource();
+        var reports = 0;
+        var progress = new CallbackProgress<SyncProgress>(_ =>
+        {
+            if (++reports == 1)
+            {
+                cts.Cancel();
+            }
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => engine.ExecuteAsync(Task(dest), cts.Token, progress));
+
+        // The operation already in flight completes; the ones behind it never start. The
+        // token is checked at the top of each iteration, so the second operation throws
+        // before it is even reported — one report, one file.
+        Assert.Equal(1, reports);
+        var copied = Assert.Single(fs.EnumerateFiles(@"D:\dst")); // relative to the root
+
+        // What landed is a complete file, not a half-written one, and no temp survives.
+        Assert.DoesNotContain(".syncmaid-tmp-", copied);
+        Assert.Equal(1, fs.GetStamp(@"D:\dst\" + copied).Length);
+    }
+
+    // Cancellation is not a destination failure: it propagates rather than being folded
+    // into a status. The check between destinations is what makes that true even when the
+    // queued destination has nothing to do — an already-in-sync destination plans zero
+    // operations, so the per-operation check inside it never runs, and without the
+    // between-destinations check the run would return a fabricated Success for it instead
+    // of surfacing the cancellation.
+    [Fact]
+    public async Task Cancellation_mid_run_does_not_fabricate_a_status_for_an_idle_destination()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\a.txt", "a");
+        fs.AddFile(@"D:\two\a.txt", "a"); // already in sync — plans zero operations
+
+        var first = new Destination("first", @"D:\one", [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var second = new Destination("second", @"D:\two", [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var engine = new SyncEngine(fs);
+        using var cts = new CancellationTokenSource();
+        var progress = new CallbackProgress<SyncProgress>(_ => cts.Cancel());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => engine.ExecuteAsync(Task(first, second), cts.Token, progress));
+
+        Assert.True(fs.FileExists(@"D:\one\a.txt")); // the in-flight copy completed
+    }
+
+    private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
+    {
+        public void Report(T value) => callback(value);
     }
 
     private sealed class CollectingProgress : IProgress<SyncProgress>
