@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SyncMaid.Core.Model;
 using SyncMaid.ViewModels;
@@ -17,17 +18,24 @@ public interface IDialogService
     /// overlaps the given path, or null — sources never overlap across tasks.</param>
     Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts);
 
-    /// <param name="existing">The destination to edit, or null to create a new one.</param>
-    /// <param name="sourcePath">The owning task's source path, used to reject nested paths.</param>
-    /// <param name="taskKind">The owning task's kind, which decides the strategy: a Move task's
-    /// destinations are routing rules, a Sync task's are Mirror or Add-only.</param>
-    /// <param name="destinationConflicts">Probe describing a destination that overlaps the
-    /// given path — a sibling of this task or one owned by another task — or null.</param>
-    Task<Destination?> EditDestinationAsync(
-        Destination? existing,
-        string sourcePath,
-        SyncTaskKind taskKind,
-        Func<string, DestinationConflict?> destinationConflicts);
+    /// <summary>
+    /// Opens the task's destinations as one workspace and returns the edited list, or null if
+    /// cancelled. All of them together: a routing task is a rule set, and which rule catches a
+    /// given file is a property of the list, not of any rule on its own.
+    /// </summary>
+    /// <param name="task">The task whose destinations are being edited.</param>
+    /// <param name="expand">A destination to open for editing straight away, or null.</param>
+    /// <param name="startWithNewRule">True to open with a new, empty destination already being
+    /// edited — what the card's add button means.</param>
+    /// <param name="crossTaskConflicts">Probe returning the name of another task owning a
+    /// destination that overlaps the given path, or null. Destinations of <em>this</em> task
+    /// are compared by the workspace itself, which is the only place that knows the pending
+    /// edits.</param>
+    Task<IReadOnlyList<Destination>?> EditDestinationsAsync(
+        SyncTask task,
+        Guid? expand,
+        bool startWithNewRule,
+        Func<string, string?> crossTaskConflicts);
 
     /// <summary>Shows a modal yes/no confirmation. Returns true only if the user confirms.</summary>
     /// <param name="title">Dialog heading.</param>

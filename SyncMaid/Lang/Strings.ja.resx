@@ -31,6 +31,53 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>削除</value>
   </data>
+  <data name="Common.Done" xml:space="preserve">
+    <value>完了</value>
+  </data>
+
+  <!-- Task workspace: every destination of one task, edited together -->
+  <data name="Workspace.RulesTitle" xml:space="preserve">
+    <value>仕分けルール</value>
+  </data>
+  <data name="Workspace.DestinationsTitle" xml:space="preserve">
+    <value>同期先</value>
+  </data>
+  <data name="Workspace.RoutingSubtitle" xml:space="preserve">
+    <value>上から順に照合します: 各ファイルは最初に一致したルールへ移動し、どれにも一致しなければソースに残ります。</value>
+  </data>
+  <data name="Workspace.SyncSubtitle" xml:space="preserve">
+    <value>同期先はそれぞれ独立してソースを同期するので、同じファイルが複数の同期先に入ることもあります。</value>
+  </data>
+  <data name="Workspace.EverythingElse" xml:space="preserve">
+    <value>その他のファイル</value>
+  </data>
+  <data name="Workspace.Empty" xml:space="preserve">
+    <value>まだ何もありません — 下から最初の 1 つを追加してください。</value>
+  </data>
+  <data name="Workspace.AddRule" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="Workspace.AddCatchAll" xml:space="preserve">
+    <value>「その他のファイル」を追加</value>
+  </data>
+  <data name="Workspace.AddCatchAllTip" xml:space="preserve">
+    <value>上のルールが取らなかったファイルをすべて受け取る最後のルール。ソースを完全に空にします</value>
+  </data>
+  <data name="Workspace.DuplicateTip" xml:space="preserve">
+    <value>複製</value>
+  </data>
+  <data name="Workspace.MoveUpTip" xml:space="preserve">
+    <value>このルールをより早く照合する</value>
+  </data>
+  <data name="Workspace.MoveDownTip" xml:space="preserve">
+    <value>このルールをより遅く照合する</value>
+  </data>
+  <data name="Workspace.ShadowedByFormat" xml:space="preserve">
+    <value>一致することはありません: ルール {0}（「{1}」）が先にこれらのファイルを取ります。</value>
+  </data>
+  <data name="Workspace.Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 個のファイル</value>
   </data>
@@ -447,6 +494,9 @@
   </data>
   <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
     <value>仕分けルール</value>
+  </data>
+  <data name="DestEditor.NamePlaceholder" xml:space="preserve">
+    <value>省略可 — フォルダー名が使われます</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>ルールは上から順に照合され、各ファイルは最初に一致したルールへ移動します。どのルールにも一致しないファイルはソースに残ります。</value>

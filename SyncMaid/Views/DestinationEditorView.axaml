@@ -13,25 +13,12 @@
              x:DataType="vm:DestinationEditorViewModel"
              x:CompileBindings="True">
 
-    <Border Classes="dialogCard" Width="510" MaxHeight="640">
-        <DockPanel Margin="24">
-            <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
-
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,16,0,0">
-                <Button Classes="secondary" Content="{l:Loc Common.Cancel}" Command="{Binding CancelCommand}" />
-                <Button Classes="primary" Content="{l:Loc DestEditor.Save}" Command="{Binding OKCommand}" />
-            </StackPanel>
-
-            <ScrollViewer>
-                <StackPanel Spacing="16" Margin="0,0,12,0">
-                    <!-- One rule of an ordered list: what decides where a file goes is which
-                         rule matches it first, which is not visible from a single rule. -->
-                    <c:HintBox Icon="FormatListNumbered" IsVisible="{Binding IsRoutingRule}"
-                               Text="{l:Loc DestEditor.RoutingRuleHint}" />
-
+    <!-- The fields only: this control is hosted inside a workspace row, which supplies the
+         heading and the accept/cancel buttons for the destination being edited. -->
+    <StackPanel Spacing="16">
                     <StackPanel>
                         <TextBlock Text="{l:Loc Common.NameLabel}" Classes="label" />
-                        <TextBox Text="{Binding Name}" />
+                        <TextBox Text="{Binding Name}" PlaceholderText="{l:Loc DestEditor.NamePlaceholder}" />
                     </StackPanel>
 
                     <StackPanel>
@@ -268,8 +255,5 @@
                             <TextBlock Text="{l:Loc DestEditor.PercentOfDestination}" Classes="muted" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
-        </DockPanel>
-    </Border>
+    </StackPanel>
 </UserControl>

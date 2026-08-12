@@ -527,60 +527,19 @@ public class TaskNodeViewModelTests
     }
 
     // A Move task routes into as many destinations as it likes; what used to be the
-    // "Move is exclusive" gate is now the task kind, and the editor is told which it is.
+    // "Move is exclusive" gate is now the task kind, which the workspace reads off the task.
     [Fact]
     public async Task A_move_task_keeps_taking_routing_rules()
     {
         var move = new Destination("m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
-        var dialogs = new FakeDialogService(); // returns null: the "dialog" is cancelled
-        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [move]), dialogs: dialogs);
+        var dialogs = new FakeDialogService(); // returns null: the workspace is cancelled
+        var task = new SyncTask("A", @"C:\a", new ManualTrigger(), [move]);
+        var node = New(task, dialogs: dialogs);
 
         Assert.True(node.AddDestinationCommand.CanExecute(null));
         await node.AddDestinationCommand.ExecuteAsync(null);
 
-        Assert.Equal(SyncTaskKind.Move, dialogs.LastEditTaskKind);
-    }
-
-    [Fact]
-    public async Task The_task_kind_flows_to_the_destination_editor()
-    {
-        var dialogs = new FakeDialogService();
-        var node = New(new SyncTask("B", @"C:\b", new ManualTrigger(), [Dest("D")]), dialogs: dialogs);
-
-        await node.AddDestinationCommand.ExecuteAsync(null);
-
-        Assert.Equal(SyncTaskKind.Sync, dialogs.LastEditTaskKind);
-    }
-
-    // Task shape convention: destinations never overlap — including two of the same task,
-    // which nothing else checks (the cross-task probe excludes the whole task being edited).
-    [Fact]
-    public async Task A_destination_overlapping_a_sibling_is_reported_to_the_editor()
-    {
-        var dialogs = new FakeDialogService();
-        var existing = new Destination("Books", @"D:\books", [new AllFilesFilter()], SyncStrategy.AddOnly);
-        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [existing]), dialogs: dialogs);
-
-        await node.AddDestinationCommand.ExecuteAsync(null);
-
-        Assert.Equal(
-            new DestinationConflict("Books", WithinTask: true),
-            dialogs.LastDestinationConflicts!(@"D:\books\2026"));
-        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\papers"));
-    }
-
-    // Editing a destination must not report the destination against itself, or its own
-    // path would look like a conflict the moment the editor opened.
-    [Fact]
-    public async Task Editing_a_destination_does_not_flag_its_own_path()
-    {
-        var dialogs = new FakeDialogService();
-        var existing = new Destination("Books", @"D:\books", [new AllFilesFilter()], SyncStrategy.AddOnly);
-        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [existing]), dialogs: dialogs);
-
-        await node.Children[0].EditCommand.ExecuteAsync(null);
-
-        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\books"));
+        Assert.Equal(SyncTaskKind.Move, dialogs.LastWorkspaceTask!.Kind);
     }
 
     [Fact]
@@ -661,10 +620,10 @@ public class TaskNodeViewModelTests
     }
 
     [Fact]
-    public async Task AddDestination_adds_a_child_rebuilds_the_task_and_persists()
+    public async Task The_workspaces_destination_list_replaces_the_tasks_and_persists()
     {
         var persisted = 0;
-        var dialogs = new FakeDialogService { OnEditDestination = _ => Dest("New") };
+        var dialogs = new FakeDialogService { OnEditDestinations = _ => [Dest("New")] };
         var node = New(
             new SyncTask("A", @"C:\a", new ManualTrigger(), []),
             dialogs,
@@ -672,17 +631,62 @@ public class TaskNodeViewModelTests
 
         await node.AddDestinationCommand.ExecuteAsync(null);
 
+        Assert.True(dialogs.LastWorkspaceStartedNewRule); // "add" opens on a new rule
         Assert.Equal("New", Assert.Single(node.Children).Name);
         Assert.Equal("New", Assert.Single(node.Task.Destinations).Name);  // task rebuilt
         Assert.Equal(1, persisted);
         Assert.True(node.ExecuteCommand.CanExecute(null));                 // now runnable
     }
 
+    // The workspace returns the whole list, so a reorder there is what reorders the task —
+    // and for a Move task the order is which rule claims a file first.
     [Fact]
-    public async Task AddDestination_cancelled_changes_nothing()
+    public async Task Reordering_in_the_workspace_reorders_the_tasks_destinations()
+    {
+        var first = Dest("Books");
+        var second = Dest("Pictures");
+        var dialogs = new FakeDialogService { OnEditDestinations = _ => [second, first] };
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [first, second]), dialogs);
+
+        await node.Children[0].EditCommand.ExecuteAsync(null);
+
+        Assert.Equal(first.Id, dialogs.LastWorkspaceExpanded); // opened on the row clicked
+        Assert.Equal(["Pictures", "Books"], node.Task.Destinations.Select(d => d.Name));
+        Assert.Equal(["Pictures", "Books"], node.Children.Select(child => child.Name));
+    }
+
+    // A destination that survives the edit keeps its id, so its last-run status must survive
+    // with it — the rows are rebuilt from the returned list, which could easily lose it.
+    [Fact]
+    public async Task A_destination_that_survives_the_workspace_keeps_its_status()
+    {
+        var destination = Dest("Books");
+        var dialogs = new FakeDialogService
+        {
+            OnEditDestinations = _ => [destination with { Name = "Renamed" }],
+        };
+        var node = New(
+            new SyncTask("A", @"C:\a", new ManualTrigger(), [destination]),
+            dialogs,
+            statuses: new Dictionary<Guid, DestinationSyncStatus>
+            {
+                [destination.Id] = new(destination.Id, SyncOutcome.Success, DateTimeOffset.UtcNow, 7),
+            });
+
+        await node.Children[0].EditCommand.ExecuteAsync(null);
+
+        var child = Assert.Single(node.Children);
+        Assert.Equal("Renamed", child.Name);
+        Assert.Equal(SyncOutcome.Success, child.Outcome);
+        Assert.Equal(7, child.Status.FilesCopied);
+    }
+
+    [Fact]
+    public async Task A_cancelled_workspace_changes_nothing()
     {
         var persisted = 0;
-        var dialogs = new FakeDialogService { OnEditDestination = _ => null };
+        var dialogs = new FakeDialogService { OnEditDestinations = _ => null };
         var node = New(
             new SyncTask("A", @"C:\a", new ManualTrigger(), []),
             dialogs,

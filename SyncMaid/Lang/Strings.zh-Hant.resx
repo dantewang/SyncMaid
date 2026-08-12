@@ -31,6 +31,53 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>刪除</value>
   </data>
+  <data name="Common.Done" xml:space="preserve">
+    <value>完成</value>
+  </data>
+
+  <!-- Task workspace: every destination of one task, edited together -->
+  <data name="Workspace.RulesTitle" xml:space="preserve">
+    <value>分揀規則</value>
+  </data>
+  <data name="Workspace.DestinationsTitle" xml:space="preserve">
+    <value>目標</value>
+  </data>
+  <data name="Workspace.RoutingSubtitle" xml:space="preserve">
+    <value>由上而下比對：每個檔案進入第一條符合它的規則；都不符合的檔案留在來源中。</value>
+  </data>
+  <data name="Workspace.SyncSubtitle" xml:space="preserve">
+    <value>每個目標各自同步來源，因此同一個檔案可以同時進入多個目標。</value>
+  </data>
+  <data name="Workspace.EverythingElse" xml:space="preserve">
+    <value>其他檔案</value>
+  </data>
+  <data name="Workspace.Empty" xml:space="preserve">
+    <value>還沒有內容 — 在下方新增第一條。</value>
+  </data>
+  <data name="Workspace.AddRule" xml:space="preserve">
+    <value>新增</value>
+  </data>
+  <data name="Workspace.AddCatchAll" xml:space="preserve">
+    <value>新增「其他檔案」</value>
+  </data>
+  <data name="Workspace.AddCatchAllTip" xml:space="preserve">
+    <value>末位規則，收下上面各條剩下的所有檔案，讓來源徹底清空</value>
+  </data>
+  <data name="Workspace.DuplicateTip" xml:space="preserve">
+    <value>複製</value>
+  </data>
+  <data name="Workspace.MoveUpTip" xml:space="preserve">
+    <value>讓這條規則更早比對</value>
+  </data>
+  <data name="Workspace.MoveDownTip" xml:space="preserve">
+    <value>讓這條規則更晚比對</value>
+  </data>
+  <data name="Workspace.ShadowedByFormat" xml:space="preserve">
+    <value>永遠不會符合：第 {0} 條規則（「{1}」）已先取走這些檔案。</value>
+  </data>
+  <data name="Workspace.Save" xml:space="preserve">
+    <value>儲存</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 個檔案</value>
   </data>
@@ -447,6 +494,9 @@
   </data>
   <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
     <value>分揀規則</value>
+  </data>
+  <data name="DestEditor.NamePlaceholder" xml:space="preserve">
+    <value>可留空 — 預設使用資料夾名稱</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>規則按順序比對：每個檔案進入第一條符合它的規則。沒有規則符合的檔案留在來源中。</value>

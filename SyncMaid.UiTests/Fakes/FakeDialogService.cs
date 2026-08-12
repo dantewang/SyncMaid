@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SyncMaid.Core.Model;
 using SyncMaid.Services;
@@ -14,7 +15,10 @@ namespace SyncMaid.UiTests.Fakes;
 public sealed class FakeDialogService : IDialogService
 {
     public Func<SyncTask?, SyncTask?> OnEditTask { get; set; } = _ => null;
-    public Func<Destination?, Destination?> OnEditDestination { get; set; } = _ => null;
+
+    /// <summary>What the destination workspace "returns": the task's edited destination
+    /// list, or null for a cancelled workspace (the default).</summary>
+    public Func<SyncTask, IReadOnlyList<Destination>?> OnEditDestinations { get; set; } = _ => null;
 
     /// <summary>What <see cref="ConfirmAsync"/> returns (default: confirm).</summary>
     public bool ConfirmResult { get; set; } = true;
@@ -22,14 +26,16 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>Number of times a confirmation was requested.</summary>
     public int ConfirmCount { get; private set; }
 
-    /// <summary>The task kind passed to the most recent destination edit — it decides
-    /// whether the editor offers a strategy at all.</summary>
-    public SyncTaskKind? LastEditTaskKind { get; private set; }
+    /// <summary>The task whose destinations were opened last, and how: which row the
+    /// workspace was told to expand, and whether it opened on a new rule.</summary>
+    public SyncTask? LastWorkspaceTask { get; private set; }
+    public Guid? LastWorkspaceExpanded { get; private set; }
+    public bool LastWorkspaceStartedNewRule { get; private set; }
 
     /// <summary>The overlap probes passed to the most recent edits, so tests can assert
     /// the wiring (which tasks a probe sees, and that the edited task excludes itself).</summary>
     public Func<string, string?>? LastSourceConflicts { get; private set; }
-    public Func<string, DestinationConflict?>? LastDestinationConflicts { get; private set; }
+    public Func<string, string?>? LastDestinationConflicts { get; private set; }
 
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts)
     {
@@ -37,15 +43,17 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(OnEditTask(existing));
     }
 
-    public Task<Destination?> EditDestinationAsync(
-        Destination? existing,
-        string sourcePath,
-        SyncTaskKind taskKind,
-        Func<string, DestinationConflict?> destinationConflicts)
+    public Task<IReadOnlyList<Destination>?> EditDestinationsAsync(
+        SyncTask task,
+        Guid? expand,
+        bool startWithNewRule,
+        Func<string, string?> crossTaskConflicts)
     {
-        LastEditTaskKind = taskKind;
-        LastDestinationConflicts = destinationConflicts;
-        return Task.FromResult(OnEditDestination(existing));
+        LastWorkspaceTask = task;
+        LastWorkspaceExpanded = expand;
+        LastWorkspaceStartedNewRule = startWithNewRule;
+        LastDestinationConflicts = crossTaskConflicts;
+        return Task.FromResult(OnEditDestinations(task));
     }
 
     public Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Delete", bool isDestructive = true)

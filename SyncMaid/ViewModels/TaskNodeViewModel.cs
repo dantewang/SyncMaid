@@ -277,45 +277,38 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         : Strings.Task_AddDestinationTip;
 
     [RelayCommand]
-    private async Task AddDestination()
+    private Task AddDestination() => EditDestinations(expand: null, startWithNewRule: true);
+
+    private Task EditLeaf(DestinationNodeViewModel node) =>
+        EditDestinations(expand: node.Id, startWithNewRule: false);
+
+    // Every destination edit goes through the task's workspace: which rule catches a file is
+    // a property of the whole ordered list, so the list is what is edited — the card's add
+    // and edit buttons just say where to start.
+    private async Task EditDestinations(Guid? expand, bool startWithNewRule)
     {
-        var destination = await _dialogs.EditDestinationAsync(
-            null, Task.SourcePath, Task.Kind, ConflictProbe(null));
-        if (destination != null)
+        var destinations = await _dialogs.EditDestinationsAsync(
+            Task, expand, startWithNewRule, _destinationConflicts);
+        if (destinations is null)
         {
-            Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
-            RebuildAndPersist();
+            return;
         }
+
+        // Ids are preserved through the workspace, so each destination keeps the status it
+        // already had; anything new starts at "never run".
+        var statuses = Children.ToDictionary(child => child.Id, child => child.Status);
+        Children.Clear();
+        foreach (var destination in destinations)
+        {
+            Children.Add(NewChild(
+                destination,
+                statuses.TryGetValue(destination.Id, out var status)
+                    ? status
+                    : DestinationSyncStatus.Never(destination.Id)));
+        }
+
+        RebuildAndPersist();
     }
-
-    private async Task EditLeaf(DestinationNodeViewModel node)
-    {
-        var edited = await _dialogs.EditDestinationAsync(
-            node.Destination, Task.SourcePath, Task.Kind, ConflictProbe(node.Id));
-        if (edited != null)
-        {
-            // Id is preserved by the editor, so the existing status still applies.
-            Children[Children.IndexOf(node)] = NewChild(edited, node.Status);
-            RebuildAndPersist();
-        }
-    }
-
-    // Task shape convention (AGENT.md): destinations never overlap. The siblings are this
-    // node's business — the cross-task probe deliberately excludes the whole task being
-    // edited, so nothing else would compare a destination against the ones beside it.
-    private Func<string, DestinationConflict?> ConflictProbe(Guid? editedId) => path =>
-    {
-        var sibling = Children.FirstOrDefault(child =>
-            child.Id != editedId && RelativePaths.Overlaps(child.Path, path));
-        if (sibling is not null)
-        {
-            return new DestinationConflict(sibling.Name, WithinTask: true);
-        }
-
-        return _destinationConflicts(path) is { } task
-            ? new DestinationConflict(task, WithinTask: false)
-            : null;
-    };
 
     private async Task DeleteLeaf(DestinationNodeViewModel node)
     {

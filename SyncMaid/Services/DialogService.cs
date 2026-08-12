@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SyncMaid.Core.Model;
 using SyncMaid.ViewModels;
@@ -24,14 +25,13 @@ public sealed class DialogService : IDialogService
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts) =>
         _host.ShowAsync(new TaskEditorViewModel(_folderPicker, existing, sourceConflicts: sourceConflicts));
 
-    public Task<Destination?> EditDestinationAsync(
-        Destination? existing,
-        string sourcePath,
-        SyncTaskKind taskKind,
-        Func<string, DestinationConflict?> destinationConflicts) =>
-        _host.ShowAsync(new DestinationEditorViewModel(
-            _folderPicker, existing, sourcePath,
-            taskKind: taskKind, destinationConflicts: destinationConflicts));
+    public Task<IReadOnlyList<Destination>?> EditDestinationsAsync(
+        SyncTask task,
+        Guid? expand,
+        bool startWithNewRule,
+        Func<string, string?> crossTaskConflicts) =>
+        _host.ShowAsync(new TaskWorkspaceViewModel(
+            task, _folderPicker, crossTaskConflicts, expand, startWithNewRule));
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel, bool isDestructive = true) =>
         await _host.ShowAsync(new ConfirmViewModel(title, message, confirmLabel, isDestructive));

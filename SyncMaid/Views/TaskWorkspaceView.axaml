@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SyncMaid.ViewModels"
+             xmlns:views="using:SyncMaid.Views"
+             xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:c="using:SyncMaid.Controls"
+             xmlns:l="using:SyncMaid.Markup"
+             mc:Ignorable="d" d:DesignWidth="760"
+             x:Class="SyncMaid.Views.TaskWorkspaceView"
+             x:DataType="vm:TaskWorkspaceViewModel"
+             x:CompileBindings="True">
+
+    <Border Classes="dialogCard" Width="760" MaxHeight="600">
+        <DockPanel Margin="24">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Medium" />
+                <TextBlock Text="{Binding Subtitle}" Classes="muted" TextWrapping="Wrap" Margin="0,3,0,0" />
+                <TextBlock Text="{Binding SourcePath}" Classes="path" Margin="0,6,0,0" />
+            </StackPanel>
+
+            <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,14,0,0">
+                <Button Grid.Column="0" Classes="secondary" Command="{Binding AddRuleCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <mi:MaterialIcon Kind="Plus" Width="14" Height="14" />
+                        <TextBlock Text="{l:Loc Workspace.AddRule}" />
+                    </StackPanel>
+                </Button>
+                <!-- Offered only while the task has no catch-all: it is added deliberately,
+                     and a second one could never match. -->
+                <Button Grid.Column="1" Classes="secondary" Margin="8,0,0,0"
+                        IsVisible="{Binding CanAddCatchAll}" Command="{Binding AddCatchAllCommand}"
+                        ToolTip.Tip="{l:Loc Workspace.AddCatchAllTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <mi:MaterialIcon Kind="TrayArrowDown" Width="14" Height="14" />
+                        <TextBlock Text="{l:Loc Workspace.AddCatchAll}" />
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="3" Classes="secondary" Content="{l:Loc Common.Cancel}"
+                        Command="{Binding CancelCommand}" Margin="0,0,10,0" />
+                <Button Grid.Column="4" Classes="primary" Content="{l:Loc Workspace.Save}"
+                        Command="{Binding SaveCommand}" />
+            </Grid>
+
+            <TextBlock DockPanel.Dock="Top" IsVisible="{Binding IsEmpty}" Classes="muted"
+                       Text="{l:Loc Workspace.Empty}" TextWrapping="Wrap" Margin="0,10,0,0" />
+
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DestinationRowViewModel">
+                            <Border Classes="ruleRow">
+                                <StackPanel>
+                                    <!-- Summary line: position, what the rule selects, where it
+                                         sends it, and the row's own controls. -->
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,2">
+                                        <Border Grid.Column="0" Classes="ruleNumber"
+                                                IsVisible="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).IsRouting, FallbackValue=False}">
+                                            <TextBlock Text="{Binding Number}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,10,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Summary}" FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <mi:MaterialIcon Kind="ArrowRight" Width="14" Height="14"
+                                                                 Foreground="{StaticResource TextMutedBrush}"
+                                                                 VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Path}" Classes="path" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
+                                                    VerticalAlignment="Center">
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Workspace.MoveUpTip}"
+                                                    IsVisible="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).IsRouting, FallbackValue=False}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).MoveUpCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}">
+                                                <mi:MaterialIcon Kind="ArrowUp" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Workspace.MoveDownTip}"
+                                                    IsVisible="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).IsRouting, FallbackValue=False}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).MoveDownCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}">
+                                                <mi:MaterialIcon Kind="ArrowDown" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Workspace.DuplicateTip}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).DuplicateCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}">
+                                                <mi:MaterialIcon Kind="ContentCopy" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Dest.EditTip}"
+                                                    IsVisible="{Binding IsCollapsed}" Command="{Binding ExpandCommand}">
+                                                <mi:MaterialIcon Kind="Pencil" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Dest.DeleteTip}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).DeleteCommand, FallbackValue={x:Null}}"
+                                                    CommandParameter="{Binding}">
+                                                <mi:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- A rule an earlier one already takes everything from can
+                                         never match. Advisory only: saving is never blocked. -->
+                                    <c:HintBox Classes="warning" IsVisible="{Binding IsShadowed}"
+                                               Text="{Binding ShadowedBy}" Margin="0,6,0,0" />
+
+                                    <!-- The editor opens in place, so a rule is edited where it
+                                         sits among the others rather than in its own window. -->
+                                    <Border IsVisible="{Binding !IsCollapsed}" Classes="ruleEditor" Margin="0,10,0,0">
+                                        <StackPanel Spacing="14">
+                                            <views:DestinationEditorView DataContext="{Binding Editor}" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                                                <Button Classes="secondary" Content="{l:Loc Common.Cancel}"
+                                                        Command="{Binding CollapseCommand}" />
+                                                <Button Classes="primary" Content="{l:Loc Common.Done}"
+                                                        Command="{Binding Editor.OKCommand}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

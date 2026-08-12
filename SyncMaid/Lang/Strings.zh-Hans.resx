@@ -31,6 +31,53 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>删除</value>
   </data>
+  <data name="Common.Done" xml:space="preserve">
+    <value>完成</value>
+  </data>
+
+  <!-- Task workspace: every destination of one task, edited together -->
+  <data name="Workspace.RulesTitle" xml:space="preserve">
+    <value>分拣规则</value>
+  </data>
+  <data name="Workspace.DestinationsTitle" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="Workspace.RoutingSubtitle" xml:space="preserve">
+    <value>自上而下匹配：每个文件进入第一条匹配它的规则；都不匹配的文件留在源中。</value>
+  </data>
+  <data name="Workspace.SyncSubtitle" xml:space="preserve">
+    <value>每个目标各自同步源，因此同一个文件可以同时进入多个目标。</value>
+  </data>
+  <data name="Workspace.EverythingElse" xml:space="preserve">
+    <value>其它文件</value>
+  </data>
+  <data name="Workspace.Empty" xml:space="preserve">
+    <value>还没有内容 — 在下方添加第一条。</value>
+  </data>
+  <data name="Workspace.AddRule" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Workspace.AddCatchAll" xml:space="preserve">
+    <value>添加“其它文件”</value>
+  </data>
+  <data name="Workspace.AddCatchAllTip" xml:space="preserve">
+    <value>末位规则，收下上面各条剩下的所有文件，让源彻底清空</value>
+  </data>
+  <data name="Workspace.DuplicateTip" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="Workspace.MoveUpTip" xml:space="preserve">
+    <value>让这条规则更早匹配</value>
+  </data>
+  <data name="Workspace.MoveDownTip" xml:space="preserve">
+    <value>让这条规则更晚匹配</value>
+  </data>
+  <data name="Workspace.ShadowedByFormat" xml:space="preserve">
+    <value>永远不会匹配：第 {0} 条规则（“{1}”）已先取走这些文件。</value>
+  </data>
+  <data name="Workspace.Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 个文件</value>
   </data>
@@ -447,6 +494,9 @@
   </data>
   <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
     <value>分拣规则</value>
+  </data>
+  <data name="DestEditor.NamePlaceholder" xml:space="preserve">
+    <value>可留空 — 默认使用文件夹名</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>规则按顺序匹配：每个文件进入第一条匹配它的规则。没有规则匹配的文件留在源中。</value>

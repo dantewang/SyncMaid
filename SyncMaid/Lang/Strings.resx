@@ -37,6 +37,53 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="Common.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+
+  <!-- Task workspace: every destination of one task, edited together -->
+  <data name="Workspace.RulesTitle" xml:space="preserve">
+    <value>Routing rules</value>
+  </data>
+  <data name="Workspace.DestinationsTitle" xml:space="preserve">
+    <value>Destinations</value>
+  </data>
+  <data name="Workspace.RoutingSubtitle" xml:space="preserve">
+    <value>Matched top to bottom: each file goes to the first rule that matches it, and stays in the source if none does.</value>
+  </data>
+  <data name="Workspace.SyncSubtitle" xml:space="preserve">
+    <value>Each destination syncs the source on its own, so the same file can go to several of them.</value>
+  </data>
+  <data name="Workspace.EverythingElse" xml:space="preserve">
+    <value>Everything else</value>
+  </data>
+  <data name="Workspace.Empty" xml:space="preserve">
+    <value>Nothing here yet — add the first one below.</value>
+  </data>
+  <data name="Workspace.AddRule" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Workspace.AddCatchAll" xml:space="preserve">
+    <value>Add "everything else"</value>
+  </data>
+  <data name="Workspace.AddCatchAllTip" xml:space="preserve">
+    <value>A last rule taking whatever the rules above it left, so the source empties completely</value>
+  </data>
+  <data name="Workspace.DuplicateTip" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="Workspace.MoveUpTip" xml:space="preserve">
+    <value>Match this rule earlier</value>
+  </data>
+  <data name="Workspace.MoveDownTip" xml:space="preserve">
+    <value>Match this rule later</value>
+  </data>
+  <data name="Workspace.ShadowedByFormat" xml:space="preserve">
+    <value>Never matches: rule {0} ("{1}") takes these files first.</value>
+  </data>
+  <data name="Workspace.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} file</value>
   </data>
@@ -454,6 +501,9 @@
   </data>
   <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
     <value>Routing rule</value>
+  </data>
+  <data name="DestEditor.NamePlaceholder" xml:space="preserve">
+    <value>Optional — defaults to the folder's name</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>Rules are matched in order: each file goes to the first one that matches it. Files no rule matches stay in the source.</value>

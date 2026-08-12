@@ -35,6 +35,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Delete".</summary>
     public static string Common_Delete => Get("Common.Delete");
 
+    /// <summary>Looks up a localized string similar to "Done".</summary>
+    public static string Common_Done => Get("Common.Done");
+
     /// <summary>Looks up a localized string similar to "{0} file".</summary>
     public static string Common_FilesCount_One => Get("Common.FilesCount.One");
 
@@ -127,6 +130,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Where files land".</summary>
     public static string DestEditor_MoveOptionsLabel => Get("DestEditor.MoveOptionsLabel");
+
+    /// <summary>Looks up a localized string similar to "Optional — defaults to the folder&apos;s name".</summary>
+    public static string DestEditor_NamePlaceholder => Get("DestEditor.NamePlaceholder");
 
     /// <summary>Looks up a localized string similar to "Destination must be a separate folder outside the source (and not contain it).".</summary>
     public static string DestEditor_NestedPathHint => Get("DestEditor.NestedPathHint");
@@ -589,4 +595,46 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Show main window".</summary>
     public static string Tray_ShowMainWindow => Get("Tray.ShowMainWindow");
+
+    /// <summary>Looks up a localized string similar to "Add &quot;everything else&quot;".</summary>
+    public static string Workspace_AddCatchAll => Get("Workspace.AddCatchAll");
+
+    /// <summary>Looks up a localized string similar to "A last rule taking whatever the rules above it left, so the source empties co...".</summary>
+    public static string Workspace_AddCatchAllTip => Get("Workspace.AddCatchAllTip");
+
+    /// <summary>Looks up a localized string similar to "Add".</summary>
+    public static string Workspace_AddRule => Get("Workspace.AddRule");
+
+    /// <summary>Looks up a localized string similar to "Destinations".</summary>
+    public static string Workspace_DestinationsTitle => Get("Workspace.DestinationsTitle");
+
+    /// <summary>Looks up a localized string similar to "Duplicate".</summary>
+    public static string Workspace_DuplicateTip => Get("Workspace.DuplicateTip");
+
+    /// <summary>Looks up a localized string similar to "Nothing here yet — add the first one below.".</summary>
+    public static string Workspace_Empty => Get("Workspace.Empty");
+
+    /// <summary>Looks up a localized string similar to "Everything else".</summary>
+    public static string Workspace_EverythingElse => Get("Workspace.EverythingElse");
+
+    /// <summary>Looks up a localized string similar to "Match this rule later".</summary>
+    public static string Workspace_MoveDownTip => Get("Workspace.MoveDownTip");
+
+    /// <summary>Looks up a localized string similar to "Match this rule earlier".</summary>
+    public static string Workspace_MoveUpTip => Get("Workspace.MoveUpTip");
+
+    /// <summary>Looks up a localized string similar to "Matched top to bottom: each file goes to the first rule that matches it, and ...".</summary>
+    public static string Workspace_RoutingSubtitle => Get("Workspace.RoutingSubtitle");
+
+    /// <summary>Looks up a localized string similar to "Routing rules".</summary>
+    public static string Workspace_RulesTitle => Get("Workspace.RulesTitle");
+
+    /// <summary>Looks up a localized string similar to "Save".</summary>
+    public static string Workspace_Save => Get("Workspace.Save");
+
+    /// <summary>Looks up a localized string similar to "Never matches: rule {0} (&quot;{1}&quot;) takes these files first.".</summary>
+    public static string Workspace_ShadowedByFormat => Get("Workspace.ShadowedByFormat");
+
+    /// <summary>Looks up a localized string similar to "Each destination syncs the source on its own, so the same file can go to seve...".</summary>
+    public static string Workspace_SyncSubtitle => Get("Workspace.SyncSubtitle");
 }

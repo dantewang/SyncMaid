@@ -75,7 +75,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         string sourcePath = "",
         Func<string, bool>? directoryExists = null,
         SyncTaskKind taskKind = SyncTaskKind.Sync,
-        Func<string, DestinationConflict?>? destinationConflicts = null)
+        Func<string, DestinationConflict?>? destinationConflicts = null,
+        bool isCatchAll = false)
         : base(
             folderPicker,
             Strings.Dialog_SelectDestinationFolder,
@@ -89,7 +90,12 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         // The task's kind decides the strategy: a Move task routes, so its destinations are
         // Move and there is nothing to choose; a Sync task copies, so Move is not on offer.
         IsRoutingRule = taskKind == SyncTaskKind.Move;
+        IsCatchAll = isCatchAll;
         _selectedStrategy = IsRoutingRule ? SyncStrategy.Move : SyncStrategy.Mirror;
+        // A routing rule that selects everything is the catch-all, and that is a rule the
+        // user adds on purpose — so a new one starts with a file selection to make, rather
+        // than quietly swallowing the whole source.
+        _syncAll = !IsRoutingRule || IsCatchAll;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
         Groups = new ObservableCollection<FilterGroupViewModel>();
@@ -143,6 +149,13 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <summary>Whether the strategy radio group is shown; a Move task has no choice to make.</summary>
     public bool ShowStrategyChoice => !IsRoutingRule;
 
+    /// <summary>
+    /// True when this is the "everything else" rule. It takes whatever the rules above it
+    /// left, which is what it is for, so there is no file selection to edit — it saves a
+    /// lone all-files filter and the filter section stays hidden.
+    /// </summary>
+    public bool IsCatchAll { get; }
+
     /// <summary>Whether Move's own options (flatten, collision policy) are shown.</summary>
     public bool ShowMoveOptions => SelectedStrategy == SyncStrategy.Move;
 
@@ -153,7 +166,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// back restores whatever was built; saving as Mirror persists a lone
     /// <see cref="AllFilesFilter"/> (normalizing legacy hand-edited config too).
     /// </summary>
-    public bool ShowFilterEditor => SelectedStrategy != SyncStrategy.Mirror;
+    public bool ShowFilterEditor => SelectedStrategy != SyncStrategy.Mirror && !IsCatchAll;
 
     /// <summary>The rule groups; each combines its own rules with its ANY/ALL connective.</summary>
     public ObservableCollection<FilterGroupViewModel> Groups { get; }
@@ -200,7 +213,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             ? [new AllFilesFilter()]
             : BuildFilters();
 
-        Close(new Destination(Name, Path, filters, SelectedStrategy)
+        Close(new Destination(EffectiveName, Path, filters, SelectedStrategy)
         {
             Id = EditorId,
             VerifyContents = VerifyContents,
@@ -213,9 +226,23 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     protected override IRelayCommand AcceptCommand => OKCommand;
 
+    /// <summary>
+    /// The name to save. Naming a destination after the folder it writes to is what most
+    /// people type anyway, so an empty name takes the folder's own name rather than costing
+    /// keystrokes — ten times over in a routing task.
+    /// </summary>
+    private string EffectiveName =>
+        string.IsNullOrWhiteSpace(Name) ? LeafFolderName(Path) : Name.Trim();
+
+    private static string LeafFolderName(string path)
+    {
+        var trimmed = path.TrimEnd('/', '\\');
+        var separator = trimmed.LastIndexOfAny(['/', '\\']);
+        return separator < 0 ? trimmed : trimmed[(separator + 1)..];
+    }
+
     private bool CanOk() =>
-        !string.IsNullOrWhiteSpace(Name)
-        && !string.IsNullOrWhiteSpace(Path)
+        !string.IsNullOrWhiteSpace(Path)
         && !HasUnsafeNesting
         && Conflict is null
         && (!ShowFilterEditor || SyncAll || Groups.Any(group => group.Rules.Count > 0));
