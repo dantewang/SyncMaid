@@ -58,6 +58,14 @@ public interface IFileSystem
     void DeleteEmptyDirectory(string path);
 
     /// <summary>
+    /// Sends the directory at <paramref name="path"/> to the Recycle Bin, so an unwanted
+    /// removal can be undone — and, exactly like <see cref="DeleteEmptyDirectory"/>, only
+    /// if it is empty, so content that appeared since the caller decided is never taken
+    /// along. A directory with content, or none at all, is left alone without error.
+    /// </summary>
+    void RecycleEmptyDirectory(string path);
+
+    /// <summary>
     /// Sets the last-write time (UTC) of the directory at <paramref name="path"/>, so a
     /// mirrored directory can share its source's modified time. A directory that does
     /// not exist is left alone without error (the next run replans).

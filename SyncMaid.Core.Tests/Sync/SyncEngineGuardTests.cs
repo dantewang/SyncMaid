@@ -45,14 +45,14 @@ public class SyncEngineGuardTests
         Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
     }
 
-    // Task shape convention: Move is exclusive. Destinations run in sequence and Move
-    // empties the source the others still treat as the truth, so any combination is
-    // refused whole — every destination fails, nothing is touched.
+    // Task shape convention: a task's kind decides which strategies its destinations may
+    // use. Destinations run in sequence and Move empties the source the copying ones still
+    // treat as the truth, so a mixed task is refused whole — every destination fails,
+    // nothing is touched. (Several Move destinations in one task are fine; they route.)
     [Theory]
     [InlineData(SyncStrategy.AddOnly)]
     [InlineData(SyncStrategy.Mirror)]
-    [InlineData(SyncStrategy.Move)]
-    public async Task Move_combined_with_any_other_destination_fails_the_whole_run(
+    public async Task Move_combined_with_a_copying_destination_fails_the_whole_run(
         SyncStrategy otherStrategy)
     {
         var fs = new InMemoryFileSystem();
@@ -68,7 +68,56 @@ public class SyncEngineGuardTests
         Assert.All(statuses, status =>
         {
             Assert.Equal(SyncOutcome.Failed, status.Outcome);
-            Assert.Contains("only destination", status.Error, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Move destinations only", status.Error, StringComparison.OrdinalIgnoreCase);
+        });
+        Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
+    }
+
+    // The same refusal from the other side: a task explicitly declared Sync cannot carry a
+    // Move destination, so hand-edited config that contradicts itself never runs.
+    [Fact]
+    public async Task A_sync_task_holding_a_move_destination_fails_the_whole_run()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\important.txt", "keep me");
+        var pathsBefore = fs.AllPaths;
+        var move = new Destination("move", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var task = new SyncTask("mislabelled", @"S:\src", new ManualTrigger(), [move])
+        {
+            Kind = SyncTaskKind.Sync,
+        };
+
+        var status = Assert.Single(await new SyncEngine(fs).ExecuteAsync(task));
+
+        Assert.Equal(SyncOutcome.Failed, status.Outcome);
+        Assert.Contains("Mirror and Add-only", status.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(pathsBefore, fs.AllPaths);
+    }
+
+    // Task shape convention: destinations never overlap each other, inside a task as much
+    // as across tasks — a Mirror destination would delete as orphans whatever the sibling
+    // writing into its subtree just put there.
+    [Theory]
+    [InlineData(@"D:\backup")]
+    [InlineData(@"D:\backup\sub")]
+    [InlineData(@"D:\")]
+    public async Task Destinations_of_one_task_that_overlap_fail_the_whole_run(string otherPath)
+    {
+        var fs = new InMemoryFileSystem();
+        fs.AddFile(@"S:\src\important.txt", "keep me");
+        fs.AddFile(@"D:\backup\already-there.txt", "keep me too");
+        var pathsBefore = fs.AllPaths;
+        var mirror = new Destination("mirror", @"D:\backup", [new AllFilesFilter()], SyncStrategy.Mirror);
+        var addOnly = new Destination("add-only", otherPath, [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var task = new SyncTask("overlapping", @"S:\src", new ManualTrigger(), [mirror, addOnly]);
+
+        var statuses = await new SyncEngine(fs).ExecuteAsync(task);
+
+        Assert.Equal(2, statuses.Count);
+        Assert.All(statuses, status =>
+        {
+            Assert.Equal(SyncOutcome.Failed, status.Outcome);
+            Assert.Contains("nested in one another", status.Error, StringComparison.OrdinalIgnoreCase);
         });
         Assert.Equal(pathsBefore, fs.AllPaths); // zero filesystem mutations
     }

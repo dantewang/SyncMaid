@@ -90,8 +90,13 @@ public sealed class PhysicalFileSystem : IFileSystem
             return;
         }
 
-        // SHFileOperation moves the file to the Recycle Bin (FOF_ALLOWUNDO). pFrom must be
-        // double-null-terminated. Silent, no confirmation or error UI.
+        SendToRecycleBin(path);
+    }
+
+    // SHFileOperation moves the entry to the Recycle Bin (FOF_ALLOWUNDO). pFrom must be
+    // double-null-terminated. Silent, no confirmation or error UI.
+    private static void SendToRecycleBin(string path)
+    {
         var shellPath = NormalizeRecyclePath(path);
         var operation = new SHFILEOPSTRUCT
         {
@@ -129,6 +134,38 @@ public sealed class PhysicalFileSystem : IFileSystem
         catch (IOException)
         {
             // Not empty or momentarily in use — leave it; cleanup is best-effort.
+        }
+    }
+
+    /// <inheritdoc />
+    public void RecycleEmptyDirectory(string path)
+    {
+        try
+        {
+            // The shell recycles a folder with everything in it, so emptiness is checked
+            // here rather than left to the call: only a folder that holds nothing may go.
+            if (!Directory.Exists(path) || Directory.EnumerateFileSystemEntries(path).Any())
+            {
+                return;
+            }
+
+            // Network shares have no Recycle Bin; an empty folder is nothing to recover.
+            if (NetworkPath.IsNetwork(path))
+            {
+                Directory.Delete(path, recursive: false);
+                return;
+            }
+
+            SendToRecycleBin(path);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Already gone; the desired state holds.
+        }
+        catch (IOException)
+        {
+            // Gained content between the check and the call, or momentarily in use (an
+            // open Explorer window is enough) — leave it; cleanup is best-effort.
         }
     }
 

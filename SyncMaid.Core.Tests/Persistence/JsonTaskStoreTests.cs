@@ -40,9 +40,23 @@ public class JsonTaskStoreTests
             new WatchTrigger(SettleSeconds: 45),
             [
                 new Destination("Mirror", @"E:\mirror", [new AllFilesFilter()], SyncStrategy.Mirror),
-                new Destination("Archive", @"E:\archive", [new ExtensionFilter("pdf")], SyncStrategy.Move),
+                new Destination("Papers", @"E:\papers", [new ExtensionFilter("pdf")], SyncStrategy.AddOnly),
             ]),
         new SyncTask("Manual", @"C:\src\m", new ManualTrigger(), []),
+        // A routing task: ordered Move destinations, the order being what decides where a
+        // file two of them match ends up — so the saved order is load-bearing, not cosmetic.
+        new SyncTask(
+            "Sort downloads",
+            @"C:\src\downloads",
+            new WatchTrigger(SettleSeconds: 5),
+            [
+                new Destination("Books", @"E:\books", [new ExtensionFilter("pdf")], SyncStrategy.Move)
+                {
+                    FlattenStructure = true,
+                    CollisionPolicy = FileNameCollisionPolicy.Suffix,
+                },
+                new Destination("To sort", @"E:\to-sort", [new AllFilesFilter()], SyncStrategy.Move),
+            ]),
     ];
 
     [Fact]
@@ -70,7 +84,7 @@ public class JsonTaskStoreTests
         store.Save(saved);
         var loaded = store.Load();
 
-        Assert.Equal(3, loaded.Count);
+        Assert.Equal(4, loaded.Count);
 
         // Scalars + polymorphic trigger with its payload.
         var photos = loaded[0];
@@ -109,10 +123,54 @@ public class JsonTaskStoreTests
         Assert.Equal(2, docs.Destinations.Count);
         Assert.Equal(SyncStrategy.Mirror, docs.Destinations[0].Strategy);
         Assert.IsType<AllFilesFilter>(Assert.Single(docs.Destinations[0].Filters));
-        Assert.Equal(SyncStrategy.Move, docs.Destinations[1].Strategy);
+        Assert.Equal(SyncStrategy.AddOnly, docs.Destinations[1].Strategy);
+        Assert.Equal(SyncTaskKind.Sync, docs.Kind);
 
         Assert.IsType<ManualTrigger>(loaded[2].Trigger);
         Assert.Empty(loaded[2].Destinations);
+
+        // The routing task: kind, destination order, and the Move-only knobs.
+        var sort = loaded[3];
+        Assert.Equal(SyncTaskKind.Move, sort.Kind);
+        Assert.Equal(["Books", "To sort"], sort.Destinations.Select(destination => destination.Name));
+        Assert.True(sort.Destinations[0].FlattenStructure);
+        Assert.Equal(FileNameCollisionPolicy.Suffix, sort.Destinations[0].CollisionPolicy);
+        Assert.False(sort.Destinations[1].FlattenStructure);
+        Assert.Equal(FileNameCollisionPolicy.Skip, sort.Destinations[1].CollisionPolicy);
+    }
+
+    // The kind is new; config written before it exists carries no field. Move was exclusive
+    // then, so the destinations say what the task was — and the next save writes it down.
+    [Fact]
+    public void A_legacy_task_without_a_kind_derives_it_from_its_destinations()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(
+            """
+            [{"Name":"Sort","SourcePath":"C:\\src","Trigger":{"kind":"manual"},
+              "Destinations":[{"Name":"D","Target":{"kind":"local","Path":"D:\\d"},
+                "Filters":[{"kind":"all"}],"Strategy":"Move"}]},
+             {"Name":"Back up","SourcePath":"C:\\src2","Trigger":{"kind":"manual"},
+              "Destinations":[{"Name":"D","Target":{"kind":"local","Path":"D:\\d2"},
+                "Filters":[{"kind":"all"}],"Strategy":"Mirror"}]},
+             {"Name":"Empty","SourcePath":"C:\\src3","Trigger":{"kind":"manual"},"Destinations":[]}]
+            """));
+        var store = NewStore(fs);
+
+        var loaded = store.Load();
+
+        Assert.Equal(
+            SyncStrategy.Move,
+            Assert.Single(loaded[0].Destinations).Strategy); // the value the kind derives from
+        Assert.Equal(SyncTaskKind.Move, loaded[0].Kind);
+        Assert.Equal(SyncTaskKind.Sync, loaded[1].Kind);
+        // Nothing to derive from: a task with no destinations is a Sync task until the
+        // user says otherwise, which is exactly why the field had to be persisted.
+        Assert.Equal(SyncTaskKind.Sync, loaded[2].Kind);
+
+        store.Save(loaded);
+        var json = Encoding.UTF8.GetString(fs.ReadAllBytes(ConfigPath));
+        Assert.Contains("\"Kind\": \"Move\"", json);
     }
 
     // Config written before the settle window existed carries a bare {"kind":"watch"}.
@@ -210,7 +268,7 @@ public class JsonTaskStoreTests
 
         Assert.Equal(before, fs.ReadAllBytes(ConfigPath));            // main file untouched
         Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-")); // temp cleaned up
-        Assert.Equal(3, store.Load().Count);                          // all tasks still load
+        Assert.Equal(SampleTasks().Count, store.Load().Count);                          // all tasks still load
     }
 
     // FailWrites above trips the very first write, before either rename. These cover the
@@ -233,7 +291,7 @@ public class JsonTaskStoreTests
         Assert.True(fs.FileExists(ConfigPath)); // never stopped existing
         Assert.Equal(before, fs.ReadAllBytes(ConfigPath));
         Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-"));
-        Assert.Equal(3, store.Load().Count);
+        Assert.Equal(SampleTasks().Count, store.Load().Count);
     }
 
     [Fact]
@@ -250,7 +308,7 @@ public class JsonTaskStoreTests
 
         Assert.Equal(before, fs.ReadAllBytes(ConfigPath));
         Assert.DoesNotContain(fs.AllPaths, p => p.Contains(".tmp-"));
-        Assert.Equal(3, store.Load().Count);
+        Assert.Equal(SampleTasks().Count, store.Load().Count);
     }
 
     // The state a power cut used to be able to produce, back when the backup step moved
@@ -267,7 +325,7 @@ public class JsonTaskStoreTests
         fs.DeleteFile(ConfigPath);
 
         Assert.False(fs.FileExists(ConfigPath));
-        Assert.Equal(3, store.Load().Count);
+        Assert.Equal(SampleTasks().Count, store.Load().Count);
     }
 
     // "No tasks" and "your tasks are on disk but unreachable" produce the same empty list,
@@ -325,7 +383,7 @@ public class JsonTaskStoreTests
         store.Save([SampleTasks()[0]]);
         fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes("{ not valid json"));
 
-        Assert.Equal(3, store.Load(out var unreadable).Count);
+        Assert.Equal(SampleTasks().Count, store.Load(out var unreadable).Count);
         Assert.False(unreadable); // recovery succeeded, so saving is safe
     }
 
@@ -378,7 +436,7 @@ public class JsonTaskStoreTests
 
         fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes("{ not valid json"));
 
-        Assert.Equal(3, store.Load().Count); // main unreadable → recovered from the backup
+        Assert.Equal(SampleTasks().Count, store.Load().Count); // main unreadable → recovered from the backup
     }
 
     [Fact]
@@ -390,7 +448,7 @@ public class JsonTaskStoreTests
         store.Save([SampleTasks()[0]]);
         fs.FailReadAllBytesPath = ConfigPath;
 
-        Assert.Equal(3, store.Load().Count);
+        Assert.Equal(SampleTasks().Count, store.Load().Count);
     }
 
     [Theory]
@@ -404,7 +462,7 @@ public class JsonTaskStoreTests
         store.Save([SampleTasks()[0]]);
         fs.WriteAllBytes(ConfigPath, Encoding.UTF8.GetBytes(incompleteJson));
 
-        Assert.Equal(3, store.Load().Count);
+        Assert.Equal(SampleTasks().Count, store.Load().Count);
     }
 
     [Theory]

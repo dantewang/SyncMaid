@@ -32,6 +32,7 @@ public class SyncEngineStatusTests
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
         public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
+        public void RecycleEmptyDirectory(string path) => inner.RecycleEmptyDirectory(path);
         public void SetDirectoryLastWriteTimeUtc(string path, DateTime utc) => inner.SetDirectoryLastWriteTimeUtc(path, utc);
         public Stream OpenRead(string path) => inner.OpenRead(path);
         public void SetLastWriteTimeUtc(string path, DateTime utc) => inner.SetLastWriteTimeUtc(path, utc);
@@ -76,6 +77,7 @@ public class SyncEngineStatusTests
         public void Recycle(string path) => inner.Recycle(path);
         public void EnsureDirectory(string path) => inner.EnsureDirectory(path);
         public void DeleteEmptyDirectory(string path) => inner.DeleteEmptyDirectory(path);
+        public void RecycleEmptyDirectory(string path) => inner.RecycleEmptyDirectory(path);
         public void SetDirectoryLastWriteTimeUtc(string path, DateTime utc) => inner.SetDirectoryLastWriteTimeUtc(path, utc);
         public Stream OpenRead(string path) => inner.OpenRead(path);
         public Stream CreateWriteThrough(string path) => inner.CreateWriteThrough(path);

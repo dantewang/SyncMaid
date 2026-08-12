@@ -110,7 +110,7 @@ public sealed class SyncEngine : ISyncEngine
     // The status line shows one sentence: name the first culprit, count the rest, and say
     // so when the run gave up early.
     private static string DescribeFailures(
-        SyncOperationException first, int failureCount, bool abandoned)
+        Exception first, int failureCount, bool abandoned)
     {
         var message = failureCount == 1
             ? first.Message
@@ -128,18 +128,29 @@ public sealed class SyncEngine : ISyncEngine
         IProgress<SyncProgress>? progress,
         IReadOnlySet<Guid>? confirmedMassDeletes)
     {
-        // Task shape convention (AGENT.md): Move is exclusive. Combinations have no
-        // coherent semantics (destinations run in sequence, and Move empties the source
-        // the others still treat as the truth), so the whole run is refused before any
+        // Task shape convention (AGENT.md): a task's kind decides which strategies its
+        // destinations may use. Move and the copying strategies have contradictory
+        // postconditions — Move empties the source the others treat as the truth — so a
+        // mixed task has no coherent semantics and the whole run is refused before any
         // file is touched. The editors prevent this; hand-edited config lands here.
-        if (task.Destinations.Count > 1
-            && task.Destinations.Any(destination => destination.Strategy == SyncStrategy.Move))
+        if (task.Destinations.Any(destination => !task.Accepts(destination.Strategy)))
         {
-            return task.Destinations
-                .Select(destination => new DestinationSyncStatus(
-                    destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0,
-                    "A Move destination must be the only destination of its task; no files were changed."))
-                .ToList();
+            return RefuseRun(
+                task,
+                task.Kind == SyncTaskKind.Move
+                    ? "A Move task takes Move destinations only; no files were changed."
+                    : "A Sync task takes Mirror and Add-only destinations only; no files were changed.");
+        }
+
+        // Task shape convention (AGENT.md): destinations never overlap each other, inside a
+        // task as much as across tasks. Two destinations writing the same tree race on the
+        // same files — a Mirror destination deletes as orphans whatever a sibling just wrote.
+        if (FindOverlappingDestinations(task.Destinations) is { } overlap)
+        {
+            return RefuseRun(
+                task,
+                $"Destinations '{overlap.First.Name}' and '{overlap.Second.Name}' are the same folder "
+                + "or nested in one another; no files were changed.");
         }
 
         IReadOnlyList<ListedFile> sourceFiles = [];
@@ -162,13 +173,22 @@ public sealed class SyncEngine : ISyncEngine
             sourceEnumerationError = ExceptionDispatchInfo.Capture(exception);
         }
 
+        // A Move task's destinations partition the source: a file only exists once, so it
+        // is assigned to the first destination that matches it and the later ones never
+        // see it. Computed once, before planning, from the same listing every destination
+        // uses. Copying destinations stay independent and filter the listing themselves.
+        var routing = task.Kind == SyncTaskKind.Move
+            ? MoveRouting.Route(task.Destinations, sourceFiles)
+            : null;
+
         var statuses = new List<DestinationSyncStatus>(task.Destinations.Count);
-        foreach (var destination in task.Destinations)
+        for (var i = 0; i < task.Destinations.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             statuses.Add(ExecuteDestination(
                 task,
-                destination,
+                task.Destinations[i],
+                routing?.For(i),
                 sourceFiles,
                 sourceDirectories,
                 sourceEnumerationError,
@@ -180,9 +200,89 @@ public sealed class SyncEngine : ISyncEngine
         return statuses;
     }
 
+    // The whole task is refused: every destination reports the same reason, so the card
+    // explains itself wherever the user looks.
+    private static List<DestinationSyncStatus> RefuseRun(SyncTask task, string reason) =>
+        task.Destinations
+            .Select(destination => new DestinationSyncStatus(
+                destination.Id, SyncOutcome.Failed, DateTimeOffset.UtcNow, 0, reason))
+            .ToList();
+
+    /// <summary>
+    /// Removes the source folders that this run's moves emptied, deepest first so a parent
+    /// is considered only once its children are gone. Each removal is non-recursive and
+    /// conditional on the folder actually being empty now, so a folder that gained content
+    /// since the move is kept. Returns the first unexpected failure, or null.
+    /// </summary>
+    private Exception? RemoveEmptiedSourceDirectories(
+        string sourceRoot, IReadOnlyList<string> movedSourcePaths, DeleteMode mode)
+    {
+        var prefix = sourceRoot.TrimEnd('/', '\\') + "/";
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in movedSourcePaths)
+        {
+            // The paths were built by RelativePaths.Join from this very root, so every
+            // ancestor above the root — and never the root itself — is a candidate.
+            for (var i = path.LastIndexOf('/'); i >= prefix.Length; i = path.LastIndexOf('/', i - 1))
+            {
+                directories.Add(path[..i]);
+            }
+        }
+
+        Exception? failure = null;
+        foreach (var directory in directories.OrderByDescending(
+                     directory => directory, StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (mode == DeleteMode.Recycle)
+                {
+                    _fileSystem.RecycleEmptyDirectory(directory);
+                }
+                else
+                {
+                    _fileSystem.DeleteEmptyDirectory(directory);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                // Both removals already tolerate "not empty", "in use", and "already gone";
+                // anything left is a real problem (a permission wall, a read-only volume)
+                // that will not fix itself, so it is reported rather than swallowed.
+                failure ??= new IOException(
+                    $"Failed to remove the emptied source folder '{directory}': {exception.Message}",
+                    exception);
+            }
+        }
+
+        return failure;
+    }
+
+    private static (Destination First, Destination Second)? FindOverlappingDestinations(
+        IReadOnlyList<Destination> destinations)
+    {
+        for (var i = 0; i < destinations.Count; i++)
+        {
+            for (var j = i + 1; j < destinations.Count; j++)
+            {
+                if (RelativePaths.Overlaps(destinations[i].LocalPath, destinations[j].LocalPath))
+                {
+                    return (destinations[i], destinations[j]);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private DestinationSyncStatus ExecuteDestination(
         SyncTask task,
         Destination destination,
+        IReadOnlyList<ListedFile>? routedFiles,
         IReadOnlyList<ListedFile> sourceFiles,
         IReadOnlyList<ListedDirectory> sourceDirectories,
         ExceptionDispatchInfo? sourceEnumerationError,
@@ -221,9 +321,10 @@ public sealed class SyncEngine : ISyncEngine
                 sourceEnumerationError.Throw();
             }
 
-            var filtered = sourceFiles
-                .Where(file => destination.Includes(file.RelativePath))
-                .ToList();
+            // A Move task's files arrive already routed (first match wins); every other
+            // destination selects from the shared listing itself.
+            var filtered = routedFiles
+                ?? sourceFiles.Where(file => destination.Includes(file.RelativePath)).ToList();
 
             var provider = _destinations.Create(destination.Target);
 
@@ -259,7 +360,8 @@ public sealed class SyncEngine : ISyncEngine
 
             var copied = new List<string>();
             var deferred = new List<string>();
-            SyncOperationException? firstFailure = null;
+            var movedSources = new List<string>();
+            Exception? firstFailure = null;
             var failureCount = 0;
             var consecutiveFailures = 0;
             var abandoned = false;
@@ -320,6 +422,37 @@ public sealed class SyncEngine : ISyncEngine
                 {
                     copied.Add(operation.RelativePath);
                 }
+
+                if (operation is MoveOperation moved)
+                {
+                    // The source path, not the destination one: a flattening destination
+                    // gives them different shapes, and the folder to clean up is the
+                    // source's.
+                    movedSources.Add(moved.SourceFullPath);
+                }
+            }
+
+            // A flattening destination that refused a duplicate name left those files in
+            // the source. Nothing will resolve that on its own, so the run says so rather
+            // than reporting a clean sweep that quietly kept working around them.
+            if (plan.SkippedCollisions.Count > 0)
+            {
+                failureCount += plan.SkippedCollisions.Count;
+                firstFailure ??= new IOException(
+                    $"Skipped '{plan.SkippedCollisions[0]}': a file of that name is already there");
+            }
+
+            // Move takes files out of the source, so the folders that held them are left
+            // behind empty — and a watched inbox would collect them forever, each one more
+            // ground for the next walk to cover. Only the folders this run emptied are
+            // removed: a folder that was already empty holds no moved file, so it is not an
+            // ancestor of one and is never considered.
+            if (movedSources.Count > 0
+                && RemoveEmptiedSourceDirectories(task.SourcePath, movedSources, destination.DeleteMode)
+                    is { } cleanupFailure)
+            {
+                failureCount++;
+                firstFailure ??= cleanupFailure;
             }
 
             // Severity ladder: a real failure outranks a merely deferred file, which in

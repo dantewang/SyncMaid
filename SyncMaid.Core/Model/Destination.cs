@@ -68,6 +68,18 @@ public sealed record Destination
     public DeleteMode DeleteMode { get; init; } = DeleteMode.Recycle;
 
     /// <summary>
+    /// Move only. When true the file lands directly in the destination root, dropping the
+    /// folders it happened to sit in — what filing a download folder usually means. Off by
+    /// default: the source-relative layout is what a backup needs, and it is the shape that
+    /// cannot collide.
+    /// </summary>
+    public bool FlattenStructure { get; init; }
+
+    /// <summary>How a flattening Move destination handles a name that is already taken
+    /// (see <see cref="FileNameCollisionPolicy"/>). Ignored unless <see cref="FlattenStructure"/>.</summary>
+    public FileNameCollisionPolicy CollisionPolicy { get; init; } = FileNameCollisionPolicy.Skip;
+
+    /// <summary>
     /// Fraction (0–1) of the destination that a single Mirror run may delete before it is
     /// aborted as a likely mistake (see <see cref="SyncMaid.Core.Sync.MirrorGuard"/>). Defaults to 0.5;
     /// set 0 to disable the ratio guard (the empty-source guard always applies).

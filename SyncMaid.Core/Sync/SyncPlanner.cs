@@ -42,9 +42,9 @@ public static class SyncPlanner
     {
         if (destination.Strategy == SyncStrategy.Move)
         {
-            return new SyncPlan(
-                PlanMove(sourceRoot, destination, filteredFiles),
-                DestinationFileCount: 0);
+            var skipped = new List<string>();
+            var moves = PlanMove(sourceRoot, destinationProvider, destination, filteredFiles, skipped);
+            return new SyncPlan(moves, DestinationFileCount: 0) { SkippedCollisions = skipped };
         }
 
         if (destination.Strategy is not (SyncStrategy.Mirror or SyncStrategy.AddOnly))
@@ -228,22 +228,88 @@ public static class SyncPlanner
     }
 
     // Move: move each filtered source file to the destination (copy then remove source).
+    // Keeping the source structure maps each file to its own relative path; flattening maps
+    // every file into the root, where names can collide — with a file already there or with
+    // another file in this same plan — so the destination's policy decides each one.
     private static List<SyncOperation> PlanMove(
         string sourceRoot,
+        IDestinationProvider destinationProvider,
         Destination destination,
-        IReadOnlyCollection<ListedFile> filteredFiles)
+        IReadOnlyCollection<ListedFile> filteredFiles,
+        List<string> skipped)
     {
         var operations = new List<SyncOperation>();
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in filteredFiles)
         {
+            var target = file.RelativePath;
+            if (destination.FlattenStructure)
+            {
+                target = LeafName(file.RelativePath);
+                if (ResolveCollision(destinationProvider, destination, claimed, target) is not { } free)
+                {
+                    skipped.Add(file.RelativePath);
+                    continue;
+                }
+
+                target = free;
+                claimed.Add(target);
+            }
+
             operations.Add(new MoveOperation(
-                file.RelativePath, RelativePaths.Join(sourceRoot, file.RelativePath), file.Stamp)
+                target, RelativePaths.Join(sourceRoot, file.RelativePath), file.Stamp)
             {
                 Verify = destination.VerifyContents,
             });
         }
 
         return operations;
+    }
+
+    // A free destination name for <paramref name="target"/>, or null when the policy is to
+    // skip and the name is taken. "Taken" covers both what is already at the destination and
+    // what an earlier file in this same plan claimed.
+    private static string? ResolveCollision(
+        IDestinationProvider destinationProvider,
+        Destination destination,
+        HashSet<string> claimed,
+        string target)
+    {
+        if (!IsTaken(destinationProvider, claimed, target))
+        {
+            return target;
+        }
+
+        if (destination.CollisionPolicy == FileNameCollisionPolicy.Skip)
+        {
+            return null;
+        }
+
+        // "report.pdf" → "report (2).pdf", "report (3).pdf", … — the shape browsers and
+        // Explorer already use, so a numbered file reads as a duplicate at a glance.
+        var extension = System.IO.Path.GetExtension(target);
+        var stem = target[..^extension.Length];
+        for (var suffix = 2; suffix < int.MaxValue; suffix++)
+        {
+            var candidate = $"{stem} ({suffix}){extension}";
+            if (!IsTaken(destinationProvider, claimed, candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsTaken(
+        IDestinationProvider destinationProvider, HashSet<string> claimed, string relativePath) =>
+        claimed.Contains(relativePath) || destinationProvider.TryGetStamp(relativePath, out _);
+
+    // "a/b/c.txt" → "c.txt"; a file already at the root is its own leaf.
+    private static string LeafName(string relativePath)
+    {
+        var separator = relativePath.LastIndexOf('/');
+        return separator < 0 ? relativePath : relativePath[(separator + 1)..];
     }
 
     /// <summary>

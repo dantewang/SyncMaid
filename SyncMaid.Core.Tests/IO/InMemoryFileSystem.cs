@@ -343,7 +343,15 @@ public sealed class InMemoryFileSystem : IFileSystem
     /// deleted counts as empty even if it was never registered explicitly.</summary>
     public List<string> DeletedDirectories { get; } = [];
 
-    public void DeleteEmptyDirectory(string path)
+    /// <summary>Paths removed by <see cref="RecycleEmptyDirectory"/>, for assertions —
+    /// a subset of <see cref="DeletedDirectories"/>, which records every removal.</summary>
+    public List<string> RecycledDirectories { get; } = [];
+
+    public void DeleteEmptyDirectory(string path) => RemoveEmptyDirectory(path, recycled: false);
+
+    public void RecycleEmptyDirectory(string path) => RemoveEmptyDirectory(path, recycled: true);
+
+    private void RemoveEmptyDirectory(string path, bool recycled)
     {
         var key = Normalize(path);
         if (!DirectoryExists(key))
@@ -369,6 +377,10 @@ public sealed class InMemoryFileSystem : IFileSystem
 
         _directories.Remove(key);
         DeletedDirectories.Add(key);
+        if (recycled)
+        {
+            RecycledDirectories.Add(key);
+        }
     }
 
     // A directory exists when it was registered explicitly or something lives beneath it.
