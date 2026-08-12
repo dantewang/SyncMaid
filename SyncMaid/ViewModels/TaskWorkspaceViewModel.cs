@@ -22,6 +22,7 @@ namespace SyncMaid.ViewModels;
 public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyList<Destination>>
 {
     private const int SampleSize = 8;
+    private const int ExtensionChipCount = 12;
 
     private readonly SyncTask _task;
     private readonly IFolderPickerService _folderPicker;
@@ -111,6 +112,10 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
     /// not a problem: the ordering resolved it, and seeing which rule won is the point.
     /// </summary>
     public ObservableCollection<string> Contested { get; } = [];
+
+    /// <summary>The file types the last scan found in the source, offered inside an open
+    /// editor as one-click rules. Empty until a scan has run.</summary>
+    public ObservableCollection<ExtensionChip> SourceExtensions { get; } = [];
 
     /// <summary>Whether a preview can be run at all (it needs a filesystem to read).</summary>
     public bool CanPreview => _fileSystem is not null;
@@ -355,7 +360,31 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
             }
         }
 
-        return new ScanResult(files.Count, perDestination, unmatchedCount, unmatched, contested);
+        return new ScanResult(
+            files.Count, perDestination, unmatchedCount, unmatched, contested, Extensions(files));
+    }
+
+    // The file types the source actually holds, commonest first. Authoring a rule is then
+    // picking from what is there rather than guessing at globs.
+    private static IReadOnlyList<(string Extension, int Count)> Extensions(
+        IReadOnlyList<ListedFile> files)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files)
+        {
+            var extension = System.IO.Path.GetExtension(file.RelativePath).TrimStart('.');
+            if (extension.Length > 0)
+            {
+                counts[extension] = counts.GetValueOrDefault(extension) + 1;
+            }
+        }
+
+        return counts
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Take(ExtensionChipCount)
+            .Select(pair => (pair.Key, pair.Value))
+            .ToList();
     }
 
     private void ShowPreview(ScanResult scan)
@@ -379,6 +408,12 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
                 Strings.Workspace_PreviewUnmatchedFormat,
                 Localizer.Plural("Common.FilesCount", scan.UnmatchedCount),
                 string.Join(", ", scan.UnmatchedSample));
+
+        SourceExtensions.Clear();
+        foreach (var (extension, count) in scan.Extensions)
+        {
+            SourceExtensions.Add(new ExtensionChip(extension, $"{extension} ({count})"));
+        }
 
         Contested.Clear();
         foreach (var (path, rules) in scan.Contested)
@@ -410,7 +445,13 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
         IReadOnlyDictionary<Guid, (int Count, List<string> Sample)> PerDestination,
         int UnmatchedCount,
         IReadOnlyList<string> UnmatchedSample,
-        IReadOnlyList<(string Path, IReadOnlyList<int> Rules)> Contested);
+        IReadOnlyList<(string Path, IReadOnlyList<int> Rules)> Contested,
+        IReadOnlyList<(string Extension, int Count)> Extensions);
+
+    /// <summary>One file type present in the source, offered as a one-click rule.</summary>
+    /// <param name="Extension">The bare extension, e.g. <c>pdf</c>.</param>
+    /// <param name="Label">What the chip reads, e.g. <c>pdf (12)</c>.</param>
+    public sealed record ExtensionChip(string Extension, string Label);
 
     // Numbers are positions, so they change whenever the list does; the shadowed-rule
     // warnings are recomputed with them since they depend on the same order.

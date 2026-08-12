@@ -199,6 +199,32 @@ public class TaskWorkspaceViewModelTests
         Assert.Contains("Books", contested); // the rule that actually gets it
     }
 
+    // The scan already walks the source, so it also reports what is in there to file — and a
+    // chip writes the rule, which is the ten-times-per-task cost the shortcuts exist to cut.
+    [Fact]
+    public async System.Threading.Tasks.Task Source_file_types_become_one_click_rules()
+    {
+        var fs = new FakeSourceFileSystem().With(
+            @"C:\downloads", "a.pdf", "b.pdf", "photo.jpg", "notes");
+        var workspace = new TaskWorkspaceViewModel(
+            MoveTask(Rule("Books", "pdf")), new FakeFolderPickerService(), fileSystem: fs);
+
+        await workspace.RescanCommand.ExecuteAsync(null);
+
+        // Commonest first, extensionless files ignored.
+        Assert.Equal(["pdf", "jpg"], workspace.SourceExtensions.Select(chip => chip.Extension));
+        Assert.Contains("(2)", workspace.SourceExtensions[0].Label);
+
+        var row = workspace.Rows[0];
+        row.ExpandCommand.Execute(null);
+        row.AddExtensionCommand.Execute("jpg");
+        row.Editor!.OKCommand.Execute(null);
+
+        Assert.Contains(
+            row.Destination.Filters.OfType<ExtensionFilter>(),
+            filter => filter.Extension == "jpg");
+    }
+
     // A preview describes one set of rules; once they change it is a claim about something
     // that no longer exists.
     [Fact]

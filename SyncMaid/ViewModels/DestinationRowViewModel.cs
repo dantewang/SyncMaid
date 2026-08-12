@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Filtering;
@@ -109,6 +110,28 @@ public sealed partial class DestinationRowViewModel : ViewModelBase
     /// <summary>Discards any pending edit and shows the summary again.</summary>
     [RelayCommand]
     private void Collapse() => Editor?.RequestCancel();
+
+    /// <summary>
+    /// Adds a rule for one of the file types actually present in the source (the chips the
+    /// preview scan found), turning glob authoring into picking. No-op unless this row's
+    /// editor is open — the chips are only shown there.
+    /// </summary>
+    [RelayCommand]
+    private void AddExtension(string? extension)
+    {
+        if (Editor is not { } editor
+            || string.IsNullOrWhiteSpace(extension)
+            || editor.Groups.FirstOrDefault() is not { } group)
+        {
+            return;
+        }
+
+        // Picking a type is a file selection, so "all files" cannot still be the answer.
+        editor.SyncAll = false;
+        group.SelectedFilterKind = FilterKind.Extension;
+        group.NewFilterPattern = extension;
+        group.AddRuleCommand.Execute(null);
+    }
 
     private void OnEditorClosed(Destination? edited)
     {
