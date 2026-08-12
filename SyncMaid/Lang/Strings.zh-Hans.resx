@@ -397,14 +397,8 @@
   <data name="TaskEditor.KindLabel" xml:space="preserve">
     <value>此任务做什么</value>
   </data>
-  <data name="TaskEditor.KindSync" xml:space="preserve">
-    <value>同步</value>
-  </data>
   <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
     <value>把源复制到各个目标，源保持原样。每个目标各自挑选文件。</value>
-  </data>
-  <data name="TaskEditor.KindMove" xml:space="preserve">
-    <value>移动</value>
   </data>
   <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
     <value>把源里的文件分拣走：每个文件进入第一条匹配它的规则，并从源中移除。</value>
@@ -539,6 +533,12 @@
   </data>
 
   <!-- Enum display names -->
+  <data name="Enum.SyncTaskKind.Sync" xml:space="preserve">
+    <value>同步</value>
+  </data>
+  <data name="Enum.SyncTaskKind.Move" xml:space="preserve">
+    <value>移动</value>
+  </data>
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
     <value>镜像</value>
   </data>

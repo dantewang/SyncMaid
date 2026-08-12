@@ -14,6 +14,26 @@ public class DestinationNodeViewModelTests
         return new DestinationNodeViewModel(dest, DestinationSyncStatus.Never(dest.Id), _ => Task.CompletedTask, _ => Task.CompletedTask, _ => Task.CompletedTask);
     }
 
+    // The strategy is the task's own property for a Move task — all of its destinations are
+    // Move — so a row saying so only repeats the card header. The copying strategies differ
+    // between siblings, so those rows still have to say which they are.
+    [Theory]
+    [InlineData(SyncStrategy.Mirror, true)]
+    [InlineData(SyncStrategy.AddOnly, true)]
+    [InlineData(SyncStrategy.Move, false)]
+    public void Only_a_copying_destination_shows_its_strategy(SyncStrategy strategy, bool shown)
+    {
+        var destination = new Destination("d", @"D:\d", [new AllFilesFilter()], strategy);
+        var node = new DestinationNodeViewModel(
+            destination,
+            DestinationSyncStatus.Never(destination.Id),
+            _ => Task.CompletedTask,
+            _ => Task.CompletedTask,
+            _ => Task.CompletedTask);
+
+        Assert.Equal(shown, node.ShowStrategy);
+    }
+
     [Fact]
     public void Display_status_shows_the_progress_line_while_set()
     {

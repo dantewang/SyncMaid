@@ -397,14 +397,8 @@
   <data name="TaskEditor.KindLabel" xml:space="preserve">
     <value>このタスクの動作</value>
   </data>
-  <data name="TaskEditor.KindSync" xml:space="preserve">
-    <value>同期</value>
-  </data>
   <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
     <value>ソースを各同期先にコピーし、ソースはそのまま残します。同期先ごとにファイルを選びます。</value>
-  </data>
-  <data name="TaskEditor.KindMove" xml:space="preserve">
-    <value>移動</value>
   </data>
   <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
     <value>ソースのファイルを仕分けます: 各ファイルは最初に一致したルールへ移動し、ソースからは無くなります。</value>
@@ -539,6 +533,12 @@
   </data>
 
   <!-- Enum display names -->
+  <data name="Enum.SyncTaskKind.Sync" xml:space="preserve">
+    <value>同期</value>
+  </data>
+  <data name="Enum.SyncTaskKind.Move" xml:space="preserve">
+    <value>移動</value>
+  </data>
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
     <value>ミラー</value>
   </data>

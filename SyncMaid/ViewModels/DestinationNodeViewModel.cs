@@ -60,6 +60,13 @@ public partial class DestinationNodeViewModel : ViewModelBase
         _ => Destination.Strategy.ToString(),
     };
 
+    /// <summary>
+    /// False for a Move destination: its task already says it moves, and every destination of
+    /// that task is a Move one, so the badge would repeat the card header on every row. The
+    /// copying strategies do differ between siblings, so those keep theirs.
+    /// </summary>
+    public bool ShowStrategy => Destination.Strategy != SyncStrategy.Move;
+
     public MaterialIconKind StrategyIconKind => Destination.Strategy switch
     {
         SyncStrategy.Mirror => MaterialIconKind.Sync,

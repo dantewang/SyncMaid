@@ -52,7 +52,7 @@
                             <mi:MaterialIcon Grid.Column="0" Kind="Sync" Width="20" Height="20"
                                              Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="{l:Loc TaskEditor.KindSync}" FontWeight="Medium" />
+                                <TextBlock Text="{l:Loc Enum.SyncTaskKind.Sync}" FontWeight="Medium" />
                                 <TextBlock Text="{l:Loc TaskEditor.KindSyncDesc}" Classes="muted" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
@@ -63,7 +63,7 @@
                             <mi:MaterialIcon Grid.Column="0" Kind="CallSplit" Width="20" Height="20"
                                              Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="{l:Loc TaskEditor.KindMove}" FontWeight="Medium" />
+                                <TextBlock Text="{l:Loc Enum.SyncTaskKind.Move}" FontWeight="Medium" />
                                 <TextBlock Text="{l:Loc TaskEditor.KindMoveDesc}" Classes="muted" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>

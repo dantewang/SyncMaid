@@ -404,14 +404,8 @@
   <data name="TaskEditor.KindLabel" xml:space="preserve">
     <value>What this task does</value>
   </data>
-  <data name="TaskEditor.KindSync" xml:space="preserve">
-    <value>Sync</value>
-  </data>
   <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
     <value>Copy the source to its destinations and leave it where it is. Each destination picks its own files.</value>
-  </data>
-  <data name="TaskEditor.KindMove" xml:space="preserve">
-    <value>Move</value>
   </data>
   <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
     <value>File the source away: each file goes to the first rule that matches it and leaves the source.</value>
@@ -546,6 +540,12 @@
   </data>
 
   <!-- Enum display names -->
+  <data name="Enum.SyncTaskKind.Sync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="Enum.SyncTaskKind.Move" xml:space="preserve">
+    <value>Move</value>
+  </data>
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
     <value>Mirror</value>
   </data>

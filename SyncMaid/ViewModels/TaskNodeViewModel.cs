@@ -128,6 +128,16 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         _ => Strings.Task_TriggerManual,
     };
 
+    /// <summary>What the task does, shown on the card. It belongs to the task, not to each
+    /// destination: a Move task's destinations are all Move, so saying it per row is noise.</summary>
+    public string KindText => Task.Kind == SyncTaskKind.Move
+        ? Strings.Enum_SyncTaskKind_Move
+        : Strings.Enum_SyncTaskKind_Sync;
+
+    public MaterialIconKind KindIconKind => Task.Kind == SyncTaskKind.Move
+        ? MaterialIconKind.CallSplit
+        : MaterialIconKind.Sync;
+
     public MaterialIconKind TriggerIconKind => Task.Trigger switch
     {
         WatchTrigger => MaterialIconKind.Eye,

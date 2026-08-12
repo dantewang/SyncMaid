@@ -526,6 +526,18 @@ public class TaskNodeViewModelTests
         Assert.Contains("\"Other\"", node.Children[0].Status.Error);
     }
 
+    // The card says what the task does, once, where the task is named.
+    [Fact]
+    public void The_card_shows_what_the_task_does()
+    {
+        var move = new Destination("m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var routing = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [move]));
+        var syncing = New(new SyncTask("B", @"C:\b", new ManualTrigger(), [Dest("D")]));
+
+        Assert.NotEqual(syncing.KindText, routing.KindText);
+        Assert.NotEqual(syncing.KindIconKind, routing.KindIconKind);
+    }
+
     // A Move task routes into as many destinations as it likes; what used to be the
     // "Move is exclusive" gate is now the task kind, which the workspace reads off the task.
     [Fact]

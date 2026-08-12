@@ -212,6 +212,12 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Move".</summary>
     public static string Enum_SyncStrategy_Move => Get("Enum.SyncStrategy.Move");
 
+    /// <summary>Looks up a localized string similar to "Move".</summary>
+    public static string Enum_SyncTaskKind_Move => Get("Enum.SyncTaskKind.Move");
+
+    /// <summary>Looks up a localized string similar to "Sync".</summary>
+    public static string Enum_SyncTaskKind_Sync => Get("Enum.SyncTaskKind.Sync");
+
     /// <summary>Looks up a localized string similar to "All files".</summary>
     public static string Filter_AllFiles => Get("Filter.AllFiles");
 
@@ -515,14 +521,8 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "The kind is fixed while the task has destinations — remove them first to chan...".</summary>
     public static string TaskEditor_KindLockedHint => Get("TaskEditor.KindLockedHint");
 
-    /// <summary>Looks up a localized string similar to "Move".</summary>
-    public static string TaskEditor_KindMove => Get("TaskEditor.KindMove");
-
     /// <summary>Looks up a localized string similar to "File the source away: each file goes to the first rule that matches it and le...".</summary>
     public static string TaskEditor_KindMoveDesc => Get("TaskEditor.KindMoveDesc");
-
-    /// <summary>Looks up a localized string similar to "Sync".</summary>
-    public static string TaskEditor_KindSync => Get("TaskEditor.KindSync");
 
     /// <summary>Looks up a localized string similar to "Copy the source to its destinations and leave it where it is. Each destinatio...".</summary>
     public static string TaskEditor_KindSyncDesc => Get("TaskEditor.KindSyncDesc");
