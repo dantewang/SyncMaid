@@ -70,7 +70,9 @@ Two previews worth recognising:
 - **Add-only** — filters select what gets copied. Files that stop matching are simply not
   copied any more; whatever already reached the destination stays.
 - **Move** — filters select what gets moved out of the source. Anything that doesn't match
-  is left where it is.
+  any of the task's rules is left where it is. Where a file matches more than one rule, the
+  first rule in the list takes it — see
+  [Tasks and destinations](tasks-and-destinations.md#what-a-task-does).
 - **Mirror** — no filters, by design.
 
 Changing a filter does not retroactively clean up a destination. Under Add-only nothing is

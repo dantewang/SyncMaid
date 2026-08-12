@@ -64,7 +64,7 @@ A hint, not an error — you can still save.
 SyncMaid refuses layouts that can't work, each with a hint saying why:
 
 - *Destination must be a separate folder outside the source (and not contain it).*
-- *A Move destination must be the only destination of its task.*
+- *This folder overlaps "…" in this task — destinations never overlap each other.*
 - *This folder overlaps the source of task "…" — tasks never share sources.*
 
 The reasoning is in [Tasks and destinations](tasks-and-destinations.md#rules-syncmaid-enforces).

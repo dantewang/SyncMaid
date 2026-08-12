@@ -62,8 +62,9 @@ Click **Add destination** again to fan the same source out to more than one plac
 example a full **Mirror** to an external drive and an **Add-only** copy of just the raw
 files to a NAS. Each destination has its own strategy, its own filters, and its own status.
 
-The exception is **Move**: because it empties the source, a Move destination must be the
-only destination of its task.
+A **Move** task fans out too, but differently: its destinations are rules matched in order,
+and each file goes to the first one that matches it — so several destinations share the
+source out rather than each taking a copy of it.
 
 ## Where your configuration lives
 

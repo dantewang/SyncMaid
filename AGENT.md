@@ -46,7 +46,7 @@ Guidance for AI agents working in this repository.
 ## Task shape conventions
 
 These are product rules, not implementation details: enforce them, don't engineer around
-them. Both are validated in the editor (blocked with a hint) **and** in the engine (the
+them. Each is validated in the editor (blocked with a hint) **and** in the engine (the
 run fails without touching files), so hand-edited config is covered too.
 
 - **A task's source and destinations never nest.** A destination path must not equal the
@@ -56,13 +56,23 @@ run fails without touching files), so hand-edited config is covered too.
   (feedback loops); a source inside a destination makes Mirror treat the live source as
   orphaned destination content and delete it. Do **not** add code to make nested layouts
   work (e.g. excluding a nested subtree from planning) — reject the layout instead.
-- **Move is exclusive.** A destination with the Move strategy must be the only
-  destination of its task: with a Move destination in place, no other destination can be
-  added; with any destination in place, a Move destination cannot be added. Rationale:
-  Move's postcondition (an emptied source) contradicts every other strategy's
-  precondition (the source is the truth), so combinations have no coherent semantics —
-  within a run they are order-dependent, and across runs Mirror+Move deadlocks on the
-  empty-source guard.
+- **A task's kind decides its strategies.** `SyncTask.Kind` is `Sync` (Mirror and Add-only
+  destinations) or `Move` (Move destinations only) — the primary shape rule, replacing the
+  old "Move is exclusive". Rationale: Move's postcondition (an emptied source) contradicts
+  every other strategy's precondition (the source is the truth), so mixtures have no
+  coherent semantics — within a run they are order-dependent, and across runs Mirror+Move
+  deadlocks on the empty-source guard. The kind is chosen while the task is empty and
+  locked afterwards; it persists as a nullable field so config written before it existed
+  is distinguishable from an explicit `Sync` and derives its kind from its destinations.
+- **A Move task's destinations are an ordered rule list; first match wins.** Each source
+  file is assigned to the first destination whose filters include it (`MoveRouting`,
+  computed once per run before planning) and to no other; files nothing matches stay in
+  the source. Destination order is therefore semantic — persist it, and never reorder
+  destinations as a side effect of anything. Rationale: a file can only be moved once, so
+  independent per-destination filtering would hand the same file to two destinations and
+  the second would fail on a source that is already gone. Overlap is deliberately legal:
+  requiring disjoint rules was considered and rejected (see issue #54) because the common
+  routing pair — `*.pdf` and `invoices/` — overlaps and is perfectly sensible.
 - **Mirror takes no file filters.** A Mirror destination always syncs all files.
   Rationale: Mirror's contract is tree identity — whenever no task is running, a
   file-tree compare of source and destination reports identical, empty directories
@@ -79,6 +89,12 @@ run fails without touching files), so hand-edited config is covered too.
   overlapping destinations race on the same files (one task's Mirror deletes what
   another just wrote as "orphans") and overlapping sources double-process the same
   input (fatal once one of them is a Move). Enforced in the editors and at run start.
+- **Destinations never overlap each other — including two of the same task.** The
+  cross-task probe excludes the whole task being edited, so the sibling check is the
+  owning `TaskNodeViewModel`'s job (`DestinationConflict.WithinTask` picks the wording),
+  and `SyncEngine` re-checks every pair at run start. Same rationale one level down: a
+  Mirror destination deletes as orphans whatever the sibling writing into its subtree
+  just put there.
 
 ## Sync safety
 
