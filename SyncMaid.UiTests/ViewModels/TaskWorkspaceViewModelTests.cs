@@ -171,6 +171,70 @@ public class TaskWorkspaceViewModelTests
         Assert.All(workspace.Rows, row => Assert.False(row.IsShadowed));
     }
 
+    // The preview runs the engine's own assignment, so what it shows is what a run would do
+    // — and a contested file is reported as information, naming the rule that won it.
+    [Fact]
+    public async System.Threading.Tasks.Task The_preview_counts_what_each_rule_takes()
+    {
+        var fs = new FakeSourceFileSystem().With(
+            @"C:\downloads", "book.pdf", "invoices/march.pdf", "setup.exe");
+
+        var workspace = new TaskWorkspaceViewModel(
+            MoveTask(
+                Rule("Books", "pdf"),
+                new Destination("Bills", @"D:\bills", [new PathFilter("invoices")], SyncStrategy.Move)),
+            new FakeFolderPickerService(),
+            fileSystem: fs);
+
+        Assert.True(workspace.CanPreview);
+        await workspace.RescanCommand.ExecuteAsync(null);
+
+        Assert.Contains("3", workspace.PreviewSummary);
+        Assert.Contains("2", workspace.Rows[0].PreviewCount);   // both PDFs, first match wins
+        Assert.Contains("0", workspace.Rows[1].PreviewCount);
+        Assert.Contains("setup.exe", workspace.PreviewUnmatched);
+
+        var contested = Assert.Single(workspace.Contested);
+        Assert.Contains("invoices/march.pdf", contested);
+        Assert.Contains("Books", contested); // the rule that actually gets it
+    }
+
+    // A preview describes one set of rules; once they change it is a claim about something
+    // that no longer exists.
+    [Fact]
+    public async System.Threading.Tasks.Task Changing_the_rules_drops_the_preview()
+    {
+        var fs = new FakeSourceFileSystem().With(@"C:\downloads", "book.pdf");
+        var workspace = new TaskWorkspaceViewModel(
+            MoveTask(Rule("Books", "pdf"), Rule("Pictures", "jpg")),
+            new FakeFolderPickerService(),
+            fileSystem: fs);
+
+        await workspace.RescanCommand.ExecuteAsync(null);
+        Assert.True(workspace.HasPreview);
+
+        workspace.MoveDownCommand.Execute(workspace.Rows[0]);
+
+        Assert.False(workspace.HasPreview);
+        Assert.All(workspace.Rows, row => Assert.Null(row.PreviewCount));
+    }
+
+    // An unreadable source must say so: an empty preview would read as "nothing matches
+    // your rules", which is a different problem with a different fix.
+    [Fact]
+    public async System.Threading.Tasks.Task An_unreadable_source_is_reported_not_shown_as_empty()
+    {
+        var workspace = new TaskWorkspaceViewModel(
+            MoveTask(Rule("Books", "pdf")),
+            new FakeFolderPickerService(),
+            fileSystem: new FakeSourceFileSystem()); // the source folder does not exist
+
+        await workspace.RescanCommand.ExecuteAsync(null);
+
+        Assert.Contains("not found or unavailable", workspace.PreviewSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.All(workspace.Rows, row => Assert.Null(row.PreviewCount));
+    }
+
     [Fact]
     public void A_sync_task_has_no_ordering_semantics_to_show()
     {

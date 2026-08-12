@@ -47,6 +47,38 @@
             <TextBlock DockPanel.Dock="Top" IsVisible="{Binding IsEmpty}" Classes="muted"
                        Text="{l:Loc Workspace.Empty}" TextWrapping="Wrap" Margin="0,10,0,0" />
 
+            <!-- Read-only preview: the same assignment a run would make, so the rules can be
+                 tried before a Move applies them to real files. -->
+            <StackPanel DockPanel.Dock="Bottom" IsVisible="{Binding CanPreview}" Margin="0,12,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Classes="secondary" Command="{Binding RescanCommand}"
+                            ToolTip.Tip="{l:Loc Workspace.PreviewTip}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <mi:MaterialIcon Kind="EyeOutline" Width="14" Height="14" />
+                            <TextBlock Text="{l:Loc Workspace.Preview}" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{l:Loc Workspace.Scanning}" Classes="muted" VerticalAlignment="Center"
+                               IsVisible="{Binding IsScanning}" />
+                    <TextBlock Text="{Binding PreviewSummary}" VerticalAlignment="Center"
+                               IsVisible="{Binding HasPreview}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <c:HintBox Classes="warning" Margin="0,8,0,0"
+                           IsVisible="{Binding PreviewUnmatched, Converter={x:Static ObjectConverters.IsNotNull}}"
+                           Text="{Binding PreviewUnmatched}" />
+
+                <!-- Contested files are information, not a problem: the order resolved them,
+                     and this is where the user sees which rule actually won. -->
+                <ItemsControl ItemsSource="{Binding Contested}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Text="{Binding}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
             <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
@@ -73,6 +105,12 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
                                                     VerticalAlignment="Center">
+                                            <!-- What the last preview says this rule would take;
+                                                 the tooltip names a few of the files behind it. -->
+                                            <Border Classes="badge live" IsVisible="{Binding HasPreview}"
+                                                    ToolTip.Tip="{Binding PreviewSample}" Margin="0,0,5,0">
+                                                <TextBlock Text="{Binding PreviewCount}" />
+                                            </Border>
                                             <Button Classes="icon" ToolTip.Tip="{l:Loc Workspace.MoveUpTip}"
                                                     IsVisible="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).IsRouting, FallbackValue=False}"
                                                     Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).MoveUpCommand, FallbackValue={x:Null}}"

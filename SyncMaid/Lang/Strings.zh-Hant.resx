@@ -78,6 +78,27 @@
   <data name="Workspace.Save" xml:space="preserve">
     <value>儲存</value>
   </data>
+  <data name="Workspace.Preview" xml:space="preserve">
+    <value>預覽</value>
+  </data>
+  <data name="Workspace.Scanning" xml:space="preserve">
+    <value>掃描中…</value>
+  </data>
+  <data name="Workspace.PreviewTip" xml:space="preserve">
+    <value>讀取來源並顯示每個檔案會去哪裡。不會移動或複製任何檔案。</value>
+  </data>
+  <data name="Workspace.PreviewSourceFormat" xml:space="preserve">
+    <value>來源中共 {0}</value>
+  </data>
+  <data name="Workspace.PreviewUnmatchedFormat" xml:space="preserve">
+    <value>{0} 不符合任何規則，將留在來源中：{1}</value>
+  </data>
+  <data name="Workspace.PreviewContestedFormat" xml:space="preserve">
+    <value>「{0}」符合第 {1} 條規則 → 進入「{2}」</value>
+  </data>
+  <data name="Workspace.PreviewFailedFormat" xml:space="preserve">
+    <value>無法讀取來源：{0}</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 個檔案</value>
   </data>

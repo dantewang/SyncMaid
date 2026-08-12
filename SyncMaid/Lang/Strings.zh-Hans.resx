@@ -78,6 +78,27 @@
   <data name="Workspace.Save" xml:space="preserve">
     <value>保存</value>
   </data>
+  <data name="Workspace.Preview" xml:space="preserve">
+    <value>预览</value>
+  </data>
+  <data name="Workspace.Scanning" xml:space="preserve">
+    <value>扫描中…</value>
+  </data>
+  <data name="Workspace.PreviewTip" xml:space="preserve">
+    <value>读取源并显示每个文件会去哪里。不会移动或复制任何文件。</value>
+  </data>
+  <data name="Workspace.PreviewSourceFormat" xml:space="preserve">
+    <value>源中共 {0}</value>
+  </data>
+  <data name="Workspace.PreviewUnmatchedFormat" xml:space="preserve">
+    <value>{0} 不匹配任何规则，将留在源中：{1}</value>
+  </data>
+  <data name="Workspace.PreviewContestedFormat" xml:space="preserve">
+    <value>“{0}”匹配第 {1} 条规则 → 进入“{2}”</value>
+  </data>
+  <data name="Workspace.PreviewFailedFormat" xml:space="preserve">
+    <value>无法读取源：{0}</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 个文件</value>
   </data>

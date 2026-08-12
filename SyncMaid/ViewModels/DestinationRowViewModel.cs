@@ -33,6 +33,20 @@ public sealed partial class DestinationRowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsShadowed))]
     private string? _shadowedBy;
 
+    /// <summary>How many of the source's files this destination would take, from the last
+    /// preview scan; null until one has run (and cleared whenever the rules change).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreview))]
+    private string? _previewCount;
+
+    /// <summary>A few of the files behind <see cref="PreviewCount"/>, as the row's tooltip —
+    /// a count alone does not tell you whether it caught the right things.</summary>
+    [ObservableProperty]
+    private string? _previewSample;
+
+    /// <summary>True once a preview scan has produced a count for this row.</summary>
+    public bool HasPreview => PreviewCount is not null;
+
     public DestinationRowViewModel(
         Destination destination,
         Func<DestinationRowViewModel, DestinationEditorViewModel> newEditor,

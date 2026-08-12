@@ -78,6 +78,27 @@
   <data name="Workspace.Save" xml:space="preserve">
     <value>保存</value>
   </data>
+  <data name="Workspace.Preview" xml:space="preserve">
+    <value>プレビュー</value>
+  </data>
+  <data name="Workspace.Scanning" xml:space="preserve">
+    <value>スキャン中…</value>
+  </data>
+  <data name="Workspace.PreviewTip" xml:space="preserve">
+    <value>ソースを読み取り、各ファイルの行き先を表示します。移動もコピーもしません。</value>
+  </data>
+  <data name="Workspace.PreviewSourceFormat" xml:space="preserve">
+    <value>ソースに {0}</value>
+  </data>
+  <data name="Workspace.PreviewUnmatchedFormat" xml:space="preserve">
+    <value>{0} はどのルールにも一致せず、ソースに残ります: {1}</value>
+  </data>
+  <data name="Workspace.PreviewContestedFormat" xml:space="preserve">
+    <value>「{0}」はルール {1} に一致 → 「{2}」へ</value>
+  </data>
+  <data name="Workspace.PreviewFailedFormat" xml:space="preserve">
+    <value>ソースを読み取れませんでした: {0}</value>
+  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 個のファイル</value>
   </data>

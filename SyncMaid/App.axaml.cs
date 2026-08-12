@@ -193,7 +193,8 @@ public partial class App : Application
         services.AddSingleton<IFolderPickerService>(_ => new AvaloniaFolderPickerService());
         services.AddSingleton<IDialogService>(sp => new DialogService(
             sp.GetRequiredService<IFolderPickerService>(),
-            sp.GetRequiredService<IDialogHost>()));
+            sp.GetRequiredService<IDialogHost>(),
+            sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton(sp => new MainWindowViewModel(
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ITaskStore>(),

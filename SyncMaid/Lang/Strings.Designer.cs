@@ -623,6 +623,24 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Match this rule earlier".</summary>
     public static string Workspace_MoveUpTip => Get("Workspace.MoveUpTip");
 
+    /// <summary>Looks up a localized string similar to "Preview".</summary>
+    public static string Workspace_Preview => Get("Workspace.Preview");
+
+    /// <summary>Looks up a localized string similar to "&quot;{0}&quot; matches rules {1} → goes to &quot;{2}&quot;".</summary>
+    public static string Workspace_PreviewContestedFormat => Get("Workspace.PreviewContestedFormat");
+
+    /// <summary>Looks up a localized string similar to "Couldn&apos;t read the source: {0}".</summary>
+    public static string Workspace_PreviewFailedFormat => Get("Workspace.PreviewFailedFormat");
+
+    /// <summary>Looks up a localized string similar to "{0} in the source".</summary>
+    public static string Workspace_PreviewSourceFormat => Get("Workspace.PreviewSourceFormat");
+
+    /// <summary>Looks up a localized string similar to "Reads the source and shows where each file would go. Nothing is moved or copied.".</summary>
+    public static string Workspace_PreviewTip => Get("Workspace.PreviewTip");
+
+    /// <summary>Looks up a localized string similar to "{0} match nothing and stay in the source: {1}".</summary>
+    public static string Workspace_PreviewUnmatchedFormat => Get("Workspace.PreviewUnmatchedFormat");
+
     /// <summary>Looks up a localized string similar to "Matched top to bottom: each file goes to the first rule that matches it, and ...".</summary>
     public static string Workspace_RoutingSubtitle => Get("Workspace.RoutingSubtitle");
 
@@ -631,6 +649,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Save".</summary>
     public static string Workspace_Save => Get("Workspace.Save");
+
+    /// <summary>Looks up a localized string similar to "Scanning…".</summary>
+    public static string Workspace_Scanning => Get("Workspace.Scanning");
 
     /// <summary>Looks up a localized string similar to "Never matches: rule {0} (&quot;{1}&quot;) takes these files first.".</summary>
     public static string Workspace_ShadowedByFormat => Get("Workspace.ShadowedByFormat");

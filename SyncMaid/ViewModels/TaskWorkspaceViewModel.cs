@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SyncMaid.Core.Filtering;
 using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
+using SyncMaid.Core.Sync;
 using SyncMaid.Lang;
 using SyncMaid.Services;
 
@@ -19,20 +21,25 @@ namespace SyncMaid.ViewModels;
 /// </summary>
 public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyList<Destination>>
 {
+    private const int SampleSize = 8;
+
     private readonly SyncTask _task;
     private readonly IFolderPickerService _folderPicker;
     private readonly Func<string, string?> _crossTaskConflicts;
+    private readonly IFileSystem? _fileSystem;
 
     public TaskWorkspaceViewModel(
         SyncTask task,
         IFolderPickerService folderPicker,
         Func<string, string?>? crossTaskConflicts = null,
         Guid? expand = null,
-        bool startWithNewRule = false)
+        bool startWithNewRule = false,
+        IFileSystem? fileSystem = null)
     {
         _task = task;
         _folderPicker = folderPicker;
         _crossTaskConflicts = crossTaskConflicts ?? (_ => null);
+        _fileSystem = fileSystem;
 
         Rows = new ObservableCollection<DestinationRowViewModel>(
             task.Destinations.Select(NewRow));
@@ -80,6 +87,70 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
     /// conjured — so this only decides whether the command is offered.
     /// </summary>
     public bool CanAddCatchAll => IsRouting && !Rows.Any(row => row.IsCatchAll);
+
+    /// <summary>True while a preview scan is running; the button says so and stays disabled.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RescanCommand))]
+    private bool _isScanning;
+
+    /// <summary>The preview's headline: how many files the source holds, or why it could not
+    /// be read. Null before the first scan.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPreview))]
+    private string? _previewSummary;
+
+    /// <summary>What no rule claims, and so stays in the source. Null when nothing does.</summary>
+    [ObservableProperty]
+    private string? _previewUnmatched;
+
+    /// <summary>True once a scan has run, so the preview panel has something to show.</summary>
+    public bool HasPreview => PreviewSummary is not null;
+
+    /// <summary>
+    /// Files more than one rule matched, with the rule that actually wins them. Information,
+    /// not a problem: the ordering resolved it, and seeing which rule won is the point.
+    /// </summary>
+    public ObservableCollection<string> Contested { get; } = [];
+
+    /// <summary>Whether a preview can be run at all (it needs a filesystem to read).</summary>
+    public bool CanPreview => _fileSystem is not null;
+
+    /// <summary>
+    /// Scans the source and shows where each file would go — the same first-match-wins
+    /// assignment the engine runs, so what this shows is what a run would do. Reads only:
+    /// nothing is written and no plan is applied.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRescan))]
+    private async System.Threading.Tasks.Task Rescan()
+    {
+        if (_fileSystem is not { } fileSystem)
+        {
+            return;
+        }
+
+        // Only rules that exist: a row still being written has no destination behind it.
+        var destinations = Rows.Where(row => !row.IsDraft).Select(row => row.Destination).ToList();
+        IsScanning = true;
+        try
+        {
+            var scan = await System.Threading.Tasks.Task.Run(
+                () => Scan(fileSystem, _task, destinations));
+            ShowPreview(scan);
+        }
+        catch (Exception exception)
+        {
+            // A source that cannot be read is worth saying out loud — an empty preview would
+            // otherwise read as "no files match your rules".
+            ClearPreview();
+            PreviewSummary = Localizer.Format(Strings.Workspace_PreviewFailedFormat, exception.Message);
+        }
+        finally
+        {
+            IsScanning = false;
+        }
+    }
+
+    private bool CanRescan() => CanPreview && !IsScanning;
 
     [RelayCommand]
     private void AddRule()
@@ -217,6 +288,130 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
         Renumber();
     }
 
+    // The scan itself: one walk of the source, then exactly the assignment the engine would
+    // make from it. Runs off the UI thread and touches nothing but the listing.
+    private static ScanResult Scan(
+        IFileSystem fileSystem, SyncTask task, IReadOnlyList<Destination> destinations)
+    {
+        var files = fileSystem.ListTree(task.SourcePath).Files;
+        var perDestination = new Dictionary<Guid, (int Count, List<string> Sample)>();
+        foreach (var destination in destinations)
+        {
+            perDestination[destination.Id] = (0, []);
+        }
+
+        var unmatched = new List<string>();
+        var unmatchedCount = 0;
+        var contested = new List<(string Path, IReadOnlyList<int> Rules)>();
+
+        if (task.Kind == SyncTaskKind.Move)
+        {
+            var routing = MoveRouting.Route(destinations, files);
+            for (var i = 0; i < destinations.Count; i++)
+            {
+                var assigned = routing.For(i);
+                perDestination[destinations[i].Id] =
+                    (assigned.Count, assigned.Take(SampleSize).Select(file => file.RelativePath).ToList());
+            }
+
+            unmatchedCount = routing.Unmatched.Count;
+            unmatched.AddRange(routing.Unmatched.Take(SampleSize).Select(file => file.RelativePath));
+            contested.AddRange(routing.Contested
+                .Take(SampleSize)
+                .Select(entry => (entry.Key, entry.Value)));
+        }
+        else
+        {
+            // Copying destinations are independent, so a file can be in several of them and
+            // "unmatched" means no destination wanted it at all.
+            foreach (var file in files)
+            {
+                var claimed = false;
+                foreach (var destination in destinations)
+                {
+                    if (!destination.Includes(file.RelativePath))
+                    {
+                        continue;
+                    }
+
+                    claimed = true;
+                    var (count, sample) = perDestination[destination.Id];
+                    if (sample.Count < SampleSize)
+                    {
+                        sample.Add(file.RelativePath);
+                    }
+
+                    perDestination[destination.Id] = (count + 1, sample);
+                }
+
+                if (!claimed)
+                {
+                    unmatchedCount++;
+                    if (unmatched.Count < SampleSize)
+                    {
+                        unmatched.Add(file.RelativePath);
+                    }
+                }
+            }
+        }
+
+        return new ScanResult(files.Count, perDestination, unmatchedCount, unmatched, contested);
+    }
+
+    private void ShowPreview(ScanResult scan)
+    {
+        PreviewSummary = Localizer.Format(
+            Strings.Workspace_PreviewSourceFormat,
+            Localizer.Plural("Common.FilesCount", scan.FileCount));
+
+        foreach (var row in Rows)
+        {
+            if (scan.PerDestination.TryGetValue(row.Destination.Id, out var entry))
+            {
+                row.PreviewCount = Localizer.Plural("Common.FilesCount", entry.Count);
+                row.PreviewSample = entry.Sample.Count == 0 ? null : string.Join("\n", entry.Sample);
+            }
+        }
+
+        PreviewUnmatched = scan.UnmatchedCount == 0
+            ? null
+            : Localizer.Format(
+                Strings.Workspace_PreviewUnmatchedFormat,
+                Localizer.Plural("Common.FilesCount", scan.UnmatchedCount),
+                string.Join(", ", scan.UnmatchedSample));
+
+        Contested.Clear();
+        foreach (var (path, rules) in scan.Contested)
+        {
+            Contested.Add(Localizer.Format(
+                Strings.Workspace_PreviewContestedFormat,
+                path,
+                string.Join(", ", rules.Select(rule => rule + 1)),
+                Rows.ElementAtOrDefault(rules[0])?.Name ?? string.Empty));
+        }
+    }
+
+    // A preview describes one set of rules; the moment they change it is a claim about
+    // something that no longer exists, so it goes rather than quietly going stale.
+    private void ClearPreview()
+    {
+        PreviewSummary = null;
+        PreviewUnmatched = null;
+        Contested.Clear();
+        foreach (var row in Rows)
+        {
+            row.PreviewCount = null;
+            row.PreviewSample = null;
+        }
+    }
+
+    private sealed record ScanResult(
+        int FileCount,
+        IReadOnlyDictionary<Guid, (int Count, List<string> Sample)> PerDestination,
+        int UnmatchedCount,
+        IReadOnlyList<string> UnmatchedSample,
+        IReadOnlyList<(string Path, IReadOnlyList<int> Rules)> Contested);
+
     // Numbers are positions, so they change whenever the list does; the shadowed-rule
     // warnings are recomputed with them since they depend on the same order.
     private void Renumber()
@@ -230,6 +425,7 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(CanAddCatchAll));
         AddCatchAllCommand.NotifyCanExecuteChanged();
+        ClearPreview();
     }
 
     // The earlier rule that provably takes everything this one would, or null. Deliberately
