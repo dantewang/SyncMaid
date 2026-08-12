@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Material.Icons;
 using Microsoft.Extensions.Logging;
+using SyncMaid.Core.IO;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Sync;
 using SyncMaid.Core.Triggers;
@@ -102,8 +103,6 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
         Children.CollectionChanged += (_, _) =>
         {
             ExecuteCommand.NotifyCanExecuteChanged();
-            AddDestinationCommand.NotifyCanExecuteChanged();
-            OnPropertyChanged(nameof(AddDestinationHint));
             RefreshHealth();
         };
 
@@ -271,21 +270,17 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task Delete() => _onDelete(this);
 
-    // Task shape convention (AGENT.md): Move is exclusive, so a task whose destination
-    // is Move cannot take another one.
-    private bool CanAddDestination() =>
-        Children.All(child => child.Destination.Strategy != SyncStrategy.Move);
+    /// <summary>Tooltip for the add-destination button. A Move task's list is ordered, so
+    /// what is being added there is the next routing rule, not just another destination.</summary>
+    public string AddDestinationHint => Task.Kind == SyncTaskKind.Move
+        ? Strings.Task_AddRoutingRuleTip
+        : Strings.Task_AddDestinationTip;
 
-    /// <summary>Tooltip for the add-destination button, explaining why it is disabled.</summary>
-    public string AddDestinationHint => CanAddDestination()
-        ? Strings.Task_AddDestinationTip
-        : Strings.Common_MoveExclusiveHint;
-
-    [RelayCommand(CanExecute = nameof(CanAddDestination))]
+    [RelayCommand]
     private async Task AddDestination()
     {
         var destination = await _dialogs.EditDestinationAsync(
-            null, Task.SourcePath, hasSiblings: Children.Count > 0, _destinationConflicts);
+            null, Task.SourcePath, Task.Kind, ConflictProbe(null));
         if (destination != null)
         {
             Children.Add(NewChild(destination, DestinationSyncStatus.Never(destination.Id)));
@@ -296,7 +291,7 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
     private async Task EditLeaf(DestinationNodeViewModel node)
     {
         var edited = await _dialogs.EditDestinationAsync(
-            node.Destination, Task.SourcePath, hasSiblings: Children.Count > 1, _destinationConflicts);
+            node.Destination, Task.SourcePath, Task.Kind, ConflictProbe(node.Id));
         if (edited != null)
         {
             // Id is preserved by the editor, so the existing status still applies.
@@ -304,6 +299,23 @@ public partial class TaskNodeViewModel : ViewModelBase, IDisposable
             RebuildAndPersist();
         }
     }
+
+    // Task shape convention (AGENT.md): destinations never overlap. The siblings are this
+    // node's business — the cross-task probe deliberately excludes the whole task being
+    // edited, so nothing else would compare a destination against the ones beside it.
+    private Func<string, DestinationConflict?> ConflictProbe(Guid? editedId) => path =>
+    {
+        var sibling = Children.FirstOrDefault(child =>
+            child.Id != editedId && RelativePaths.Overlaps(child.Path, path));
+        if (sibling is not null)
+        {
+            return new DestinationConflict(sibling.Name, WithinTask: true);
+        }
+
+        return _destinationConflicts(path) is { } task
+            ? new DestinationConflict(task, WithinTask: false)
+            : null;
+    };
 
     private async Task DeleteLeaf(DestinationNodeViewModel node)
     {

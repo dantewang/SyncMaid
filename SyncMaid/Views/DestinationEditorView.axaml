@@ -15,7 +15,7 @@
 
     <Border Classes="dialogCard" Width="510" MaxHeight="640">
         <DockPanel Margin="24">
-            <TextBlock DockPanel.Dock="Top" Text="{l:Loc DestEditor.Title}" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
+            <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" />
 
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,16,0,0">
                 <Button Classes="secondary" Content="{l:Loc Common.Cancel}" Command="{Binding CancelCommand}" />
@@ -24,6 +24,11 @@
 
             <ScrollViewer>
                 <StackPanel Spacing="16" Margin="0,0,12,0">
+                    <!-- One rule of an ordered list: what decides where a file goes is which
+                         rule matches it first, which is not visible from a single rule. -->
+                    <c:HintBox Icon="FormatListNumbered" IsVisible="{Binding IsRoutingRule}"
+                               Text="{l:Loc DestEditor.RoutingRuleHint}" />
+
                     <StackPanel>
                         <TextBlock Text="{l:Loc Common.NameLabel}" Classes="label" />
                         <TextBox Text="{Binding Name}" />
@@ -46,7 +51,8 @@
                                    Text="{Binding PathHintText}" Margin="0,6,0,0" />
                     </StackPanel>
 
-                    <StackPanel>
+                    <!-- A Move task's destinations are all Move; there is nothing to pick. -->
+                    <StackPanel IsVisible="{Binding ShowStrategyChoice}">
                         <TextBlock Text="{l:Loc DestEditor.StrategyLabel}" Classes="label" />
                         <StackPanel Spacing="8">
                             <RadioButton Classes="card" GroupName="strategy"
@@ -69,19 +75,40 @@
                                     </StackPanel>
                                 </Grid>
                             </RadioButton>
-                            <RadioButton Classes="card" GroupName="strategy"
-                                         IsEnabled="{Binding CanChooseMove}"
-                                         ToolTip.Tip="{Binding MoveUnavailableHint}"
-                                         ToolTip.ShowOnDisabled="True"
-                                         IsChecked="{Binding SelectedStrategy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncStrategy.Move}}">
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <mi:MaterialIcon Grid.Column="0" Kind="ArrowRight" Width="20" Height="20" Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{l:Loc Enum.SyncStrategy.Move}" FontWeight="Medium" />
-                                        <TextBlock Text="{l:Loc DestEditor.MoveDesc}" Classes="muted" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Grid>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Move's own choices: keeping the source layout is the shape that cannot
+                         collide, so flattening is what needs a policy beside it. -->
+                    <StackPanel IsVisible="{Binding ShowMoveOptions}">
+                        <TextBlock Text="{l:Loc DestEditor.MoveOptionsLabel}" Classes="label" />
+                        <Grid ColumnDefinitions="*,8,*">
+                            <RadioButton Grid.Column="0" Classes="segment" GroupName="flatten" IsChecked="{Binding !FlattenStructure}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <mi:MaterialIcon Kind="FileTree" Width="15" Height="15" />
+                                    <TextBlock Text="{l:Loc DestEditor.KeepStructure}" />
+                                </StackPanel>
                             </RadioButton>
+                            <RadioButton Grid.Column="2" Classes="segment" GroupName="flatten" IsChecked="{Binding FlattenStructure}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <mi:MaterialIcon Kind="FolderOutline" Width="15" Height="15" />
+                                    <TextBlock Text="{l:Loc DestEditor.Flatten}" />
+                                </StackPanel>
+                            </RadioButton>
+                        </Grid>
+
+                        <StackPanel IsVisible="{Binding FlattenStructure}" Margin="0,10,0,0">
+                            <TextBlock Text="{l:Loc DestEditor.CollisionLabel}" Classes="label" />
+                            <Grid ColumnDefinitions="*,8,*">
+                                <RadioButton Grid.Column="0" Classes="segment" GroupName="collision"
+                                             IsChecked="{Binding SelectedCollisionPolicy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:FileNameCollisionPolicy.Skip}}">
+                                    <TextBlock Text="{l:Loc Enum.FileNameCollisionPolicy.Skip}" />
+                                </RadioButton>
+                                <RadioButton Grid.Column="2" Classes="segment" GroupName="collision"
+                                             IsChecked="{Binding SelectedCollisionPolicy, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:FileNameCollisionPolicy.Suffix}}">
+                                    <TextBlock Text="{l:Loc Enum.FileNameCollisionPolicy.Suffix}" />
+                                </RadioButton>
+                            </Grid>
                         </StackPanel>
                     </StackPanel>
 

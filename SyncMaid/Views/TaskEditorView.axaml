@@ -6,6 +6,7 @@
              xmlns:conv="using:SyncMaid.Converters"
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:c="using:SyncMaid.Controls"
+             xmlns:model="using:SyncMaid.Core.Model"
              xmlns:l="using:SyncMaid.Markup"
              mc:Ignorable="d" d:DesignWidth="470"
              x:Class="SyncMaid.Views.TaskEditorView"
@@ -36,6 +37,38 @@
                      blocks saving — the text explains whichever applies. -->
                 <c:HintBox Classes="warning" IsVisible="{Binding ShowPathHint}"
                            Text="{Binding PathHintText}" Margin="0,6,0,0" />
+            </StackPanel>
+
+            <!-- What the task does decides which destinations it accepts, so it is settled
+                 before the first one exists — and locked afterwards, since flipping it would
+                 invalidate every destination already there. -->
+            <StackPanel>
+                <TextBlock Text="{l:Loc TaskEditor.KindLabel}" Classes="label" />
+                <StackPanel Spacing="8" IsEnabled="{Binding CanChangeKind}"
+                            ToolTip.Tip="{Binding KindLockedHint}" ToolTip.ShowOnDisabled="True">
+                    <RadioButton Classes="card" GroupName="kind"
+                                 IsChecked="{Binding SelectedKind, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncTaskKind.Sync}}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <mi:MaterialIcon Grid.Column="0" Kind="Sync" Width="20" Height="20"
+                                             Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{l:Loc TaskEditor.KindSync}" FontWeight="Medium" />
+                                <TextBlock Text="{l:Loc TaskEditor.KindSyncDesc}" Classes="muted" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </RadioButton>
+                    <RadioButton Classes="card" GroupName="kind"
+                                 IsChecked="{Binding SelectedKind, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter={x:Static model:SyncTaskKind.Move}}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <mi:MaterialIcon Grid.Column="0" Kind="CallSplit" Width="20" Height="20"
+                                             Foreground="{StaticResource TealBrush}" VerticalAlignment="Center" Margin="0,0,11,0" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{l:Loc TaskEditor.KindMove}" FontWeight="Medium" />
+                                <TextBlock Text="{l:Loc TaskEditor.KindMoveDesc}" Classes="muted" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </RadioButton>
+                </StackPanel>
             </StackPanel>
 
             <StackPanel>

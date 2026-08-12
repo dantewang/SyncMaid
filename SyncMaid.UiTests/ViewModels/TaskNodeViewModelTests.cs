@@ -526,29 +526,61 @@ public class TaskNodeViewModelTests
         Assert.Contains("\"Other\"", node.Children[0].Status.Error);
     }
 
-    // Task shape convention: Move is exclusive.
+    // A Move task routes into as many destinations as it likes; what used to be the
+    // "Move is exclusive" gate is now the task kind, and the editor is told which it is.
     [Fact]
-    public void A_move_destination_blocks_adding_another()
+    public async Task A_move_task_keeps_taking_routing_rules()
     {
         var move = new Destination("m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
-        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [move]));
+        var dialogs = new FakeDialogService(); // returns null: the "dialog" is cancelled
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [move]), dialogs: dialogs);
 
-        Assert.False(node.AddDestinationCommand.CanExecute(null));
-        Assert.Contains("only destination", node.AddDestinationHint, StringComparison.OrdinalIgnoreCase);
+        Assert.True(node.AddDestinationCommand.CanExecute(null));
+        await node.AddDestinationCommand.ExecuteAsync(null);
+
+        Assert.Equal(SyncTaskKind.Move, dialogs.LastEditTaskKind);
     }
 
     [Fact]
-    public async Task Sibling_context_flows_to_the_destination_editor()
+    public async Task The_task_kind_flows_to_the_destination_editor()
     {
-        var dialogs = new FakeDialogService(); // returns null: the "dialog" is cancelled
-        var empty = New(new SyncTask("A", @"C:\a", new ManualTrigger(), []), dialogs: dialogs);
-        await empty.AddDestinationCommand.ExecuteAsync(null);
-        Assert.False(dialogs.LastEditHadSiblings); // first destination — Move available
-
+        var dialogs = new FakeDialogService();
         var node = New(new SyncTask("B", @"C:\b", new ManualTrigger(), [Dest("D")]), dialogs: dialogs);
-        Assert.True(node.AddDestinationCommand.CanExecute(null)); // non-Move sibling — add allowed
+
         await node.AddDestinationCommand.ExecuteAsync(null);
-        Assert.True(dialogs.LastEditHadSiblings); // …but the new destination cannot be Move
+
+        Assert.Equal(SyncTaskKind.Sync, dialogs.LastEditTaskKind);
+    }
+
+    // Task shape convention: destinations never overlap — including two of the same task,
+    // which nothing else checks (the cross-task probe excludes the whole task being edited).
+    [Fact]
+    public async Task A_destination_overlapping_a_sibling_is_reported_to_the_editor()
+    {
+        var dialogs = new FakeDialogService();
+        var existing = new Destination("Books", @"D:\books", [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [existing]), dialogs: dialogs);
+
+        await node.AddDestinationCommand.ExecuteAsync(null);
+
+        Assert.Equal(
+            new DestinationConflict("Books", WithinTask: true),
+            dialogs.LastDestinationConflicts!(@"D:\books\2026"));
+        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\papers"));
+    }
+
+    // Editing a destination must not report the destination against itself, or its own
+    // path would look like a conflict the moment the editor opened.
+    [Fact]
+    public async Task Editing_a_destination_does_not_flag_its_own_path()
+    {
+        var dialogs = new FakeDialogService();
+        var existing = new Destination("Books", @"D:\books", [new AllFilesFilter()], SyncStrategy.AddOnly);
+        var node = New(new SyncTask("A", @"C:\a", new ManualTrigger(), [existing]), dialogs: dialogs);
+
+        await node.Children[0].EditCommand.ExecuteAsync(null);
+
+        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\books"));
     }
 
     [Fact]

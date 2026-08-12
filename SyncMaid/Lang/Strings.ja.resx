@@ -31,9 +31,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>削除</value>
   </data>
-  <data name="Common.MoveExclusiveHint" xml:space="preserve">
-    <value>「移動」の同期先は、そのタスクの唯一の同期先でなければなりません。</value>
-  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 個のファイル</value>
   </data>
@@ -136,6 +133,9 @@
   </data>
   <data name="Task.AddDestinationTip" xml:space="preserve">
     <value>同期先を追加</value>
+  </data>
+  <data name="Task.AddRoutingRuleTip" xml:space="preserve">
+    <value>仕分けルールを追加</value>
   </data>
   <data name="Task.EditTip" xml:space="preserve">
     <value>タスクを編集</value>
@@ -326,6 +326,24 @@
   <data name="TaskEditor.MissingFolderHint" xml:space="preserve">
     <value>このフォルダーは存在しません。入力ミスがないか確認してください — 存在するまでタスクは同期対象を見つけられず、監視トリガーも開始できません。</value>
   </data>
+  <data name="TaskEditor.KindLabel" xml:space="preserve">
+    <value>このタスクの動作</value>
+  </data>
+  <data name="TaskEditor.KindSync" xml:space="preserve">
+    <value>同期</value>
+  </data>
+  <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
+    <value>ソースを各同期先にコピーし、ソースはそのまま残します。同期先ごとにファイルを選びます。</value>
+  </data>
+  <data name="TaskEditor.KindMove" xml:space="preserve">
+    <value>移動</value>
+  </data>
+  <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
+    <value>ソースのファイルを仕分けます: 各ファイルは最初に一致したルールへ移動し、ソースからは無くなります。</value>
+  </data>
+  <data name="TaskEditor.KindLockedHint" xml:space="preserve">
+    <value>同期先がある間は種類を変更できません — 先に同期先を削除してください。</value>
+  </data>
 
   <!-- Destination editor -->
   <data name="DestEditor.Title" xml:space="preserve">
@@ -345,9 +363,6 @@
   </data>
   <data name="DestEditor.AddOnlyDesc" xml:space="preserve">
     <value>新規・変更ファイルをコピーします。同期先からは何も削除しません。</value>
-  </data>
-  <data name="DestEditor.MoveDesc" xml:space="preserve">
-    <value>一致したファイルを同期先に移動し、同期元から取り除きます。</value>
   </data>
   <data name="DestEditor.FilesToSyncLabel" xml:space="preserve">
     <value>同期するファイル</value>
@@ -430,6 +445,27 @@
   <data name="DestEditor.MissingFolderHint" xml:space="preserve">
     <value>このフォルダーはまだ存在しません — 初回実行時に作成されます。入力ミスがないか確認してください。</value>
   </data>
+  <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
+    <value>仕分けルール</value>
+  </data>
+  <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
+    <value>ルールは上から順に照合され、各ファイルは最初に一致したルールへ移動します。どのルールにも一致しないファイルはソースに残ります。</value>
+  </data>
+  <data name="DestEditor.SiblingOverlapHintFormat" xml:space="preserve">
+    <value>このフォルダーは、このタスクの「{0}」と重なっています — 同期先どうしは重ねられません。</value>
+  </data>
+  <data name="DestEditor.MoveOptionsLabel" xml:space="preserve">
+    <value>ファイルの置き場所</value>
+  </data>
+  <data name="DestEditor.KeepStructure" xml:space="preserve">
+    <value>元のフォルダー構成を保つ</value>
+  </data>
+  <data name="DestEditor.Flatten" xml:space="preserve">
+    <value>すべてのファイルをこのフォルダー直下に置く</value>
+  </data>
+  <data name="DestEditor.CollisionLabel" xml:space="preserve">
+    <value>同じ名前が既にある場合</value>
+  </data>
 
   <!-- Enum display names -->
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
@@ -446,6 +482,12 @@
   </data>
   <data name="Enum.DeleteMode.Permanent" xml:space="preserve">
     <value>完全に削除</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Skip" xml:space="preserve">
+    <value>ファイルを残して報告する</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Suffix" xml:space="preserve">
+    <value>名前に番号を付ける</value>
   </data>
   <data name="Enum.FilterKind.Path" xml:space="preserve">
     <value>パス</value>

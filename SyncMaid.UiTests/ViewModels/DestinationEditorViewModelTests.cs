@@ -12,6 +12,15 @@ public class DestinationEditorViewModelTests
     private static DestinationEditorViewModel New(string? folder = null, Destination? existing = null) =>
         new(new FakeFolderPickerService(folder), existing);
 
+    // Accepts the editor and hands back the whole destination it would have saved.
+    private static Destination SaveDestination(DestinationEditorViewModel editor)
+    {
+        Destination? saved = null;
+        editor.CloseRequested += result => saved = result;
+        editor.OKCommand.Execute(null);
+        return Assert.IsType<Destination>(saved);
+    }
+
     [Fact]
     public void Editing_preserves_the_destination_id()
     {
@@ -520,7 +529,9 @@ public class DestinationEditorViewModelTests
             new FakeFolderPickerService(),
             sourcePath: @"C:\Source",
             directoryExists: _ => true,
-            destinationConflicts: path => path.StartsWith(@"D:\backup") ? "Backup" : null)
+            destinationConflicts: path => path.StartsWith(@"D:\backup")
+                ? new DestinationConflict("Backup", WithinTask: false)
+                : null)
         {
             Name = "D",
         };
@@ -535,29 +546,77 @@ public class DestinationEditorViewModelTests
         Assert.True(vm.OKCommand.CanExecute(null));
     }
 
-    // Task shape convention: Move is exclusive — with sibling destinations the Move
-    // strategy is unavailable, except when editing an existing (hand-edited) Move.
+    // Task shape convention: destinations never overlap each other inside a task either,
+    // and the wording has to say which of the two it is — the user fixes them differently.
     [Fact]
-    public void Move_is_unavailable_when_the_task_has_other_destinations()
+    public void Destination_overlapping_a_sibling_is_explained_as_such_and_rejected()
     {
-        var vm = new DestinationEditorViewModel(new FakeFolderPickerService(), hasSiblings: true);
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(),
+            sourcePath: @"C:\Source",
+            directoryExists: _ => true,
+            destinationConflicts: path => path.StartsWith(@"D:\books")
+                ? new DestinationConflict("Books", WithinTask: true)
+                : null)
+        {
+            Name = "D",
+        };
 
-        Assert.False(vm.CanChooseMove);
-        Assert.Contains("only destination", vm.MoveUnavailableHint, StringComparison.OrdinalIgnoreCase);
+        vm.Path = @"D:\books\2026";
+        Assert.True(vm.ShowPathHint);
+        Assert.Contains("\"Books\"", vm.PathHintText);
+        Assert.Contains("this task", vm.PathHintText, StringComparison.OrdinalIgnoreCase);
+        Assert.False(vm.OKCommand.CanExecute(null));
+    }
+
+    // A Move task's destinations are routing rules: the strategy is settled by the task, so
+    // the editor offers no choice and shows Move's own options instead.
+    [Fact]
+    public void A_move_tasks_destination_is_a_routing_rule_with_no_strategy_to_choose()
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(), taskKind: SyncTaskKind.Move);
+
+        Assert.True(vm.IsRoutingRule);
+        Assert.False(vm.ShowStrategyChoice);
+        Assert.Equal(SyncStrategy.Move, vm.SelectedStrategy);
+        Assert.True(vm.ShowMoveOptions);
     }
 
     [Fact]
-    public void Move_stays_available_without_siblings_and_for_an_existing_move_destination()
+    public void A_sync_tasks_destination_chooses_between_the_copying_strategies()
     {
-        var alone = new DestinationEditorViewModel(new FakeFolderPickerService());
-        Assert.True(alone.CanChooseMove);
-        Assert.Null(alone.MoveUnavailableHint);
+        var vm = new DestinationEditorViewModel(new FakeFolderPickerService());
 
-        var existingMove = new Destination(
-            "m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
-        var handEdited = new DestinationEditorViewModel(
-            new FakeFolderPickerService(), existingMove, hasSiblings: true);
-        Assert.True(handEdited.CanChooseMove);
+        Assert.False(vm.IsRoutingRule);
+        Assert.True(vm.ShowStrategyChoice);
+        Assert.Equal(SyncStrategy.Mirror, vm.SelectedStrategy);
+        Assert.False(vm.ShowMoveOptions);
+    }
+
+    // Flattening is the only shape that can collide, so the policy travels with it — and a
+    // destination that keeps the source structure must not persist a stale flatten flag.
+    [Fact]
+    public void Move_options_round_trip_through_the_editor()
+    {
+        var vm = new DestinationEditorViewModel(
+            new FakeFolderPickerService(), taskKind: SyncTaskKind.Move, directoryExists: _ => true)
+        {
+            Name = "Books",
+            Path = @"D:\books",
+            FlattenStructure = true,
+            SelectedCollisionPolicy = FileNameCollisionPolicy.Suffix,
+        };
+
+        var saved = SaveDestination(vm);
+
+        Assert.True(saved.FlattenStructure);
+        Assert.Equal(FileNameCollisionPolicy.Suffix, saved.CollisionPolicy);
+
+        var reopened = new DestinationEditorViewModel(
+            new FakeFolderPickerService(), saved, taskKind: SyncTaskKind.Move);
+        Assert.True(reopened.FlattenStructure);
+        Assert.Equal(FileNameCollisionPolicy.Suffix, reopened.SelectedCollisionPolicy);
     }
 
     // Typing a UNC destination passes through prefixes GetFullPath rejects ("\\", "\\nas");

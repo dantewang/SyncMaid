@@ -30,6 +30,11 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
     [NotifyPropertyChangedFor(nameof(CronPreview))]
     private string _cronExpression = string.Empty;
 
+    /// <summary>What the task does, and so which destinations it will accept. Fixed once the
+    /// task has destinations — see <see cref="CanChangeKind"/>.</summary>
+    [ObservableProperty]
+    private SyncTaskKind _selectedKind = SyncTaskKind.Sync;
+
     /// <param name="directoryExists">Directory probe, injectable for tests;
     /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
     /// for invalid/partial input, so it is safe to call while the user types).</param>
@@ -51,11 +56,23 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
         _sourceConflicts = sourceConflicts;
         TriggerTypes = Enum.GetValues<TaskTriggerType>();
 
+        // Switching kind would invalidate every destination the task has (a Move task takes
+        // Move destinations only, and vice versa), so it is settled while the task is empty
+        // — which is also the only moment the choice costs the user nothing.
+        CanChangeKind = existing is null || existing.Destinations.Count == 0;
+
         if (existing != null)
         {
             (_selectedTriggerType, _cronExpression, _settleSeconds) = FromTrigger(existing.Trigger);
+            _selectedKind = existing.Kind;
         }
     }
+
+    /// <summary>False once the task has destinations; the kind is then read-only.</summary>
+    public bool CanChangeKind { get; }
+
+    /// <summary>Explains the locked kind selector; null while it is editable.</summary>
+    public string? KindLockedHint => CanChangeKind ? null : Strings.TaskEditor_KindLockedHint;
 
     // Task shape convention (AGENT.md): tasks never share same-kind paths. The probe is
     // supplied by the task-list owner and already excludes the task being edited.
@@ -104,7 +121,7 @@ public partial class TaskEditorViewModel : EditorDialogViewModel<SyncTask>
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK() =>
         // Destinations are merged in by the caller; a fresh task carries none.
-        Close(new SyncTask(Name, Path, ToTrigger(), []) { Id = EditorId });
+        Close(new SyncTask(Name, Path, ToTrigger(), []) { Id = EditorId, Kind = SelectedKind });
 
     protected override IRelayCommand AcceptCommand => OKCommand;
 

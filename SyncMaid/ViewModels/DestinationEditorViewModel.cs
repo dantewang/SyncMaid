@@ -29,6 +29,7 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFilterEditor))]
+    [NotifyPropertyChangedFor(nameof(ShowMoveOptions))]
     [NotifyCanExecuteChangedFor(nameof(OKCommand))]
     private SyncStrategy _selectedStrategy = SyncStrategy.Mirror;
 
@@ -38,6 +39,15 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
 
     [ObservableProperty]
     private DeleteMode _selectedDeleteMode = DeleteMode.Recycle;
+
+    /// <summary>Move only: land files in the destination root instead of keeping the folders
+    /// they sat in. See <see cref="Destination.FlattenStructure"/>.</summary>
+    [ObservableProperty]
+    private bool _flattenStructure;
+
+    /// <summary>Move only: what a flattened file does when its name is already taken.</summary>
+    [ObservableProperty]
+    private FileNameCollisionPolicy _selectedCollisionPolicy = FileNameCollisionPolicy.Skip;
 
     /// <summary>Whether the mass-delete guard is on (off = never ask, threshold 0).</summary>
     [ObservableProperty]
@@ -57,15 +67,15 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <param name="directoryExists">Directory probe, injectable for tests;
     /// defaults to <see cref="System.IO.Directory.Exists"/> (never throws — returns false
     /// for invalid/partial input, so it is safe to call while the user types).</param>
-    private readonly Func<string, string?>? _destinationConflicts;
+    private readonly Func<string, DestinationConflict?>? _destinationConflicts;
 
     public DestinationEditorViewModel(
         IFolderPickerService folderPicker,
         Destination? existing = null,
         string sourcePath = "",
         Func<string, bool>? directoryExists = null,
-        bool hasSiblings = false,
-        Func<string, string?>? destinationConflicts = null)
+        SyncTaskKind taskKind = SyncTaskKind.Sync,
+        Func<string, DestinationConflict?>? destinationConflicts = null)
         : base(
             folderPicker,
             Strings.Dialog_SelectDestinationFolder,
@@ -76,10 +86,10 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     {
         _sourcePath = sourcePath;
         _destinationConflicts = destinationConflicts;
-        // Task shape convention (AGENT.md): Move is exclusive, so with sibling
-        // destinations the Move strategy is unavailable. An existing Move destination
-        // (hand-edited config) stays selectable so the user can see and change it.
-        CanChooseMove = !hasSiblings || existing?.Strategy == SyncStrategy.Move;
+        // The task's kind decides the strategy: a Move task routes, so its destinations are
+        // Move and there is nothing to choose; a Sync task copies, so Move is not on offer.
+        IsRoutingRule = taskKind == SyncTaskKind.Move;
+        _selectedStrategy = IsRoutingRule ? SyncStrategy.Move : SyncStrategy.Mirror;
         SyncStrategies = Enum.GetValues<SyncStrategy>();
         DeleteModes = Enum.GetValues<DeleteMode>();
         Groups = new ObservableCollection<FilterGroupViewModel>();
@@ -94,6 +104,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             _selectedStrategy = existing.Strategy;
             _verifyContents = existing.VerifyContents;
             _selectedDeleteMode = existing.DeleteMode;
+            _flattenStructure = existing.FlattenStructure;
+            _selectedCollisionPolicy = existing.CollisionPolicy;
 
             // 0 (or less) means the guard is off; otherwise show it as a whole percentage.
             _confirmLargeDeletions = existing.MassDeleteThreshold > 0;
@@ -120,12 +132,19 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     public SyncStrategy[] SyncStrategies { get; }
     public DeleteMode[] DeleteModes { get; }
 
-    /// <summary>False when the task has other destinations — Move is exclusive.</summary>
-    public bool CanChooseMove { get; }
+    /// <summary>True when this destination belongs to a Move task: it is one rule of an
+    /// ordered routing list, so its strategy is settled and the editor shows Move's own
+    /// options instead of a strategy choice.</summary>
+    public bool IsRoutingRule { get; }
 
-    /// <summary>Tooltip for the disabled Move option; null when Move is available.</summary>
-    public string? MoveUnavailableHint =>
-        CanChooseMove ? null : Strings.Common_MoveExclusiveHint;
+    /// <summary>Dialog heading — a routing rule is a different thing from a sync destination.</summary>
+    public string Title => IsRoutingRule ? Strings.DestEditor_RoutingRuleTitle : Strings.DestEditor_Title;
+
+    /// <summary>Whether the strategy radio group is shown; a Move task has no choice to make.</summary>
+    public bool ShowStrategyChoice => !IsRoutingRule;
+
+    /// <summary>Whether Move's own options (flatten, collision policy) are shown.</summary>
+    public bool ShowMoveOptions => SelectedStrategy == SyncStrategy.Move;
 
     /// <summary>
     /// False for Mirror, hiding the whole "files to sync" section. Mirror's contract is
@@ -162,12 +181,16 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
     /// <summary>Whether to show the "verifying over the network is slow" caution.</summary>
     public bool ShowVerifyNetworkWarning => VerifyContents && IsNetworkPath;
 
-    /// <summary>Explains a blocked nested path or cross-task overlap, or the non-blocking
+    /// <summary>Explains a blocked nested path or destination overlap, or the non-blocking
     /// missing-folder hint.</summary>
     public string PathHintText => HasUnsafeNesting
         ? Strings.DestEditor_NestedPathHint
-        : DestinationConflictName is { } conflictingTask
-            ? Localizer.Format(Strings.DestEditor_DestinationOverlapHintFormat, conflictingTask)
+        : Conflict is { } conflict
+            ? Localizer.Format(
+                conflict.WithinTask
+                    ? Strings.DestEditor_SiblingOverlapHintFormat
+                    : Strings.DestEditor_DestinationOverlapHintFormat,
+                conflict.Name)
             : Strings.DestEditor_MissingFolderHint;
 
     [RelayCommand(CanExecute = nameof(CanOk))]
@@ -183,6 +206,8 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
             VerifyContents = VerifyContents,
             DeleteMode = SelectedDeleteMode,
             MassDeleteThreshold = ConfirmLargeDeletions ? (double)Math.Clamp(MassDeletePercent, 1, 100) / 100.0 : 0,
+            FlattenStructure = ShowMoveOptions && FlattenStructure,
+            CollisionPolicy = SelectedCollisionPolicy,
         });
     }
 
@@ -192,20 +217,21 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
         !string.IsNullOrWhiteSpace(Name)
         && !string.IsNullOrWhiteSpace(Path)
         && !HasUnsafeNesting
-        && DestinationConflictName is null
+        && Conflict is null
         && (!ShowFilterEditor || SyncAll || Groups.Any(group => group.Rules.Count > 0));
 
     // Task shape convention (AGENT.md): source and destinations never nest, in either
     // direction, for every strategy. The engine enforces the same rule at run start.
     private bool HasUnsafeNesting => RelativePaths.Overlaps(Path, _sourcePath);
 
-    // Task shape convention (AGENT.md): tasks never share same-kind paths. The probe is
-    // supplied by the task-list owner and checks the other tasks' destinations.
-    private string? DestinationConflictName =>
+    // Task shape convention (AGENT.md): destinations never overlap, whether they belong to
+    // this task or another one. The probe is supplied by the owning task node, which knows
+    // both its own siblings and (via the task list) every other task's destinations.
+    private DestinationConflict? Conflict =>
         string.IsNullOrWhiteSpace(Path) ? null : _destinationConflicts?.Invoke(Path);
 
     protected override bool HasAdditionalPathWarning =>
-        HasUnsafeNesting || DestinationConflictName is not null;
+        HasUnsafeNesting || Conflict is not null;
 
     protected override void OnEditorPathChanged()
     {

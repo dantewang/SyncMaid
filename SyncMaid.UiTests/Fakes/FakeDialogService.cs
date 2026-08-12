@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using SyncMaid.Core.Model;
 using SyncMaid.Services;
+using SyncMaid.ViewModels;
 
 namespace SyncMaid.UiTests.Fakes;
 
@@ -21,13 +22,14 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>Number of times a confirmation was requested.</summary>
     public int ConfirmCount { get; private set; }
 
-    /// <summary>The <c>hasSiblings</c> flag passed to the most recent destination edit.</summary>
-    public bool? LastEditHadSiblings { get; private set; }
+    /// <summary>The task kind passed to the most recent destination edit — it decides
+    /// whether the editor offers a strategy at all.</summary>
+    public SyncTaskKind? LastEditTaskKind { get; private set; }
 
     /// <summary>The overlap probes passed to the most recent edits, so tests can assert
     /// the wiring (which tasks a probe sees, and that the edited task excludes itself).</summary>
     public Func<string, string?>? LastSourceConflicts { get; private set; }
-    public Func<string, string?>? LastDestinationConflicts { get; private set; }
+    public Func<string, DestinationConflict?>? LastDestinationConflicts { get; private set; }
 
     public Task<SyncTask?> EditTaskAsync(SyncTask? existing, Func<string, string?> sourceConflicts)
     {
@@ -36,9 +38,12 @@ public sealed class FakeDialogService : IDialogService
     }
 
     public Task<Destination?> EditDestinationAsync(
-        Destination? existing, string sourcePath, bool hasSiblings, Func<string, string?> destinationConflicts)
+        Destination? existing,
+        string sourcePath,
+        SyncTaskKind taskKind,
+        Func<string, DestinationConflict?> destinationConflicts)
     {
-        LastEditHadSiblings = hasSiblings;
+        LastEditTaskKind = taskKind;
         LastDestinationConflicts = destinationConflicts;
         return Task.FromResult(OnEditDestination(existing));
     }

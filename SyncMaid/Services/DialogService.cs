@@ -25,10 +25,13 @@ public sealed class DialogService : IDialogService
         _host.ShowAsync(new TaskEditorViewModel(_folderPicker, existing, sourceConflicts: sourceConflicts));
 
     public Task<Destination?> EditDestinationAsync(
-        Destination? existing, string sourcePath, bool hasSiblings, Func<string, string?> destinationConflicts) =>
+        Destination? existing,
+        string sourcePath,
+        SyncTaskKind taskKind,
+        Func<string, DestinationConflict?> destinationConflicts) =>
         _host.ShowAsync(new DestinationEditorViewModel(
             _folderPicker, existing, sourcePath,
-            hasSiblings: hasSiblings, destinationConflicts: destinationConflicts));
+            taskKind: taskKind, destinationConflicts: destinationConflicts));
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel, bool isDestructive = true) =>
         await _host.ShowAsync(new ConfirmViewModel(title, message, confirmLabel, isDestructive));

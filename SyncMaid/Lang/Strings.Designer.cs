@@ -41,9 +41,6 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "{0} files".</summary>
     public static string Common_FilesCount_Other => Get("Common.FilesCount.Other");
 
-    /// <summary>Looks up a localized string similar to "A Move destination must be the only destination of its task.".</summary>
-    public static string Common_MoveExclusiveHint => Get("Common.MoveExclusiveHint");
-
     /// <summary>Looks up a localized string similar to "Name".</summary>
     public static string Common_NameLabel => Get("Common.NameLabel");
 
@@ -80,6 +77,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Ask when deleting more than".</summary>
     public static string DestEditor_AskWhenDeletingMoreThan => Get("DestEditor.AskWhenDeletingMoreThan");
 
+    /// <summary>Looks up a localized string similar to "If that name is already taken".</summary>
+    public static string DestEditor_CollisionLabel => Get("DestEditor.CollisionLabel");
+
     /// <summary>Looks up a localized string similar to "Confirm before a large deletion".</summary>
     public static string DestEditor_ConfirmLargeDeletions => Get("DestEditor.ConfirmLargeDeletions");
 
@@ -95,8 +95,14 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Files to sync".</summary>
     public static string DestEditor_FilesToSyncLabel => Get("DestEditor.FilesToSyncLabel");
 
+    /// <summary>Looks up a localized string similar to "Put every file directly in the folder".</summary>
+    public static string DestEditor_Flatten => Get("DestEditor.Flatten");
+
     /// <summary>Looks up a localized string similar to "Destination folder".</summary>
     public static string DestEditor_FolderLabel => Get("DestEditor.FolderLabel");
+
+    /// <summary>Looks up a localized string similar to "Keep the folders they are in".</summary>
+    public static string DestEditor_KeepStructure => Get("DestEditor.KeepStructure");
 
     /// <summary>Looks up a localized string similar to "Match all groups".</summary>
     public static string DestEditor_MatchAllGroups => Get("DestEditor.MatchAllGroups");
@@ -119,8 +125,8 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "This folder doesn&apos;t exist yet — it will be created on the first run. Double-c...".</summary>
     public static string DestEditor_MissingFolderHint => Get("DestEditor.MissingFolderHint");
 
-    /// <summary>Looks up a localized string similar to "Move matching files to the destination, removing them from the source.".</summary>
-    public static string DestEditor_MoveDesc => Get("DestEditor.MoveDesc");
+    /// <summary>Looks up a localized string similar to "Where files land".</summary>
+    public static string DestEditor_MoveOptionsLabel => Get("DestEditor.MoveOptionsLabel");
 
     /// <summary>Looks up a localized string similar to "Destination must be a separate folder outside the source (and not contain it).".</summary>
     public static string DestEditor_NestedPathHint => Get("DestEditor.NestedPathHint");
@@ -140,8 +146,17 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Remove".</summary>
     public static string DestEditor_RemoveTip => Get("DestEditor.RemoveTip");
 
+    /// <summary>Looks up a localized string similar to "Rules are matched in order: each file goes to the first one that matches it. ...".</summary>
+    public static string DestEditor_RoutingRuleHint => Get("DestEditor.RoutingRuleHint");
+
+    /// <summary>Looks up a localized string similar to "Routing rule".</summary>
+    public static string DestEditor_RoutingRuleTitle => Get("DestEditor.RoutingRuleTitle");
+
     /// <summary>Looks up a localized string similar to "Save destination".</summary>
     public static string DestEditor_Save => Get("DestEditor.Save");
+
+    /// <summary>Looks up a localized string similar to "This folder overlaps &quot;{0}&quot; in this task — destinations never overlap each other.".</summary>
+    public static string DestEditor_SiblingOverlapHintFormat => Get("DestEditor.SiblingOverlapHintFormat");
 
     /// <summary>Looks up a localized string similar to "Sync strategy".</summary>
     public static string DestEditor_StrategyLabel => Get("DestEditor.StrategyLabel");
@@ -169,6 +184,12 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Recycle Bin".</summary>
     public static string Enum_DeleteMode_Recycle => Get("Enum.DeleteMode.Recycle");
+
+    /// <summary>Looks up a localized string similar to "Leave the file and report it".</summary>
+    public static string Enum_FileNameCollisionPolicy_Skip => Get("Enum.FileNameCollisionPolicy.Skip");
+
+    /// <summary>Looks up a localized string similar to "Add a number to the name".</summary>
+    public static string Enum_FileNameCollisionPolicy_Suffix => Get("Enum.FileNameCollisionPolicy.Suffix");
 
     /// <summary>Looks up a localized string similar to "Extension".</summary>
     public static string Enum_FilterKind_Extension => Get("Enum.FilterKind.Extension");
@@ -410,6 +431,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Add destination".</summary>
     public static string Task_AddDestinationTip => Get("Task.AddDestinationTip");
 
+    /// <summary>Looks up a localized string similar to "Add routing rule".</summary>
+    public static string Task_AddRoutingRuleTip => Get("Task.AddRoutingRuleTip");
+
     /// <summary>Looks up a localized string similar to "Remove the destination &quot;{0}&quot; from this task? This can&apos;t be undone.".</summary>
     public static string Task_DeleteDestinationMessageFormat => Get("Task.DeleteDestinationMessageFormat");
 
@@ -478,6 +502,24 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Valid in local time, but has no upcoming runs".</summary>
     public static string TaskEditor_CronNoUpcoming => Get("TaskEditor.CronNoUpcoming");
+
+    /// <summary>Looks up a localized string similar to "What this task does".</summary>
+    public static string TaskEditor_KindLabel => Get("TaskEditor.KindLabel");
+
+    /// <summary>Looks up a localized string similar to "The kind is fixed while the task has destinations — remove them first to chan...".</summary>
+    public static string TaskEditor_KindLockedHint => Get("TaskEditor.KindLockedHint");
+
+    /// <summary>Looks up a localized string similar to "Move".</summary>
+    public static string TaskEditor_KindMove => Get("TaskEditor.KindMove");
+
+    /// <summary>Looks up a localized string similar to "File the source away: each file goes to the first rule that matches it and le...".</summary>
+    public static string TaskEditor_KindMoveDesc => Get("TaskEditor.KindMoveDesc");
+
+    /// <summary>Looks up a localized string similar to "Sync".</summary>
+    public static string TaskEditor_KindSync => Get("TaskEditor.KindSync");
+
+    /// <summary>Looks up a localized string similar to "Copy the source to its destinations and leave it where it is. Each destinatio...".</summary>
+    public static string TaskEditor_KindSyncDesc => Get("TaskEditor.KindSyncDesc");
 
     /// <summary>Looks up a localized string similar to "This folder doesn&apos;t exist. Check for typos — the task won&apos;t find anything to ...".</summary>
     public static string TaskEditor_MissingFolderHint => Get("TaskEditor.MissingFolderHint");

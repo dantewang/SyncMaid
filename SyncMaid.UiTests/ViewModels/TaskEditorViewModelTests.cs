@@ -1,4 +1,5 @@
 using SyncMaid.UiTests.Fakes;
+using SyncMaid.Core.Filtering;
 using SyncMaid.Core.Model;
 using SyncMaid.Core.Triggers;
 using SyncMaid.ViewModels;
@@ -9,6 +10,42 @@ public class TaskEditorViewModelTests
 {
     private static TaskEditorViewModel New(string? folder = null, SyncTask? existing = null) =>
         new(new FakeFolderPickerService(folder), existing);
+
+    // The kind decides which destinations the task accepts, so it is chosen up front and
+    // saved with the task — a fresh task has no destinations to derive it from.
+    [Fact]
+    public void The_chosen_kind_is_saved_with_the_task()
+    {
+        var vm = New();
+        vm.Name = "Sort downloads";
+        vm.Path = @"C:\downloads";
+        Assert.Equal(SyncTaskKind.Sync, vm.SelectedKind); // copying is the safe default
+        Assert.True(vm.CanChangeKind);
+
+        vm.SelectedKind = SyncTaskKind.Move;
+        SyncTask? saved = null;
+        vm.CloseRequested += task => saved = task;
+        vm.OKCommand.Execute(null);
+
+        Assert.Equal(SyncTaskKind.Move, Assert.IsType<SyncTask>(saved).Kind);
+    }
+
+    // Flipping the kind would invalidate every destination already there, so it is settled
+    // while the task is still empty — and shown, but locked, afterwards.
+    [Fact]
+    public void The_kind_is_locked_once_the_task_has_destinations()
+    {
+        var move = new Destination("m", @"D:\archive", [new AllFilesFilter()], SyncStrategy.Move);
+        var vm = New(existing: new SyncTask("A", @"C:\a", new ManualTrigger(), [move]));
+
+        Assert.Equal(SyncTaskKind.Move, vm.SelectedKind);
+        Assert.False(vm.CanChangeKind);
+        Assert.NotNull(vm.KindLockedHint);
+
+        var empty = New(existing: new SyncTask("B", @"C:\b", new ManualTrigger(), []));
+        Assert.True(empty.CanChangeKind);
+        Assert.Null(empty.KindLockedHint);
+    }
 
     [Fact]
     public void Missing_source_folder_shows_a_hint_without_blocking_save()

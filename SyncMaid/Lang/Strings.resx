@@ -37,9 +37,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
-  <data name="Common.MoveExclusiveHint" xml:space="preserve">
-    <value>A Move destination must be the only destination of its task.</value>
-  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} file</value>
   </data>
@@ -142,6 +139,9 @@
   </data>
   <data name="Task.AddDestinationTip" xml:space="preserve">
     <value>Add destination</value>
+  </data>
+  <data name="Task.AddRoutingRuleTip" xml:space="preserve">
+    <value>Add routing rule</value>
   </data>
   <data name="Task.EditTip" xml:space="preserve">
     <value>Edit task</value>
@@ -333,6 +333,24 @@
   <data name="TaskEditor.MissingFolderHint" xml:space="preserve">
     <value>This folder doesn't exist. Check for typos — the task won't find anything to sync (and a watch trigger can't start) until it does.</value>
   </data>
+  <data name="TaskEditor.KindLabel" xml:space="preserve">
+    <value>What this task does</value>
+  </data>
+  <data name="TaskEditor.KindSync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
+    <value>Copy the source to its destinations and leave it where it is. Each destination picks its own files.</value>
+  </data>
+  <data name="TaskEditor.KindMove" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
+    <value>File the source away: each file goes to the first rule that matches it and leaves the source.</value>
+  </data>
+  <data name="TaskEditor.KindLockedHint" xml:space="preserve">
+    <value>The kind is fixed while the task has destinations — remove them first to change it.</value>
+  </data>
 
   <!-- Destination editor dialog -->
   <data name="DestEditor.Title" xml:space="preserve">
@@ -352,9 +370,6 @@
   </data>
   <data name="DestEditor.AddOnlyDesc" xml:space="preserve">
     <value>Copy new and changed files; never delete from the destination.</value>
-  </data>
-  <data name="DestEditor.MoveDesc" xml:space="preserve">
-    <value>Move matching files to the destination, removing them from the source.</value>
   </data>
   <data name="DestEditor.FilesToSyncLabel" xml:space="preserve">
     <value>Files to sync</value>
@@ -437,6 +452,27 @@
   <data name="DestEditor.MissingFolderHint" xml:space="preserve">
     <value>This folder doesn't exist yet — it will be created on the first run. Double-check for typos.</value>
   </data>
+  <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
+    <value>Routing rule</value>
+  </data>
+  <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
+    <value>Rules are matched in order: each file goes to the first one that matches it. Files no rule matches stay in the source.</value>
+  </data>
+  <data name="DestEditor.SiblingOverlapHintFormat" xml:space="preserve">
+    <value>This folder overlaps "{0}" in this task — destinations never overlap each other.</value>
+  </data>
+  <data name="DestEditor.MoveOptionsLabel" xml:space="preserve">
+    <value>Where files land</value>
+  </data>
+  <data name="DestEditor.KeepStructure" xml:space="preserve">
+    <value>Keep the folders they are in</value>
+  </data>
+  <data name="DestEditor.Flatten" xml:space="preserve">
+    <value>Put every file directly in the folder</value>
+  </data>
+  <data name="DestEditor.CollisionLabel" xml:space="preserve">
+    <value>If that name is already taken</value>
+  </data>
 
   <!-- Enum display names -->
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
@@ -453,6 +489,12 @@
   </data>
   <data name="Enum.DeleteMode.Permanent" xml:space="preserve">
     <value>Delete permanently</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Skip" xml:space="preserve">
+    <value>Leave the file and report it</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Suffix" xml:space="preserve">
+    <value>Add a number to the name</value>
   </data>
   <data name="Enum.FilterKind.Path" xml:space="preserve">
     <value>Path</value>

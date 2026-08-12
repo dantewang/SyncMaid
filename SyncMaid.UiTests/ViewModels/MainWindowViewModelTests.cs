@@ -126,11 +126,18 @@ public class MainWindowViewModelTests
         Assert.Null(dialogs.LastSourceConflicts!(@"C:\a"));
         Assert.Equal("B", dialogs.LastSourceConflicts!(@"C:\b"));
 
-        await vm.Nodes[0].AddDestinationCommand.ExecuteAsync(null); // A's own destination is no conflict
-        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\a-backup"));
+        // A's own destination is a conflict too — reported as a sibling, since that is what
+        // the user has to go and change — and unrelated paths still pass.
+        await vm.Nodes[0].AddDestinationCommand.ExecuteAsync(null);
+        Assert.Equal(
+            new DestinationConflict("d", WithinTask: true),
+            dialogs.LastDestinationConflicts!(@"D:\a-backup"));
+        Assert.Null(dialogs.LastDestinationConflicts!(@"D:\elsewhere"));
 
         await vm.Nodes[1].AddDestinationCommand.ExecuteAsync(null); // B checks against A's destination
-        Assert.Equal("A", dialogs.LastDestinationConflicts!(@"D:\a-backup\sub"));
+        Assert.Equal(
+            new DestinationConflict("A", WithinTask: false),
+            dialogs.LastDestinationConflicts!(@"D:\a-backup\sub"));
     }
 
     [Fact]

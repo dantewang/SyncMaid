@@ -31,9 +31,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>删除</value>
   </data>
-  <data name="Common.MoveExclusiveHint" xml:space="preserve">
-    <value>“移动”策略的目标必须是其任务的唯一目标。</value>
-  </data>
   <data name="Common.FilesCount.One" xml:space="preserve">
     <value>{0} 个文件</value>
   </data>
@@ -136,6 +133,9 @@
   </data>
   <data name="Task.AddDestinationTip" xml:space="preserve">
     <value>添加目标</value>
+  </data>
+  <data name="Task.AddRoutingRuleTip" xml:space="preserve">
+    <value>添加分拣规则</value>
   </data>
   <data name="Task.EditTip" xml:space="preserve">
     <value>编辑任务</value>
@@ -326,6 +326,24 @@
   <data name="TaskEditor.MissingFolderHint" xml:space="preserve">
     <value>此文件夹不存在。请检查拼写 — 在它存在之前，任务找不到可同步的内容（监视触发器也无法启动）。</value>
   </data>
+  <data name="TaskEditor.KindLabel" xml:space="preserve">
+    <value>此任务做什么</value>
+  </data>
+  <data name="TaskEditor.KindSync" xml:space="preserve">
+    <value>同步</value>
+  </data>
+  <data name="TaskEditor.KindSyncDesc" xml:space="preserve">
+    <value>把源复制到各个目标，源保持原样。每个目标各自挑选文件。</value>
+  </data>
+  <data name="TaskEditor.KindMove" xml:space="preserve">
+    <value>移动</value>
+  </data>
+  <data name="TaskEditor.KindMoveDesc" xml:space="preserve">
+    <value>把源里的文件分拣走：每个文件进入第一条匹配它的规则，并从源中移除。</value>
+  </data>
+  <data name="TaskEditor.KindLockedHint" xml:space="preserve">
+    <value>任务已有目标时无法更改类型 — 请先删除这些目标。</value>
+  </data>
 
   <!-- Destination editor -->
   <data name="DestEditor.Title" xml:space="preserve">
@@ -345,9 +363,6 @@
   </data>
   <data name="DestEditor.AddOnlyDesc" xml:space="preserve">
     <value>复制新增和更改的文件；从不删除目标中的文件。</value>
-  </data>
-  <data name="DestEditor.MoveDesc" xml:space="preserve">
-    <value>将匹配的文件移动到目标，并从源中移除。</value>
   </data>
   <data name="DestEditor.FilesToSyncLabel" xml:space="preserve">
     <value>要同步的文件</value>
@@ -430,6 +445,27 @@
   <data name="DestEditor.MissingFolderHint" xml:space="preserve">
     <value>此文件夹尚不存在 — 将在首次运行时创建。请仔细检查拼写。</value>
   </data>
+  <data name="DestEditor.RoutingRuleTitle" xml:space="preserve">
+    <value>分拣规则</value>
+  </data>
+  <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
+    <value>规则按顺序匹配：每个文件进入第一条匹配它的规则。没有规则匹配的文件留在源中。</value>
+  </data>
+  <data name="DestEditor.SiblingOverlapHintFormat" xml:space="preserve">
+    <value>此文件夹与本任务中的“{0}”重叠 — 目标之间不能相互重叠。</value>
+  </data>
+  <data name="DestEditor.MoveOptionsLabel" xml:space="preserve">
+    <value>文件放在哪里</value>
+  </data>
+  <data name="DestEditor.KeepStructure" xml:space="preserve">
+    <value>保留它们所在的文件夹</value>
+  </data>
+  <data name="DestEditor.Flatten" xml:space="preserve">
+    <value>所有文件直接放进该文件夹</value>
+  </data>
+  <data name="DestEditor.CollisionLabel" xml:space="preserve">
+    <value>如果该名称已被占用</value>
+  </data>
 
   <!-- Enum display names -->
   <data name="Enum.SyncStrategy.Mirror" xml:space="preserve">
@@ -446,6 +482,12 @@
   </data>
   <data name="Enum.DeleteMode.Permanent" xml:space="preserve">
     <value>永久删除</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Skip" xml:space="preserve">
+    <value>保留该文件并报告</value>
+  </data>
+  <data name="Enum.FileNameCollisionPolicy.Suffix" xml:space="preserve">
+    <value>在名称后加编号</value>
   </data>
   <data name="Enum.FilterKind.Path" xml:space="preserve">
     <value>路径</value>
