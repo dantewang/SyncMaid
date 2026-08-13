@@ -23,6 +23,7 @@ public static class FilterDescriber
         AllFilesFilter => Strings.Filter_AllFiles,
         PathFilter path => Localizer.Format(Strings.Filter_PathRowFormat, path.Prefix),
         ExtensionFilter extension => Localizer.Format(Strings.Filter_ExtensionRowFormat, extension.Extension),
+        WildcardFilter wildcard => Localizer.Format(Strings.Filter_WildcardRowFormat, wildcard.Pattern),
         // Composite expression from hand-edited JSON: use its compact plain-text form.
         _ => Describe(rule),
     };
@@ -40,6 +41,8 @@ public static class FilterDescriber
         AllFilesFilter => Strings.Filter_AllFilesInline,
         PathFilter path => path.Prefix.TrimEnd('/', '\\') + "/",
         ExtensionFilter extension => extension.Extension.TrimStart('.'),
+        // The pattern reads as itself: "**/ChatGPT*.png" needs no rewording.
+        WildcardFilter wildcard => wildcard.Pattern,
         NotFilter not => Strings.Filter_Not + Describe(not.Rule, nested: true),
         AllOfFilter allOf => Join(allOf.Rules, Strings.Filter_And, nested),
         AnyOfFilter anyOf => Join(anyOf.Rules, Strings.Filter_Or, nested),

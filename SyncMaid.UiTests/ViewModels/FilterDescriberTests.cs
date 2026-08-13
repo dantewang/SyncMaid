@@ -17,9 +17,15 @@ public class FilterDescriberTests
         { new AllFilesFilter(), "All files" },
         { new PathFilter("docs"), "Path: docs" },
         { new ExtensionFilter("jpg"), "Extension: jpg" },
+        { new WildcardFilter("**/ChatGPT*.png"), "Wildcard: **/ChatGPT*.png" },
         {
             new AnyOfFilter([new PathFilter("docs"), new ExtensionFilter("jpg")]),
             "docs/ or jpg"
+        },
+        {
+            // Inline, a pattern reads as itself — no wording to add.
+            new AnyOfFilter([new WildcardFilter("**/*.png"), new ExtensionFilter("jpg")]),
+            "**/*.png or jpg"
         },
     };
 }

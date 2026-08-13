@@ -326,6 +326,9 @@
   <data name="Filter.ExtensionRowFormat" xml:space="preserve">
     <value>扩展名：{0}</value>
   </data>
+  <data name="Filter.WildcardRowFormat" xml:space="preserve">
+    <value>通配符：{0}</value>
+  </data>
   <data name="Filter.Not" xml:space="preserve">
     <value>非 </value>
   </data>
@@ -469,7 +472,10 @@
     <value>移除</value>
   </data>
   <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
-    <value>例如 photos/2024 或 jpg</value>
+    <value>例如 photos/2024、jpg 或 **/ChatGPT*.png</value>
+  </data>
+  <data name="DestEditor.WildcardHint" xml:space="preserve">
+    <value>* 匹配同一层文件夹内的任意字符，? 匹配一个字符，** 匹配任意层级 —— 所以 **/ChatGPT*.png 能找出源里任意位置的这类文件。</value>
   </data>
   <data name="DestEditor.AddGroup" xml:space="preserve">
     <value>添加组</value>
@@ -565,6 +571,9 @@
   </data>
   <data name="Enum.FilterKind.Extension" xml:space="preserve">
     <value>扩展名</value>
+  </data>
+  <data name="Enum.FilterKind.Wildcard" xml:space="preserve">
+    <value>通配符</value>
   </data>
 
   <!-- Native folder-picker titles -->

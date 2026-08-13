@@ -333,6 +333,9 @@
   <data name="Filter.ExtensionRowFormat" xml:space="preserve">
     <value>Extension: {0}</value>
   </data>
+  <data name="Filter.WildcardRowFormat" xml:space="preserve">
+    <value>Wildcard: {0}</value>
+  </data>
   <data name="Filter.Not" xml:space="preserve">
     <value>not </value>
   </data>
@@ -476,7 +479,10 @@
     <value>Remove</value>
   </data>
   <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
-    <value>e.g. photos/2024 or jpg</value>
+    <value>e.g. photos/2024, jpg, or **/ChatGPT*.png</value>
+  </data>
+  <data name="DestEditor.WildcardHint" xml:space="preserve">
+    <value>* matches within one folder level, ? one character, ** any number of levels — so **/ChatGPT*.png finds those files anywhere under the source.</value>
   </data>
   <data name="DestEditor.AddGroup" xml:space="preserve">
     <value>Add group</value>
@@ -572,6 +578,9 @@
   </data>
   <data name="Enum.FilterKind.Extension" xml:space="preserve">
     <value>Extension</value>
+  </data>
+  <data name="Enum.FilterKind.Wildcard" xml:space="preserve">
+    <value>Wildcard</value>
   </data>
 
   <!-- Native folder-picker titles -->

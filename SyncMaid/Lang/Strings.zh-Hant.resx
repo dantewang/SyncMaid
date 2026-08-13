@@ -326,6 +326,9 @@
   <data name="Filter.ExtensionRowFormat" xml:space="preserve">
     <value>副檔名：{0}</value>
   </data>
+  <data name="Filter.WildcardRowFormat" xml:space="preserve">
+    <value>萬用字元：{0}</value>
+  </data>
   <data name="Filter.Not" xml:space="preserve">
     <value>非 </value>
   </data>
@@ -469,7 +472,10 @@
     <value>移除</value>
   </data>
   <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
-    <value>例如 photos/2024 或 jpg</value>
+    <value>例如 photos/2024、jpg 或 **/ChatGPT*.png</value>
+  </data>
+  <data name="DestEditor.WildcardHint" xml:space="preserve">
+    <value>* 比對同一層資料夾內的任意字元，? 比對一個字元，** 比對任意層級 —— 所以 **/ChatGPT*.png 能找出來源裡任何位置的這類檔案。</value>
   </data>
   <data name="DestEditor.AddGroup" xml:space="preserve">
     <value>新增群組</value>
@@ -565,6 +571,9 @@
   </data>
   <data name="Enum.FilterKind.Extension" xml:space="preserve">
     <value>副檔名</value>
+  </data>
+  <data name="Enum.FilterKind.Wildcard" xml:space="preserve">
+    <value>萬用字元</value>
   </data>
 
   <!-- Native folder-picker titles -->

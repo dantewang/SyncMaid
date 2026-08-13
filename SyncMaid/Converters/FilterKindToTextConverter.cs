@@ -21,6 +21,7 @@ public sealed class FilterKindToTextConverter : IValueConverter
         {
             FilterKind.Path => Strings.Enum_FilterKind_Path,
             FilterKind.Extension => Strings.Enum_FilterKind_Extension,
+            FilterKind.Wildcard => Strings.Enum_FilterKind_Wildcard,
             _ => value?.ToString() ?? string.Empty,
         };
 

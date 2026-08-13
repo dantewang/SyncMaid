@@ -26,7 +26,12 @@ public sealed partial class FilterGroupViewModel : ViewModelBase
     private string _newFilterPattern = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsWildcardSelected))]
     private FilterKind _selectedFilterKind = FilterKind.Path;
+
+    /// <summary>True while the wildcard kind is chosen, so the editor can explain the syntax
+    /// where it is being typed rather than in documentation nobody has open.</summary>
+    public bool IsWildcardSelected => SelectedFilterKind == FilterKind.Wildcard;
 
     /// <param name="changed">Raised on any change that affects the lowered expression, so the
     /// editor can refresh its preview and OK validity.</param>
@@ -49,6 +54,7 @@ public sealed partial class FilterGroupViewModel : ViewModelBase
         FilterRule rule = SelectedFilterKind switch
         {
             FilterKind.Extension => new ExtensionFilter(NewFilterPattern),
+            FilterKind.Wildcard => new WildcardFilter(NewFilterPattern),
             _ => new PathFilter(NewFilterPattern),
         };
 

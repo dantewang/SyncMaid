@@ -19,9 +19,31 @@ Each rule is one of:
 - **Path** — files under a folder, relative to the source root. `photos/2024` matches
   everything under `<source>\photos\2024`.
 - **Extension** — files of a type. `jpg` matches every `.jpg` anywhere under the source.
+- **Wildcard** — a pattern matched against the file's path relative to the source. This is
+  the one that can look at a file's *name*.
 
 Type the value into the box next to the rule (the placeholder shows the shape:
-`e.g. photos/2024 or jpg`).
+`e.g. photos/2024, jpg, or **/ChatGPT*.png`).
+
+### Wildcard patterns
+
+| Symbol | Matches |
+|---|---|
+| `*` | any run of characters, but never across a folder boundary |
+| `?` | exactly one character, likewise |
+| `**` | any number of folder levels, including none |
+
+| Pattern | Matches |
+|---|---|
+| `**/ChatGPT*.png` | `ChatGPT Image 1.png`, `saved/ChatGPT-2.png`, at any depth |
+| `photos/*.raw` | `photos/a.raw`, but **not** `photos/2024/a.raw` |
+| `photos/**/*.raw` | every `.raw` under `photos\`, however deep |
+| `photos/**` | everything under `photos\` (the same as a Path rule) |
+| `IMG_????.jpg` | `IMG_0042.jpg` at the source root |
+
+Patterns are case-insensitive, and `\` works the same as `/`. A leading `**/` is what makes
+a pattern apply at any depth: `ChatGPT*.png` on its own only matches files sitting directly
+in the source folder.
 
 ## Groups: any, all, and exclude
 
@@ -47,6 +69,7 @@ That's enough to express the combinations people actually want:
 | Only `.jpg` files that are under `photos/` | One group, **all rules**: Path `photos`, Extension `jpg` |
 | `.jpg` or `.png`, but only under `photos/` | **Match all groups** — group 1 (any rule): Extension `jpg`, Extension `png`; group 2: Path `photos` |
 | Everything except `.tmp` files | One group: **All files**, plus a rule Extension `tmp` with **exclude** on |
+| The PNGs whose name starts with ChatGPT | One group: Wildcard `**/ChatGPT*.png` |
 
 ## The preview line
 

@@ -140,7 +140,7 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Only matching".</summary>
     public static string DestEditor_OnlyMatching => Get("DestEditor.OnlyMatching");
 
-    /// <summary>Looks up a localized string similar to "e.g. photos/2024 or jpg".</summary>
+    /// <summary>Looks up a localized string similar to "e.g. photos/2024, jpg, or **/ChatGPT*.png".</summary>
     public static string DestEditor_PatternPlaceholder => Get("DestEditor.PatternPlaceholder");
 
     /// <summary>Looks up a localized string similar to "% of the destination".</summary>
@@ -179,6 +179,9 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "This is a network location. Content verification re-reads every copied file o...".</summary>
     public static string DestEditor_VerifyNetworkWarning => Get("DestEditor.VerifyNetworkWarning");
 
+    /// <summary>Looks up a localized string similar to "* matches within one folder level, ? one character, ** any number of levels —...".</summary>
+    public static string DestEditor_WildcardHint => Get("DestEditor.WildcardHint");
+
     /// <summary>Looks up a localized string similar to "Select Destination Folder".</summary>
     public static string Dialog_SelectDestinationFolder => Get("Dialog.SelectDestinationFolder");
 
@@ -202,6 +205,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Path".</summary>
     public static string Enum_FilterKind_Path => Get("Enum.FilterKind.Path");
+
+    /// <summary>Looks up a localized string similar to "Wildcard".</summary>
+    public static string Enum_FilterKind_Wildcard => Get("Enum.FilterKind.Wildcard");
 
     /// <summary>Looks up a localized string similar to "Add-only".</summary>
     public static string Enum_SyncStrategy_AddOnly => Get("Enum.SyncStrategy.AddOnly");
@@ -250,6 +256,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Syncs: {0}".</summary>
     public static string Filter_SyncsPreviewFormat => Get("Filter.SyncsPreviewFormat");
+
+    /// <summary>Looks up a localized string similar to "Wildcard: {0}".</summary>
+    public static string Filter_WildcardRowFormat => Get("Filter.WildcardRowFormat");
 
     /// <summary>Looks up a localized string similar to "Close".</summary>
     public static string Main_CloseTip => Get("Main.CloseTip");

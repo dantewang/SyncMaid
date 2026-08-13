@@ -18,9 +18,29 @@ public class FilterGroupViewModelTests
         group.NewFilterPattern = "*.jpg";
         group.AddRuleCommand.Execute(null);
 
+        group.SelectedFilterKind = FilterKind.Wildcard;
+        group.NewFilterPattern = "**/ChatGPT*.png";
+        group.AddRuleCommand.Execute(null);
+
         Assert.Collection(
             group.Rules,
             rule => Assert.True(Assert.IsType<PathFilter>(rule.Rule).Matches("photos/img.png")),
-            rule => Assert.True(Assert.IsType<ExtensionFilter>(rule.Rule).Matches("other/img.jpg")));
+            rule => Assert.True(Assert.IsType<ExtensionFilter>(rule.Rule).Matches("other/img.jpg")),
+            rule => Assert.True(Assert.IsType<WildcardFilter>(rule.Rule).Matches("saved/ChatGPT 1.png")));
+    }
+
+    // The syntax is only worth explaining while it is being typed, so the hint follows the
+    // kind picker rather than sitting in the panel permanently.
+    [Fact]
+    public void The_wildcard_syntax_hint_follows_the_selected_kind()
+    {
+        var group = new FilterGroupViewModel(() => { });
+        Assert.False(group.IsWildcardSelected);
+
+        group.SelectedFilterKind = FilterKind.Wildcard;
+        Assert.True(group.IsWildcardSelected);
+
+        group.SelectedFilterKind = FilterKind.Path;
+        Assert.False(group.IsWildcardSelected);
     }
 }

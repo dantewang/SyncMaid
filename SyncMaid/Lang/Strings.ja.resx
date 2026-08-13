@@ -326,6 +326,9 @@
   <data name="Filter.ExtensionRowFormat" xml:space="preserve">
     <value>拡張子: {0}</value>
   </data>
+  <data name="Filter.WildcardRowFormat" xml:space="preserve">
+    <value>ワイルドカード: {0}</value>
+  </data>
   <data name="Filter.Not" xml:space="preserve">
     <value>非 </value>
   </data>
@@ -469,7 +472,10 @@
     <value>削除</value>
   </data>
   <data name="DestEditor.PatternPlaceholder" xml:space="preserve">
-    <value>例: photos/2024 や jpg</value>
+    <value>例: photos/2024、jpg、**/ChatGPT*.png</value>
+  </data>
+  <data name="DestEditor.WildcardHint" xml:space="preserve">
+    <value>* は同じ階層内の任意の文字、? は 1 文字、** は任意の階層数に一致します。つまり **/ChatGPT*.png はソース内のどこにあっても見つけます。</value>
   </data>
   <data name="DestEditor.AddGroup" xml:space="preserve">
     <value>グループを追加</value>
@@ -565,6 +571,9 @@
   </data>
   <data name="Enum.FilterKind.Extension" xml:space="preserve">
     <value>拡張子</value>
+  </data>
+  <data name="Enum.FilterKind.Wildcard" xml:space="preserve">
+    <value>ワイルドカード</value>
   </data>
 
   <!-- Native folder-picker titles -->

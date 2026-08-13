@@ -199,6 +199,10 @@
                                                         </StackPanel>
                                                     </Button>
                                                 </Grid>
+
+                                                <!-- The syntax, where the pattern is typed. -->
+                                                <c:HintBox Icon="AsteriskCircleOutline" IsVisible="{Binding IsWildcardSelected}"
+                                                           Text="{l:Loc DestEditor.WildcardHint}" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

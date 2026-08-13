@@ -9,4 +9,5 @@ public enum FilterKind
 {
     Path,
     Extension,
+    Wildcard,
 }

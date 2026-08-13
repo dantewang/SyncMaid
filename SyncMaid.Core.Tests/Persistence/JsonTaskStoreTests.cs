@@ -210,6 +210,26 @@ public class JsonTaskStoreTests
     }
 
     [Fact]
+    public void A_wildcard_filter_round_trips_and_still_matches()
+    {
+        var fs = new InMemoryFileSystem();
+        var store = NewStore(fs);
+        store.Save(
+        [
+            new SyncTask("T", @"C:\src", new ManualTrigger(),
+                [new Destination("D", @"D:\d", [new WildcardFilter("**/ChatGPT*.png")], SyncStrategy.AddOnly)]),
+        ]);
+
+        var loaded = Assert.IsType<WildcardFilter>(
+            Assert.Single(Assert.Single(Assert.Single(store.Load()).Destinations).Filters));
+
+        Assert.Equal("**/ChatGPT*.png", loaded.Pattern);
+        // The matcher's state is built in the constructor, which deserialization has to have
+        // gone through — a pattern restored past it would compile to a filter matching nothing.
+        Assert.True(loaded.Matches("saved/ChatGPT Image 1.png"));
+    }
+
+    [Fact]
     public void Slash_only_path_filter_remains_match_none_after_round_trip()
     {
         var fs = new InMemoryFileSystem();
