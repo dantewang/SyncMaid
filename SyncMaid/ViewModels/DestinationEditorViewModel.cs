@@ -206,6 +206,20 @@ public partial class DestinationEditorViewModel : EditorDialogViewModel<Destinat
                 conflict.Name)
             : Strings.DestEditor_MissingFolderHint;
 
+    /// <summary>
+    /// Why this editor cannot be accepted yet, in one sentence; null when it can. The
+    /// workspace commits open editors when the user saves, so it needs to explain a refusal
+    /// in the same words the editor itself would use.
+    /// </summary>
+    public string? IncompleteReason => CanOk()
+        ? null
+        : string.IsNullOrWhiteSpace(Path)
+            ? Strings.DestEditor_NeedsFolder
+            // Which way the path is wrong is already spelled out on the field itself.
+            : HasUnsafeNesting || Conflict is not null
+                ? Strings.DestEditor_NeedsUsableFolder
+                : Strings.DestEditor_NeedsFilterRule;
+
     [RelayCommand(CanExecute = nameof(CanOk))]
     private void OK()
     {

@@ -35,6 +35,14 @@ public class TaskWorkspaceViewModelTests
         return saved!;
     }
 
+    private static void AddFilterRule(DestinationEditorViewModel editor, string extension)
+    {
+        var group = editor.Groups.First();
+        group.SelectedFilterKind = FilterKind.Extension;
+        group.NewFilterPattern = extension;
+        group.AddRuleCommand.Execute(null);
+    }
+
     [Fact]
     public void Rules_are_numbered_in_the_order_they_are_matched()
     {
@@ -85,6 +93,70 @@ public class TaskWorkspaceViewModelTests
 
         var syncTask = new SyncTask("Back up", @"C:\src", new ManualTrigger(), []);
         Assert.False(Workspace(syncTask).CanAddCatchAll);
+    }
+
+    // Saving means "keep what I typed". The accept button sits at the top of an open row, but
+    // it can still be missed, and missing it used to throw the whole rule away.
+    [Fact]
+    public void Saving_with_a_new_rule_still_open_keeps_it()
+    {
+        var workspace = Workspace(MoveTask(Rule("Books", "pdf")), startWithNewRule: true);
+        var editor = workspace.Rows[1].Editor!;
+        editor.Path = @"D:\pictures";
+        AddFilterRule(editor, "jpg");
+
+        var saved = Save(workspace);
+
+        Assert.Equal(2, saved.Count);
+        Assert.Equal(@"D:\pictures", saved[1].LocalPath);
+        Assert.Contains(saved[1].Filters.OfType<ExtensionFilter>(), filter => filter.Extension == "jpg");
+    }
+
+    // The quieter half of the same bug: an already-saved rule being edited would come back
+    // with its *previous* contents, which looks like a successful save.
+    [Fact]
+    public void Saving_with_an_existing_rule_still_open_does_not_revert_it()
+    {
+        var workspace = Workspace(MoveTask(Rule("Books", "pdf")));
+        workspace.Rows[0].ExpandCommand.Execute(null);
+        workspace.Rows[0].Editor!.Path = @"D:\ebooks";
+
+        Assert.Equal(@"D:\ebooks", Assert.Single(Save(workspace)).LocalPath);
+    }
+
+    // A rule that cannot be accepted is the one case where dropping it would be silent data
+    // loss, so the save is refused instead and the rule stays open with the reason shown.
+    [Fact]
+    public void An_unfinished_rule_blocks_the_save_rather_than_being_dropped()
+    {
+        var workspace = Workspace(MoveTask(Rule("Books", "pdf")), startWithNewRule: true);
+        var closed = false;
+        workspace.CloseRequested += _ => closed = true;
+
+        workspace.SaveCommand.Execute(null); // the new rule has no folder yet
+
+        Assert.False(closed);
+        Assert.NotNull(workspace.SaveBlockedMessage);
+        Assert.NotNull(workspace.Rows[1].Editor);
+
+        // Finishing it clears the refusal and the save goes through.
+        workspace.Rows[1].Editor!.Path = @"D:\pictures";
+        AddFilterRule(workspace.Rows[1].Editor!, "jpg");
+        Assert.Equal(2, Save(workspace).Count);
+        Assert.Null(workspace.SaveBlockedMessage);
+    }
+
+    [Fact]
+    public void Discarding_the_unfinished_rule_clears_the_refusal()
+    {
+        var workspace = Workspace(MoveTask(Rule("Books", "pdf")), startWithNewRule: true);
+        workspace.SaveCommand.Execute(null);
+        Assert.NotNull(workspace.SaveBlockedMessage);
+
+        workspace.Rows[1].Editor!.CancelCommand.Execute(null);
+
+        Assert.Null(workspace.SaveBlockedMessage);
+        Assert.Single(Save(workspace));
     }
 
     // A row is only the editor's frame until an edit is applied; backing out of a new rule

@@ -35,9 +35,6 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Delete".</summary>
     public static string Common_Delete => Get("Common.Delete");
 
-    /// <summary>Looks up a localized string similar to "Done".</summary>
-    public static string Common_Done => Get("Common.Done");
-
     /// <summary>Looks up a localized string similar to "{0} file".</summary>
     public static string Common_FilesCount_One => Get("Common.FilesCount.One");
 
@@ -133,6 +130,15 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Optional — defaults to the folder&apos;s name".</summary>
     public static string DestEditor_NamePlaceholder => Get("DestEditor.NamePlaceholder");
+
+    /// <summary>Looks up a localized string similar to "no files selected — add a rule, or choose &quot;All files&quot;".</summary>
+    public static string DestEditor_NeedsFilterRule => Get("DestEditor.NeedsFilterRule");
+
+    /// <summary>Looks up a localized string similar to "no destination folder chosen".</summary>
+    public static string DestEditor_NeedsFolder => Get("DestEditor.NeedsFolder");
+
+    /// <summary>Looks up a localized string similar to "that destination folder can&apos;t be used".</summary>
+    public static string DestEditor_NeedsUsableFolder => Get("DestEditor.NeedsUsableFolder");
 
     /// <summary>Looks up a localized string similar to "Destination must be a separate folder outside the source (and not contain it).".</summary>
     public static string DestEditor_NestedPathHint => Get("DestEditor.NestedPathHint");
@@ -617,6 +623,12 @@ public static class Strings
     /// <summary>Looks up a localized string similar to "Destinations".</summary>
     public static string Workspace_DestinationsTitle => Get("Workspace.DestinationsTitle");
 
+    /// <summary>Looks up a localized string similar to "Discard these changes".</summary>
+    public static string Workspace_DiscardTip => Get("Workspace.DiscardTip");
+
+    /// <summary>Looks up a localized string similar to "Finish editing".</summary>
+    public static string Workspace_DoneTip => Get("Workspace.DoneTip");
+
     /// <summary>Looks up a localized string similar to "Duplicate".</summary>
     public static string Workspace_DuplicateTip => Get("Workspace.DuplicateTip");
 
@@ -658,6 +670,9 @@ public static class Strings
 
     /// <summary>Looks up a localized string similar to "Save".</summary>
     public static string Workspace_Save => Get("Workspace.Save");
+
+    /// <summary>Looks up a localized string similar to "Nothing was saved yet: {0}. Finish the one still open below, or discard it.".</summary>
+    public static string Workspace_SaveBlockedFormat => Get("Workspace.SaveBlockedFormat");
 
     /// <summary>Looks up a localized string similar to "Scanning…".</summary>
     public static string Workspace_Scanning => Get("Workspace.Scanning");

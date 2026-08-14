@@ -37,9 +37,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
-  <data name="Common.Done" xml:space="preserve">
-    <value>Done</value>
-  </data>
 
   <!-- Task workspace: every destination of one task, edited together -->
   <data name="Workspace.RulesTitle" xml:space="preserve">
@@ -71,6 +68,15 @@
   </data>
   <data name="Workspace.DuplicateTip" xml:space="preserve">
     <value>Duplicate</value>
+  </data>
+  <data name="Workspace.DoneTip" xml:space="preserve">
+    <value>Finish editing</value>
+  </data>
+  <data name="Workspace.DiscardTip" xml:space="preserve">
+    <value>Discard these changes</value>
+  </data>
+  <data name="Workspace.SaveBlockedFormat" xml:space="preserve">
+    <value>Nothing was saved yet: {0}. Finish the one still open below, or discard it.</value>
   </data>
   <data name="Workspace.MoveUpTip" xml:space="preserve">
     <value>Match this rule earlier</value>
@@ -525,6 +531,15 @@
   </data>
   <data name="DestEditor.NamePlaceholder" xml:space="preserve">
     <value>Optional — defaults to the folder's name</value>
+  </data>
+  <data name="DestEditor.NeedsFolder" xml:space="preserve">
+    <value>no destination folder chosen</value>
+  </data>
+  <data name="DestEditor.NeedsUsableFolder" xml:space="preserve">
+    <value>that destination folder can't be used</value>
+  </data>
+  <data name="DestEditor.NeedsFilterRule" xml:space="preserve">
+    <value>no files selected — add a rule, or choose "All files"</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>Rules are matched in order: each file goes to the first one that matches it. Files no rule matches stay in the source.</value>

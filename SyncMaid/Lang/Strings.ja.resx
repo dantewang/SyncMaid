@@ -31,9 +31,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>削除</value>
   </data>
-  <data name="Common.Done" xml:space="preserve">
-    <value>完了</value>
-  </data>
 
   <!-- Task workspace: every destination of one task, edited together -->
   <data name="Workspace.RulesTitle" xml:space="preserve">
@@ -65,6 +62,15 @@
   </data>
   <data name="Workspace.DuplicateTip" xml:space="preserve">
     <value>複製</value>
+  </data>
+  <data name="Workspace.DoneTip" xml:space="preserve">
+    <value>編集を終える</value>
+  </data>
+  <data name="Workspace.DiscardTip" xml:space="preserve">
+    <value>この変更を破棄</value>
+  </data>
+  <data name="Workspace.SaveBlockedFormat" xml:space="preserve">
+    <value>まだ保存していません: {0}。下で開いたままのものを仕上げるか、破棄してください。</value>
   </data>
   <data name="Workspace.MoveUpTip" xml:space="preserve">
     <value>このルールをより早く照合する</value>
@@ -518,6 +524,15 @@
   </data>
   <data name="DestEditor.NamePlaceholder" xml:space="preserve">
     <value>省略可 — フォルダー名が使われます</value>
+  </data>
+  <data name="DestEditor.NeedsFolder" xml:space="preserve">
+    <value>同期先フォルダーが選ばれていません</value>
+  </data>
+  <data name="DestEditor.NeedsUsableFolder" xml:space="preserve">
+    <value>その同期先フォルダーは使えません</value>
+  </data>
+  <data name="DestEditor.NeedsFilterRule" xml:space="preserve">
+    <value>ファイルが 1 つも選ばれていません — ルールを追加するか、「すべてのファイル」を選んでください</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>ルールは上から順に照合され、各ファイルは最初に一致したルールへ移動します。どのルールにも一致しないファイルはソースに残ります。</value>

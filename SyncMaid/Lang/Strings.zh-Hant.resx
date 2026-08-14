@@ -31,9 +31,6 @@
   <data name="Common.Delete" xml:space="preserve">
     <value>刪除</value>
   </data>
-  <data name="Common.Done" xml:space="preserve">
-    <value>完成</value>
-  </data>
 
   <!-- Task workspace: every destination of one task, edited together -->
   <data name="Workspace.RulesTitle" xml:space="preserve">
@@ -65,6 +62,15 @@
   </data>
   <data name="Workspace.DuplicateTip" xml:space="preserve">
     <value>複製</value>
+  </data>
+  <data name="Workspace.DoneTip" xml:space="preserve">
+    <value>完成編輯</value>
+  </data>
+  <data name="Workspace.DiscardTip" xml:space="preserve">
+    <value>放棄本次修改</value>
+  </data>
+  <data name="Workspace.SaveBlockedFormat" xml:space="preserve">
+    <value>尚未儲存：{0}。請完成下方仍在編輯的那條，或放棄它。</value>
   </data>
   <data name="Workspace.MoveUpTip" xml:space="preserve">
     <value>讓這條規則更早比對</value>
@@ -518,6 +524,15 @@
   </data>
   <data name="DestEditor.NamePlaceholder" xml:space="preserve">
     <value>可留空 — 預設使用資料夾名稱</value>
+  </data>
+  <data name="DestEditor.NeedsFolder" xml:space="preserve">
+    <value>尚未選擇目標資料夾</value>
+  </data>
+  <data name="DestEditor.NeedsUsableFolder" xml:space="preserve">
+    <value>該目標資料夾無法使用</value>
+  </data>
+  <data name="DestEditor.NeedsFilterRule" xml:space="preserve">
+    <value>沒有選中任何檔案 — 請新增規則，或選擇「所有檔案」</value>
   </data>
   <data name="DestEditor.RoutingRuleHint" xml:space="preserve">
     <value>規則按順序比對：每個檔案進入第一條符合它的規則。沒有規則符合的檔案留在來源中。</value>

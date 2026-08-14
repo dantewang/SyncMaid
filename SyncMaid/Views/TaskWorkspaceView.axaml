@@ -20,6 +20,11 @@
                 <TextBlock Text="{Binding SourcePath}" Classes="path" Margin="0,6,0,0" />
             </StackPanel>
 
+            <!-- A save refused because a rule is unfinished, said where the click happened. -->
+            <c:HintBox DockPanel.Dock="Bottom" Classes="danger" Margin="0,12,0,0"
+                       IsVisible="{Binding SaveBlockedMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       Text="{Binding SaveBlockedMessage}" />
+
             <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,14,0,0">
                 <Button Grid.Column="0" Classes="secondary" Command="{Binding AddRuleCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -132,6 +137,20 @@
                                                     IsVisible="{Binding IsCollapsed}" Command="{Binding ExpandCommand}">
                                                 <mi:MaterialIcon Kind="Pencil" Width="14" Height="14" />
                                             </Button>
+                                            <!-- While the row is open its accept/discard pair
+                                                 lives here, beside the row it belongs to: at the
+                                                 foot of a tall editor it sat below the fold, and
+                                                 a button nobody sees is a button nobody presses. -->
+                                            <Button Classes="icon run" ToolTip.Tip="{l:Loc Workspace.DoneTip}"
+                                                    IsVisible="{Binding !IsCollapsed}"
+                                                    Command="{Binding Editor.OKCommand}">
+                                                <mi:MaterialIcon Kind="Check" Width="15" Height="15" />
+                                            </Button>
+                                            <Button Classes="icon" ToolTip.Tip="{l:Loc Workspace.DiscardTip}"
+                                                    IsVisible="{Binding !IsCollapsed}"
+                                                    Command="{Binding CollapseCommand}">
+                                                <mi:MaterialIcon Kind="Close" Width="14" Height="14" />
+                                            </Button>
                                             <Button Classes="icon" ToolTip.Tip="{l:Loc Dest.DeleteTip}"
                                                     Command="{Binding $parent[ItemsControl].((vm:TaskWorkspaceViewModel)DataContext).DeleteCommand, FallbackValue={x:Null}}"
                                                     CommandParameter="{Binding}">
@@ -168,12 +187,6 @@
                                             </ItemsControl>
 
                                             <views:DestinationEditorView DataContext="{Binding Editor}" />
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                                                <Button Classes="secondary" Content="{l:Loc Common.Cancel}"
-                                                        Command="{Binding CollapseCommand}" />
-                                                <Button Classes="primary" Content="{l:Loc Common.Done}"
-                                                        Command="{Binding Editor.OKCommand}" />
-                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>

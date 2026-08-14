@@ -220,11 +220,55 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
         }
     }
 
-    // A row whose editor was never accepted has no destination behind it, so saving with one
-    // still open must not persist a nameless, pathless rule.
+    /// <summary>
+    /// Why the last save was refused, or null. A refusal only ever comes from a rule that is
+    /// not finished — the workspace itself has nothing to validate.
+    /// </summary>
+    [ObservableProperty]
+    private string? _saveBlockedMessage;
+
+    /// <summary>
+    /// Saving means "keep what I typed", so a rule still being edited is committed rather than
+    /// dropped — forgetting to close the editor first used to lose the edit silently, and a
+    /// row that was already saved would quietly revert to its previous state.
+    /// </summary>
     [RelayCommand]
-    private void Save() =>
+    private void Save()
+    {
+        if (!TryCommitOpenEditors())
+        {
+            return;
+        }
+
+        // Anything still a draft is a rule the user abandoned rather than one they were
+        // editing: the commit above accepted every editor that could be accepted.
         Close(Rows.Where(row => !row.IsDraft).Select(row => row.Destination).ToList());
+    }
+
+    // Accepts every open editor, stopping at the first one that cannot be accepted — that rule
+    // stays open with the reason shown, so what needs finishing is on screen rather than
+    // discarded. Iterates a snapshot: accepting an editor can reorder or remove its row.
+    private bool TryCommitOpenEditors()
+    {
+        foreach (var row in Rows.ToList())
+        {
+            if (row.Editor is not { } editor)
+            {
+                continue;
+            }
+
+            if (editor.IncompleteReason is { } reason)
+            {
+                SaveBlockedMessage = Localizer.Format(Strings.Workspace_SaveBlockedFormat, reason);
+                return false;
+            }
+
+            editor.OKCommand.Execute(null);
+        }
+
+        SaveBlockedMessage = null;
+        return true;
+    }
 
     [RelayCommand]
     private void Cancel() => RequestCancel();
@@ -271,6 +315,9 @@ public sealed partial class TaskWorkspaceViewModel : DialogViewModel<IReadOnlyLi
 
     private void OnEditorClosed(DestinationRowViewModel row, Destination? edited)
     {
+        // Whatever the refusal was about, closing an editor is the user acting on it.
+        SaveBlockedMessage = null;
+
         // Backing out of a rule that was never saved leaves nothing behind — the row was
         // only ever the editor's frame.
         if (edited is null)
